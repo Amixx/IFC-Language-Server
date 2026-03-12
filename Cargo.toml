@@ -7,4 +7,4 @@ edition = "2021"
 tower-lsp = "0.20"
 tokio = { version = "1", features = ["full"] }
 tree-sitter = "0.26"
-tree-sitter-ifc = { path = "../tree-sitter-ifc" }
+tree-sitter-ifc = { path = "tree-sitter-ifc" }
