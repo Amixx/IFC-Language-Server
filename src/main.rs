@@ -1,10 +1,10 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 use tree_sitter::{Parser, Point};
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::RwLock;
 
 #[derive(Debug)]
 struct Document {
@@ -37,13 +37,7 @@ impl IfcLspBackend {
         let tree = parser.parse(&text, None);
 
         let mut documents = self.documents.write().await;
-        documents.insert(
-            uri.clone(),
-            Document {
-                text,
-                tree,
-            },
-        );
+        documents.insert(uri.clone(), Document { text, tree });
     }
 }
 
@@ -75,7 +69,7 @@ impl LanguageServer for IfcLspBackend {
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let uri = params.text_document.uri;
         let text = params.text_document.text;
-        
+
         self.client
             .log_message(MessageType::INFO, format!("Document opened: {}", uri))
             .await;
@@ -112,24 +106,24 @@ impl LanguageServer for IfcLspBackend {
         };
 
         // Find the node at cursor position
-        let node = tree
-            .root_node()
-            .descendant_for_point_range(point, point);
+        let node = tree.root_node().descendant_for_point_range(point, point);
 
         if let Some(node) = node {
             self.client
                 .log_message(
                     MessageType::INFO,
-                    format!("Node at cursor: kind={}, text={}", 
-                        node.kind(), 
-                        node.utf8_text(doc.text.as_bytes()).unwrap_or("?")),
+                    format!(
+                        "Node at cursor: kind={}, text={}",
+                        node.kind(),
+                        node.utf8_text(doc.text.as_bytes()).unwrap_or("?")
+                    ),
                 )
                 .await;
 
             // Check if we're on an entity_name node
             if node.kind() == "entity_name" {
                 let entity_text = node.utf8_text(doc.text.as_bytes()).unwrap_or("");
-                
+
                 // Return dummy documentation for now
                 let hover_text = format!(
                     "**{}**\n\n\
@@ -154,7 +148,8 @@ impl LanguageServer for IfcLspBackend {
         Ok(Some(Hover {
             contents: HoverContents::Markup(MarkupContent {
                 kind: MarkupKind::Markdown,
-                value: "Hover over an IFC entity name (like `IFCWALL`) to see documentation.".to_string(),
+                value: "Hover over an IFC entity name (like `IFCWALL`) to see documentation."
+                    .to_string(),
             }),
             range: None,
         }))
