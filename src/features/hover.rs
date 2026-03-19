@@ -72,7 +72,7 @@ mod tests {
 
     #[test]
     fn returns_ifc4x3_entity_hover_from_schema_docs() {
-        let text = include_str!("../../samples/Building-Architecture.ifc").to_string();
+        let text = include_str!("../../samples/Building-Architecture-IFC4x3.ifc").to_string();
         let offset = text.find("IFCWALL").expect("sample should contain IFCWALL");
         let position = position_at_offset(&text, offset);
 

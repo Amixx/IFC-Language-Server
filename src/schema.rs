@@ -91,4 +91,25 @@ mod tests {
         assert!(!entity.attributes.is_empty());
         assert!(entity.url.contains("ifcwall.htm"));
     }
+
+    #[test]
+    fn loads_ifc2x3_entity_docs() {
+        let docs = SchemaDocs::new();
+        let wall = docs
+            .get_entity_doc(IfcVersion::Ifc2x3Tc1, "IFCWALL")
+            .expect("expected IFC2x3 docs for IfcWall");
+        let door = docs
+            .get_entity_doc(IfcVersion::Ifc2x3Tc1, "IFCDOOR")
+            .expect("expected IFC2x3 docs for IfcDoor");
+
+        assert_eq!(wall.name, "IfcWall");
+        assert!(!wall.summary.is_empty());
+        assert_eq!(wall.attributes.len(), 0);
+        assert!(wall.url.contains("ifcwall.htm"));
+
+        assert_eq!(door.name, "IfcDoor");
+        assert!(!door.summary.is_empty());
+        assert!(!door.attributes.is_empty());
+        assert!(door.url.contains("ifcdoor.htm"));
+    }
 }
