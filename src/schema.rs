@@ -78,4 +78,17 @@ mod tests {
         assert!(!entity.attributes.is_empty());
         assert!(entity.url.contains("IfcWall"));
     }
+
+    #[test]
+    fn loads_ifc4_entity_docs() {
+        let docs = SchemaDocs::new();
+        let entity = docs
+            .get_entity_doc(IfcVersion::Ifc4Add2Tc1, "IFCWALL")
+            .expect("expected IFC4 docs for IfcWall");
+
+        assert_eq!(entity.name, "IfcWall");
+        assert!(!entity.summary.is_empty());
+        assert!(!entity.attributes.is_empty());
+        assert!(entity.url.contains("ifcwall.htm"));
+    }
 }
