@@ -46,9 +46,11 @@ class HtmlToText(HTMLParser):
         text = text.replace("\xa0", " ")
         text = text.replace("“", '"').replace("”", '"')
         text = text.replace("’", "'").replace("–", "-").replace("—", "-")
-        text = re.sub(r"\n{3,}", "\n\n", text)
         text = re.sub(r"[ \t]+", " ", text)
         text = re.sub(r" *\n *", "\n", text)
+        text = re.sub(r"\n>\s*\n*", "\n> ", text)
+        text = re.sub(r">\s*\n+", "> ", text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
         return text.strip()
 
 
@@ -90,13 +92,21 @@ def parse_index(index_html):
 
 
 def extract_summary(page_html):
-    match = re.search(
-        r"Definition from buildingSMART</u>:(.*?)</p>",
+    building_smart = re.search(
+        r"Definition from buildingSMART</u>:(.*?)(?:</p>|<blockquote)",
         page_html,
         re.DOTALL | re.IGNORECASE,
     )
-    if match:
-        return html_to_text(match.group(1))
+    if building_smart:
+        return clean_summary_text(building_smart.group(1))
+
+    iso = re.search(
+        r"Definition from ISO.*?</u>:(.*?)(?:</p>|<blockquote)",
+        page_html,
+        re.DOTALL | re.IGNORECASE,
+    )
+    if iso:
+        return clean_summary_text(iso.group(1))
 
     fallback = re.search(
         r'<p CLASS="object-heading">.*?</p>(.*?)<a name="definition">',
@@ -104,9 +114,26 @@ def extract_summary(page_html):
         re.DOTALL | re.IGNORECASE,
     )
     if fallback:
-        return html_to_text(fallback.group(1))
+        return clean_summary_text(fallback.group(1))
 
     raise ValueError("missing summary")
+
+
+def clean_summary_text(fragment):
+    cleaned = re.sub(
+        r"<blockquote\b[^>]*>.*?</blockquote>",
+        "",
+        fragment,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
+    cleaned = re.sub(
+        r"<ul\b[^>]*>.*?</ul>", "", cleaned, flags=re.DOTALL | re.IGNORECASE
+    )
+    cleaned = re.sub(r"<p>\s*<u><b>.*", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
+    text = html_to_text(cleaned)
+    text = re.sub(r"\s*\n\s*", " ", text)
+    text = re.sub(r"\s{2,}", " ", text)
+    return text.strip()
 
 
 def extract_direct_attribute_types(page_html):

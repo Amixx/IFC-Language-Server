@@ -78,6 +78,19 @@ def html_to_text(fragment):
     return parser.text()
 
 
+def extract_summary_text(definition_section):
+    cleaned = re.sub(
+        r"<blockquote\b[^>]*>.*?</blockquote>",
+        "",
+        definition_section,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
+    first_paragraph = re.search(r"<p>(.*?)</p>", cleaned, re.DOTALL | re.IGNORECASE)
+    if first_paragraph:
+        return html_to_text(first_paragraph.group(1))
+    return html_to_text(cleaned)
+
+
 def parse_entity_names(xsd_text):
     return sorted(
         set(re.findall(r'<xs:complexType name="(Ifc[A-Za-z0-9_]+)"', xsd_text))
@@ -154,7 +167,7 @@ def fetch_entity_doc(entity_name):
         entity_name.upper(),
         {
             "name": entity_name,
-            "summary": html_to_text(definition_section),
+            "summary": extract_summary_text(definition_section),
             "attributes": extract_attribute_rows(attributes_section),
             "url": lexical_url,
         },
