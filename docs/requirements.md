@@ -51,3 +51,15 @@ When a user invokes Go to Definition, for example through an editor context menu
 The language server should implement find references functionality for IFC symbols.
 
 For the current scope, this should be limited to a single document. Cross-file indexing is not required.
+
+### Semantic Checking
+
+When an IFC STEP P21 file violates IFC or STEP structural or semantic rules, the language server should report diagnostics for the affected source range.
+
+Examples include:
+
+- missing required STEP envelope sections such as `ISO-10303-21`, `HEADER`, `DATA`, or `END-ISO-10303-21`
+- invalid or inconsistent entity references
+- values that do not match the expected type or role for a referenced attribute
+
+Diagnostics should highlight the most relevant range in the document and distinguish errors from less severe issues where appropriate.
