@@ -6,6 +6,8 @@
 
 ### Supported IFC Schema Versions
 
+See [IFC Schema Specifications](https://technical.buildingsmart.org/standards/ifc/ifc-schema-specifications/):
+
 - IFC 2.3.0.1  
   https://standards.buildingsmart.org/IFC/RELEASE/IFC2x3/TC1/XML/IFC2X3.xsd
 - IFC 4.0.2.1  
