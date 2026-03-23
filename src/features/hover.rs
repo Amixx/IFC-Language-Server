@@ -43,3 +43,69 @@ pub fn hover(document: &Document, position: Position, schema_docs: &SchemaDocs) 
         range: None,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::*;
+
+    fn parse_document(text: &str) -> Document {
+        let mut parser = tree_sitter::Parser::new();
+        parser
+            .set_language(&tree_sitter_ifc::LANGUAGE.into())
+            .expect("Error loading IFC parser");
+
+        Document::parse(&mut parser, text.to_string())
+    }
+
+    fn position_at(text: &str, needle: &str) -> Position {
+        let offset = text.find(needle).expect("needle should exist") as u32;
+        Position::new(0, offset)
+    }
+
+    fn hover_text(hover: Hover) -> String {
+        match hover.contents {
+            HoverContents::Markup(markup) => markup.value,
+            contents => panic!("unexpected hover contents: {contents:?}"),
+        }
+    }
+
+    #[test]
+    fn hover_returns_entity_placeholder_for_entity_names() {
+        let text = "#1=IFCWALL($);";
+        let document = parse_document(text);
+
+        let hover = hover(&document, position_at(text, "IFCWALL"), &SchemaDocs::new())
+            .expect("hover should exist");
+        let value = hover_text(hover);
+
+        assert!(value.contains("**IFCWALL**"));
+        assert!(value.contains("Documentation coming soon!"));
+    }
+
+    #[test]
+    fn hover_returns_generic_message_for_non_entity_name_nodes() {
+        let text = "#1=IFCWALL($);";
+        let document = parse_document(text);
+
+        let hover =
+            hover(&document, position_at(text, "#1"), &SchemaDocs::new()).expect("hover exists");
+        let value = hover_text(hover);
+
+        assert!(value.contains("Hover over an IFC entity name"));
+    }
+
+    #[test]
+    fn hover_returns_none_without_a_syntax_tree() {
+        let document = Document {
+            text: "#1=IFCWALL($);".to_string(),
+            tree: None,
+            version: None,
+            definitions: HashMap::new(),
+            references: HashMap::new(),
+        };
+
+        assert!(hover(&document, Position::new(0, 0), &SchemaDocs::new()).is_none());
+    }
+}
