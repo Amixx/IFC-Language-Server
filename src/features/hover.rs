@@ -91,16 +91,16 @@ mod tests {
     }
 
     #[test]
-    fn hover_returns_entity_placeholder_for_entity_names() {
-        let text = "#1=IFCWALL($);";
+    fn hover_returns_schema_docs_for_entity_names_with_detected_version() {
+        let text = "ISO-10303-21;HEADER;FILE_SCHEMA(('IFC4'));ENDSEC;DATA;#1=IFCWALL($);ENDSEC;END-ISO-10303-21;";
         let document = parse_document(text);
 
         let hover = hover(&document, position_at(text, "IFCWALL"), &SchemaDocs::new())
             .expect("hover should exist");
         let value = hover_text(hover);
 
-        assert!(value.contains("**IFCWALL**"));
-        assert!(value.contains("Documentation coming soon!"));
+        assert!(value.contains("**IfcWall**"));
+        assert!(value.contains("Official documentation"));
     }
 
     #[test]
