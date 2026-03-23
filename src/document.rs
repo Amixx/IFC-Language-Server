@@ -42,6 +42,21 @@ impl Document {
     }
 }
 
+fn detect_version(text: &str) -> Option<IfcVersion> {
+    let schema_start = text.find("FILE_SCHEMA")?;
+    let schema_section = &text[schema_start..text.len().min(schema_start + 256)];
+
+    if schema_section.contains("IFC4X3_ADD2") {
+        Some(IfcVersion::Ifc4x3Add2)
+    } else if schema_section.contains("IFC4") {
+        Some(IfcVersion::Ifc4Add2Tc1)
+    } else if schema_section.contains("IFC2X3") {
+        Some(IfcVersion::Ifc2x3Tc1)
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -36,6 +36,33 @@ pub fn hover(document: &Document, position: Position, schema_docs: &SchemaDocs) 
     })
 }
 
+fn render_entity_hover(entity_doc: &EntityDoc) -> String {
+    let mut markdown = format!("**{}**\n\n{}", entity_doc.name, entity_doc.summary);
+
+    if !entity_doc.attributes.is_empty() {
+        markdown.push_str("\n\n| Attribute | Type | Description |\n| --- | --- | --- |");
+        for attribute in &entity_doc.attributes {
+            markdown.push_str(&format!(
+                "\n| {} | {} | {} |",
+                escape_table_cell(&attribute.name),
+                escape_table_cell(&attribute.type_name),
+                escape_table_cell(&attribute.description),
+            ));
+        }
+    }
+
+    markdown.push_str(&format!("\n\n[Official documentation]({})", entity_doc.url));
+
+    markdown
+}
+
+fn escape_table_cell(text: &str) -> String {
+    text.split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .replace('|', "\\|")
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
