@@ -13,7 +13,7 @@ pub struct Document {
     pub text: String,
     pub tree: Option<Tree>,
     pub version: Option<IfcVersion>,
-    pub definitions: HashMap<u32, Range>,
+    pub definitions: HashMap<u32, Range>, // Changed the key from string to u32.
     pub references: HashMap<u32, Vec<Range>>,
 }
 
