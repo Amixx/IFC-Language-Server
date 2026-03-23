@@ -20,11 +20,12 @@ pub struct Document {
 impl Document {
     pub fn parse(parser: &mut Parser, text: String) -> Self {
         let tree = parser.parse(&text, None);
+        let version = detect_version(&text);
 
         Self {
             text,
             tree,
-            version: None,
+            version,
             definitions: HashMap::new(),
             references: HashMap::new(),
         }

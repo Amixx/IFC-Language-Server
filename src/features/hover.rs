@@ -4,7 +4,7 @@
 use tower_lsp::lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position};
 
 use crate::document::Document;
-use crate::schema::SchemaDocs;
+use crate::schema::{EntityDoc, SchemaDocs};
 
 pub fn hover(document: &Document, position: Position, schema_docs: &SchemaDocs) -> Option<Hover> {
     document.tree.as_ref()?;
@@ -12,25 +12,17 @@ pub fn hover(document: &Document, position: Position, schema_docs: &SchemaDocs) 
     if let Some(node) = document.node_at_position(position) {
         if node.kind() == "entity_name" {
             let entity_text = node.utf8_text(document.text.as_bytes()).ok()?;
-            if let Some(version) = document.version {
-                let _ = schema_docs.get_entity_doc(version, entity_text);
+            if let Some(version) = document.version
+                && let Some(entity_doc) = schema_docs.get_entity_doc(version, entity_text)
+            {
+                return Some(Hover {
+                    contents: HoverContents::Markup(MarkupContent {
+                        kind: MarkupKind::Markdown,
+                        value: render_entity_hover(entity_doc),
+                    }),
+                    range: None,
+                });
             }
-            let hover_text = format!(
-                "**{}**\n\n\
-                This is an IFC entity.\n\n\
-                *Documentation coming soon!*\n\n\
-                (Node type: `{}`)",
-                entity_text,
-                node.kind()
-            );
-
-            return Some(Hover {
-                contents: HoverContents::Markup(MarkupContent {
-                    kind: MarkupKind::Markdown,
-                    value: hover_text,
-                }),
-                range: None,
-            });
         }
     }
 
