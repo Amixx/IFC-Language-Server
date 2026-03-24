@@ -3,7 +3,7 @@
 
 use tower_lsp::lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position};
 
-use crate::document::Document;
+use crate::document::{DefinitionInfo, Document};
 use crate::schema::{EntityDoc, SchemaDocs};
 
 pub fn hover(document: &Document, position: Position, schema_docs: &SchemaDocs) -> Option<Hover> {
@@ -23,6 +23,18 @@ pub fn hover(document: &Document, position: Position, schema_docs: &SchemaDocs) 
                     range: None,
                 });
             }
+        } else if node.kind() == "reference" {
+            let reference_text = node.utf8_text(document.text.as_bytes()).ok()?;
+            let id = reference_text.trim_start_matches('#').parse::<u32>().ok()?;
+            let definition = document.definitions.get(&id)?;
+
+            return Some(Hover {
+                contents: HoverContents::Markup(MarkupContent {
+                    kind: MarkupKind::Markdown,
+                    value: render_reference_hover(document, definition)?,
+                }),
+                range: Some(node_range(&node)),
+            });
         }
     }
 
@@ -56,6 +68,46 @@ fn render_entity_hover(entity_doc: &EntityDoc) -> String {
     markdown
 }
 
+fn render_reference_hover(document: &Document, definition: &DefinitionInfo) -> Option<String> {
+    let preview = extract_range_text(document, definition.entity_range)?;
+
+    Some(format!("```ifc\n{}\n```", preview.trim()))
+}
+
+fn extract_range_text(document: &Document, range: tower_lsp::lsp_types::Range) -> Option<&str> {
+    let start = offset_at_position(&document.text, range.start)?;
+    let end = offset_at_position(&document.text, range.end)?;
+    document.text.get(start..end)
+}
+
+fn offset_at_position(text: &str, position: Position) -> Option<usize> {
+    let mut offset = 0usize;
+    let mut lines = text.split('\n');
+
+    for _ in 0..position.line {
+        let line = lines.next()?;
+        offset += line.len() + 1;
+    }
+
+    let line = lines.next()?;
+    let character = position.character as usize;
+    if character > line.len() {
+        return None;
+    }
+
+    Some(offset + character)
+}
+
+fn node_range(node: &tree_sitter::Node<'_>) -> tower_lsp::lsp_types::Range {
+    let start = node.start_position();
+    let end = node.end_position();
+
+    tower_lsp::lsp_types::Range {
+        start: Position::new(start.row as u32, start.column as u32),
+        end: Position::new(end.row as u32, end.column as u32),
+    }
+}
+
 fn escape_table_cell(text: &str) -> String {
     text.split_whitespace()
         .collect::<Vec<_>>()
@@ -81,6 +133,17 @@ mod tests {
     fn position_at(text: &str, needle: &str) -> Position {
         let offset = text.find(needle).expect("needle should exist") as u32;
         Position::new(0, offset)
+    }
+
+    fn position_at_last(text: &str, needle: &str) -> Position {
+        let offset = text.rfind(needle).expect("needle should exist") as u32;
+        let prefix = &text[..offset as usize];
+        let line = prefix.bytes().filter(|&b| b == b'\n').count() as u32;
+        let column = prefix
+            .rsplit_once('\n')
+            .map(|(_, tail)| tail.len() as u32)
+            .unwrap_or(offset);
+        Position::new(line, column)
     }
 
     fn hover_text(hover: Hover) -> String {
@@ -113,6 +176,31 @@ mod tests {
         let value = hover_text(hover);
 
         assert!(value.contains("Hover over an IFC entity name"));
+    }
+
+    #[test]
+    fn hover_returns_definition_preview_for_references() {
+        let text = "#1=IFCWALL($);\n#2=IFCDOOR(#1);";
+        let document = parse_document(text);
+
+        let hover = hover(&document, position_at_last(text, "#1"), &SchemaDocs::new())
+            .expect("hover exists");
+        let value = hover_text(hover);
+
+        assert!(value.contains("#1=IFCWALL($);"));
+    }
+
+    #[test]
+    fn hover_does_not_return_definition_preview_for_definition_ids() {
+        let text = "#1=IFCWALL($);";
+        let document = parse_document(text);
+
+        let hover =
+            hover(&document, position_at(text, "#1"), &SchemaDocs::new()).expect("hover exists");
+        let value = hover_text(hover);
+
+        assert!(value.contains("Hover over an IFC entity name"));
+        assert!(!value.contains("Reference target"));
     }
 
     #[test]

@@ -22,10 +22,10 @@ pub fn find_references(
 
     let mut locations = Vec::new();
 
-    if let Some(range) = document.definitions.get(&id) {
+    if let Some(definition) = document.definitions.get(&id) {
         locations.push(Location {
             uri: uri.clone(),
-            range: *range,
+            range: definition.id_range,
         });
     }
 

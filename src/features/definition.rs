@@ -17,10 +17,10 @@ pub fn goto_definition(
         return None;
     };
 
-    let range = document.definitions.get(&id)?;
+    let definition = document.definitions.get(&id)?;
 
     Some(GotoDefinitionResponse::Scalar(Location {
         uri: uri.clone(),
-        range: *range,
+        range: definition.id_range,
     }))
 }
