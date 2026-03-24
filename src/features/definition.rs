@@ -1,15 +1,26 @@
 //! Go-to-definition feature entry point.
-//! This module will resolve entity id references to local definitions.
-
-use tower_lsp::lsp_types::{GotoDefinitionResponse, Position, Url};
-
+//! Resolves entity id references to local definitions.
 use crate::document::Document;
+use tower_lsp::lsp_types::{GotoDefinitionResponse, Location, Position, Url};
 
 pub fn goto_definition(
-    _uri: &Url,
+    uri: &Url,
     document: &Document,
-    _position: Position,
+    position: Position,
 ) -> Option<GotoDefinitionResponse> {
-    let _ = document.definitions.len();
-    None
+    let node = document.node_at_position(position)?;
+
+    let id = if node.kind() == "reference" {
+        let text = node.utf8_text(document.text.as_bytes()).ok()?;
+        text.trim_start_matches('#').parse::<u32>().ok()?
+    } else {
+        return None;
+    };
+
+    let range = document.definitions.get(&id)?;
+
+    Some(GotoDefinitionResponse::Scalar(Location {
+        uri: uri.clone(),
+        range: *range,
+    }))
 }

@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 
 use tower_lsp::lsp_types::{Position, Range};
-use tree_sitter::{Node, Parser, Point, Tree};
+use tree_sitter::{Node, Parser, Point, Tree, TreeCursor};
 
 use crate::schema::IfcVersion;
 
@@ -13,21 +13,21 @@ pub struct Document {
     pub text: String,
     pub tree: Option<Tree>,
     pub version: Option<IfcVersion>,
-    pub definitions: HashMap<String, Range>,
-    pub references: HashMap<String, Vec<Range>>,
+    pub definitions: HashMap<u32, Range>, // Changed the key from string to u32.
+    pub references: HashMap<u32, Vec<Range>>,
 }
 
 impl Document {
     pub fn parse(parser: &mut Parser, text: String) -> Self {
         let tree = parser.parse(&text, None);
         let version = detect_version(&text);
-
+        let (definitions, references) = build_indexes(&tree, &text);
         Self {
             text,
             tree,
             version,
-            definitions: HashMap::new(),
-            references: HashMap::new(),
+            definitions: definitions,
+            references: references,
         }
     }
 
@@ -57,6 +57,76 @@ fn detect_version(text: &str) -> Option<IfcVersion> {
     }
 }
 
+fn build_indexes(
+    tree: &Option<Tree>,
+    text: &str,
+) -> (HashMap<u32, Range>, HashMap<u32, Vec<Range>>) {
+    let mut definitions = HashMap::new();
+    let mut references = HashMap::new();
+
+    let tree = match tree {
+        Some(t) => t,
+        None => return (definitions, references),
+    };
+
+    let mut cursor = tree.root_node().walk();
+    traverse(&mut cursor, text, &mut definitions, &mut references);
+
+    (definitions, references)
+}
+
+fn traverse(
+    cursor: &mut TreeCursor,
+    text: &str,
+    definitions: &mut HashMap<u32, Range>,
+    references: &mut HashMap<u32, Vec<Range>>,
+) {
+    loop {
+        let node = cursor.node();
+
+        if node.kind() == "entity_instance" {
+            if let Some(id_node) = node
+                .children(&mut cursor.clone())
+                .find(|c| c.kind() == "instance_id")
+            {
+                if let Ok(id_text) = id_node.utf8_text(text.as_bytes()) {
+                    if let Ok(id) = id_text.trim_start_matches('#').parse::<u32>() {
+                        let start = id_node.start_position();
+                        let end = id_node.end_position();
+                        definitions.insert(
+                            id,
+                            Range {
+                                start: Position::new(start.row as u32, start.column as u32),
+                                end: Position::new(end.row as u32, end.column as u32),
+                            },
+                        );
+                    }
+                }
+            }
+        } else if node.kind() == "reference" {
+            if let Ok(ref_text) = node.utf8_text(text.as_bytes()) {
+                if let Ok(id) = ref_text.trim_start_matches('#').parse::<u32>() {
+                    let start = node.start_position();
+                    let end = node.end_position();
+                    references.entry(id).or_insert_with(Vec::new).push(Range {
+                        start: Position::new(start.row as u32, start.column as u32),
+                        end: Position::new(end.row as u32, end.column as u32),
+                    });
+                }
+            }
+        }
+
+        if cursor.goto_first_child() {
+            traverse(cursor, text, definitions, references);
+            cursor.goto_parent();
+        }
+
+        if !cursor.goto_next_sibling() {
+            break;
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -79,12 +149,10 @@ mod tests {
     fn parse_keeps_text_and_initial_state() {
         let text = "#1=IFCWALL($);";
         let document = parse_document(text);
-
         assert_eq!(document.text, text);
         assert!(document.tree.is_some());
         assert_eq!(document.version, None);
-        assert!(document.definitions.is_empty());
-        assert!(document.references.is_empty());
+        // definitions and references are now populated, not empty
     }
 
     #[test]
@@ -114,5 +182,37 @@ mod tests {
 
         assert_eq!(node.kind(), "reference");
         assert_eq!(node.utf8_text(document.text.as_bytes()).ok(), Some("#2"));
+    }
+
+    #[test]
+    fn parse_indexes_entity_definition() {
+        let text = "#1=IFCWALL($);";
+        let document = parse_document(text);
+        assert!(document.definitions.contains_key(&1));
+        assert!(document.references.is_empty());
+    }
+
+    #[test]
+    fn parse_indexes_multiple_definitions() {
+        let text = "#1=IFCWALL($);\n#2=IFCDOOR($);";
+        let document = parse_document(text);
+        assert!(document.definitions.contains_key(&1));
+        assert!(document.definitions.contains_key(&2));
+        assert_eq!(document.definitions.len(), 2);
+    }
+
+    #[test]
+    fn parse_indexes_references() {
+        let text = "#1=IFCWALL(#2);";
+        let document = parse_document(text);
+        assert!(document.references.contains_key(&2));
+        assert_eq!(document.references[&2].len(), 1);
+    }
+
+    #[test]
+    fn parse_indexes_multiple_references_to_same_id() {
+        let text = "#1=IFCWALL(#2);\n#3=IFCDOOR(#2);";
+        let document = parse_document(text);
+        assert_eq!(document.references[&2].len(), 2);
     }
 }
