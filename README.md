@@ -49,7 +49,9 @@ Coming soon!
 
 ### Grammar & Parser
 
-This project uses the [tree-sitter-ifc](https://github.com/NepomukWolf/tree-sitter-ifc) grammar. If you modify the grammar, regenerate the parser bindings with the standard `tree-sitter` build workflow.
+This project uses the published [`tree-sitter-ifc`](https://crates.io/crates/tree-sitter-ifc) crate for IFC parsing.
+
+If you are developing the grammar itself, work in the [`tree-sitter-ifc`](https://github.com/NepomukWolf/tree-sitter-ifc) repository and publish a new crate version when needed. During local development, you can temporarily override the crates.io dependency with a `[patch.crates-io]` entry that points at a local checkout.
 
 ### Running Tests
 

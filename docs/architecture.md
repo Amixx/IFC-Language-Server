@@ -74,9 +74,7 @@ If needed, entity-name lookup can either be derived from the syntax tree or stor
 
 ## tree-sitter Integration
 
-This repository includes the IFC grammar in the local [`tree-sitter-ifc`](/Users/benedict/repos/ifc-lsp/tree-sitter-ifc) directory.
-
-The main `ifc-lsp` crate depends on it as a local path dependency through `Cargo.toml`. At runtime, the language server creates a `tree_sitter::Parser`, loads the language from `tree_sitter_ifc`, and parses IFC source text into a `tree_sitter::Tree`.
+The main `ifc-lsp` crate depends on the published `tree-sitter-ifc` crate from crates.io. At runtime, the language server creates a `tree_sitter::Parser`, loads the language from `tree_sitter_ifc`, and parses IFC source text into a `tree_sitter::Tree`.
 
 That syntax tree is then used to:
 
@@ -84,7 +82,7 @@ That syntax tree is then used to:
 - distinguish entity names from entity references
 - support building the small per-document index used by hover, go-to-definition, and find-references
 
-The `tree-sitter-ifc` subdirectory should be treated as the source of truth for IFC syntax parsing, while the main crate should focus on indexing and LSP feature behavior built on top of that parse tree.
+The `tree-sitter-ifc` repository should be treated as the source of truth for IFC syntax parsing, while the main crate should focus on indexing and LSP feature behavior built on top of that parse tree.
 
 ## Feature Design
 
