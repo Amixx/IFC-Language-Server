@@ -1,4 +1,4 @@
-# IFC-LSP Architecture
+# IFC-Language-Server Architecture
 
 **For Human Developers:** Reference this file in your agent instructions (`AGENTS.md`, `.claude/`, etc.)
 
@@ -6,7 +6,7 @@
 
 This project should stay small and focused.
 
-The architecture should support the features in [requirements.md](/Users/benedict/repos/ifc-lsp/docs/requirements.md) without introducing unnecessary layers, abstractions, or infrastructure.
+The architecture should support the features in `requirements.md` without introducing unnecessary layers, abstractions, or infrastructure.
 
 The main design goal is:
 
@@ -74,7 +74,7 @@ If needed, entity-name lookup can either be derived from the syntax tree or stor
 
 ## tree-sitter Integration
 
-The main `ifc-lsp` crate depends on the published `tree-sitter-ifc` crate from crates.io. At runtime, the language server creates a `tree_sitter::Parser`, loads the language from `tree_sitter_ifc`, and parses IFC source text into a `tree_sitter::Tree`.
+The main `ifc-language-server` crate depends on the published `tree-sitter-ifc` crate from crates.io. At runtime, the language server creates a `tree_sitter::Parser`, loads the language from `tree_sitter_ifc`, and parses IFC source text into a `tree_sitter::Tree`.
 
 That syntax tree is then used to:
 

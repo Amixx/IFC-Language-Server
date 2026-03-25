@@ -1,4 +1,4 @@
-# IFC-LSP Requirements
+# IFC-Language-Server Requirements
 
 **For Human Developers:** Reference this file in your agent instructions (`AGENTS.md`, `.claude/`, etc.)
 

@@ -320,7 +320,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ifc-lsp"
+name = "ifc-language-server"
 version = "0.1.0"
 dependencies = [
  "serde",
