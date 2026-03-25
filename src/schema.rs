@@ -17,13 +17,12 @@ pub enum IfcVersion {
 pub struct EntityAttributeDoc {
     pub name: String,
     pub type_name: String,
-    pub description: String,
+    pub declared_in: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct EntityDoc {
     pub name: String,
-    pub summary: String,
     pub attributes: Vec<EntityAttributeDoc>,
     pub url: String,
 }
@@ -38,15 +37,21 @@ impl SchemaDocs {
         let mut docs = HashMap::new();
         docs.insert(
             IfcVersion::Ifc2x3Tc1,
-            load_docs(include_str!("../data/schema-docs/ifc2x3_tc1.json")),
+            load_docs(include_str!(
+                "../data/schema-docs/ifc2x3_tc1_express_docs.json"
+            )),
         );
         docs.insert(
             IfcVersion::Ifc4Add2Tc1,
-            load_docs(include_str!("../data/schema-docs/ifc4_add2_tc1.json")),
+            load_docs(include_str!(
+                "../data/schema-docs/ifc4_add2_tc1_express_docs.json"
+            )),
         );
         docs.insert(
             IfcVersion::Ifc4x3Add2,
-            load_docs(include_str!("../data/schema-docs/ifc4x3_add2.json")),
+            load_docs(include_str!(
+                "../data/schema-docs/ifc4x3_add2_express_docs.json"
+            )),
         );
 
         Self { docs }
@@ -74,8 +79,8 @@ mod tests {
             .expect("expected IFC4x3 docs for IfcWall");
 
         assert_eq!(entity.name, "IfcWall");
-        assert!(!entity.summary.is_empty());
         assert!(!entity.attributes.is_empty());
+        assert_eq!(entity.attributes[0].declared_in, "IfcRoot");
         assert!(entity.url.contains("IfcWall"));
     }
 
@@ -87,8 +92,8 @@ mod tests {
             .expect("expected IFC4 docs for IfcWall");
 
         assert_eq!(entity.name, "IfcWall");
-        assert!(!entity.summary.is_empty());
         assert!(!entity.attributes.is_empty());
+        assert_eq!(entity.attributes[0].declared_in, "IfcRoot");
         assert!(entity.url.contains("ifcwall.htm"));
     }
 
@@ -103,13 +108,13 @@ mod tests {
             .expect("expected IFC2x3 docs for IfcDoor");
 
         assert_eq!(wall.name, "IfcWall");
-        assert!(!wall.summary.is_empty());
-        assert_eq!(wall.attributes.len(), 0);
+        assert!(!wall.attributes.is_empty());
+        assert_eq!(wall.attributes[0].declared_in, "IfcRoot");
         assert!(wall.url.contains("ifcwall.htm"));
 
         assert_eq!(door.name, "IfcDoor");
-        assert!(!door.summary.is_empty());
         assert!(!door.attributes.is_empty());
+        assert_eq!(door.attributes[0].declared_in, "IfcRoot");
         assert!(door.url.contains("ifcdoor.htm"));
     }
 }

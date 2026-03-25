@@ -4,7 +4,7 @@
 use tower_lsp::lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position};
 
 use crate::document::{DefinitionInfo, Document};
-use crate::schema::{EntityDoc, SchemaDocs};
+use crate::schema::{EntityAttributeDoc, EntityDoc, SchemaDocs};
 
 pub fn hover(document: &Document, position: Position, schema_docs: &SchemaDocs) -> Option<Hover> {
     document.tree.as_ref()?;
@@ -49,21 +49,43 @@ pub fn hover(document: &Document, position: Position, schema_docs: &SchemaDocs) 
 }
 
 fn render_entity_hover(entity_doc: &EntityDoc) -> String {
-    let mut markdown = format!("**{}**\n\n{}", entity_doc.name, entity_doc.summary);
+    let mut markdown = format!("# {}", entity_doc.name);
 
-    if !entity_doc.attributes.is_empty() {
-        markdown.push_str("\n\n| Attribute | Type | Description |\n| --- | --- | --- |");
-        for attribute in &entity_doc.attributes {
-            markdown.push_str(&format!(
-                "\n| {} | {} | {} |",
-                escape_table_cell(&attribute.name),
-                escape_table_cell(&attribute.type_name),
-                escape_table_cell(&attribute.description),
-            ));
-        }
+    let inherited_attributes: Vec<_> = entity_doc
+        .attributes
+        .iter()
+        .filter(|attribute| attribute.declared_in != entity_doc.name)
+        .collect();
+    let direct_attributes: Vec<_> = entity_doc
+        .attributes
+        .iter()
+        .filter(|attribute| attribute.declared_in == entity_doc.name)
+        .collect();
+
+    if !inherited_attributes.is_empty() {
+        markdown.push_str("\n\n## Inherited Attributes");
+        markdown.push_str(&render_attribute_table(&inherited_attributes));
     }
 
+    markdown.push_str("\n\n## Attributes Declared In This Entity");
+    markdown.push_str(&render_attribute_table(&direct_attributes));
+
     markdown.push_str(&format!("\n\n[Official documentation]({})", entity_doc.url));
+
+    markdown
+}
+
+fn render_attribute_table(attributes: &[&EntityAttributeDoc]) -> String {
+    let mut markdown = String::new();
+
+    markdown.push_str("\n\n| Attribute | Type |\n| --- | --- |");
+    for attribute in attributes {
+        markdown.push_str(&format!(
+            "\n| {} | {} |",
+            escape_table_cell(&attribute.name),
+            escape_table_cell(&attribute.type_name),
+        ));
+    }
 
     markdown
 }
@@ -120,6 +142,7 @@ mod tests {
     use std::collections::HashMap;
 
     use super::*;
+    use crate::schema::EntityAttributeDoc;
 
     fn parse_document(text: &str) -> Document {
         let mut parser = tree_sitter::Parser::new();
@@ -162,7 +185,7 @@ mod tests {
             .expect("hover should exist");
         let value = hover_text(hover);
 
-        assert!(value.contains("**IfcWall**"));
+        assert!(value.contains("# IfcWall"));
         assert!(value.contains("Official documentation"));
     }
 
@@ -214,5 +237,53 @@ mod tests {
         };
 
         assert!(hover(&document, Position::new(0, 0), &SchemaDocs::new()).is_none());
+    }
+
+    #[test]
+    fn render_entity_hover_renders_inherited_and_direct_attribute_tables() {
+        let entity = EntityDoc {
+            name: "IfcWall".to_string(),
+            attributes: vec![
+                EntityAttributeDoc {
+                    name: "GlobalId".to_string(),
+                    type_name: "IfcGloballyUniqueId".to_string(),
+                    declared_in: "IfcRoot".to_string(),
+                },
+                EntityAttributeDoc {
+                    name: "PredefinedType".to_string(),
+                    type_name: "OPTIONAL IfcWallTypeEnum".to_string(),
+                    declared_in: "IfcWall".to_string(),
+                },
+            ],
+            url: "https://example.invalid/IfcWall.htm".to_string(),
+        };
+
+        let markdown = render_entity_hover(&entity);
+
+        assert!(markdown.contains("## Inherited Attributes"));
+        assert!(markdown.contains("| GlobalId | IfcGloballyUniqueId |"));
+        assert!(markdown.contains("## Attributes Declared In This Entity"));
+        assert!(markdown.contains("| PredefinedType | OPTIONAL IfcWallTypeEnum |"));
+        assert!(!markdown.contains("Declared In |"));
+        assert!(markdown.contains("[Official documentation](https://example.invalid/IfcWall.htm)"));
+    }
+
+    #[test]
+    fn render_entity_hover_omits_empty_inherited_table() {
+        let entity = EntityDoc {
+            name: "IfcRoot".to_string(),
+            attributes: vec![EntityAttributeDoc {
+                name: "GlobalId".to_string(),
+                type_name: "IfcGloballyUniqueId".to_string(),
+                declared_in: "IfcRoot".to_string(),
+            }],
+            url: "https://example.invalid/IfcRoot.htm".to_string(),
+        };
+
+        let markdown = render_entity_hover(&entity);
+
+        assert!(!markdown.contains("## Inherited Attributes"));
+        assert!(markdown.contains("## Attributes Declared In This Entity"));
+        assert!(markdown.contains("| GlobalId | IfcGloballyUniqueId |"));
     }
 }
