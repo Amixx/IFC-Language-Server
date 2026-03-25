@@ -1,4 +1,4 @@
-# IFC-LSP Coding Guidelines
+# IFC-Language-Server Coding Guidelines
 
 **For Human Developers:** Reference this file in your agent instructions (`AGENTS.md`, `.claude/`, etc.).
 

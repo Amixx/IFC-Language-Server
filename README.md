@@ -1,6 +1,6 @@
-# IFC-LSP
+# IFC-Language-Server
 
-**IFC-LSP** is a lightweight Language Server Protocol (LSP) server for **IFC STEP** files (ISO 10303). It provides syntax-aware tooling powered by a Tree-sitter parser.
+**IFC-Language-Server** is a lightweight Language Server Protocol (LSP) server for **IFC STEP** files (ISO 10303). It provides syntax-aware tooling powered by a Tree-sitter parser.
 
 > ⚠️ Early development — most features are not yet implemented.
 
