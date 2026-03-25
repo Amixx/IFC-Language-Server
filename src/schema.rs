@@ -17,13 +17,14 @@ pub enum IfcVersion {
 pub struct EntityAttributeDoc {
     pub name: String,
     pub type_name: String,
-    pub description: String,
+    #[serde(default)]
+    pub declared_in: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct EntityDoc {
     pub name: String,
-    pub summary: String,
+    #[serde(default)]
     pub attributes: Vec<EntityAttributeDoc>,
     pub url: String,
 }
@@ -46,7 +47,9 @@ impl SchemaDocs {
         );
         docs.insert(
             IfcVersion::Ifc4x3Add2,
-            load_docs(include_str!("../data/schema-docs/ifc4x3_add2.json")),
+            load_docs(include_str!(
+                "../data/schema-docs/ifc4x3_add2_express_docs.json"
+            )),
         );
 
         Self { docs }
@@ -74,8 +77,8 @@ mod tests {
             .expect("expected IFC4x3 docs for IfcWall");
 
         assert_eq!(entity.name, "IfcWall");
-        assert!(!entity.summary.is_empty());
         assert!(!entity.attributes.is_empty());
+        assert_eq!(entity.attributes[0].declared_in, "IfcRoot");
         assert!(entity.url.contains("IfcWall"));
     }
 
@@ -87,8 +90,13 @@ mod tests {
             .expect("expected IFC4 docs for IfcWall");
 
         assert_eq!(entity.name, "IfcWall");
-        assert!(!entity.summary.is_empty());
         assert!(!entity.attributes.is_empty());
+        assert!(
+            entity
+                .attributes
+                .iter()
+                .all(|attribute| attribute.declared_in.is_empty())
+        );
         assert!(entity.url.contains("ifcwall.htm"));
     }
 
@@ -103,13 +111,16 @@ mod tests {
             .expect("expected IFC2x3 docs for IfcDoor");
 
         assert_eq!(wall.name, "IfcWall");
-        assert!(!wall.summary.is_empty());
         assert_eq!(wall.attributes.len(), 0);
         assert!(wall.url.contains("ifcwall.htm"));
 
         assert_eq!(door.name, "IfcDoor");
-        assert!(!door.summary.is_empty());
         assert!(!door.attributes.is_empty());
+        assert!(
+            door.attributes
+                .iter()
+                .all(|attribute| attribute.declared_in.is_empty())
+        );
         assert!(door.url.contains("ifcdoor.htm"));
     }
 }
