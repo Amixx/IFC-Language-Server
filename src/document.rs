@@ -13,8 +13,14 @@ pub struct Document {
     pub text: String,
     pub tree: Option<Tree>,
     pub version: Option<IfcVersion>,
-    pub definitions: HashMap<u32, Range>, // Changed the key from string to u32.
+    pub definitions: HashMap<u32, DefinitionInfo>,
     pub references: HashMap<u32, Vec<Range>>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DefinitionInfo {
+    pub id_range: Range,
+    pub entity_range: Range,
 }
 
 impl Document {
@@ -60,7 +66,7 @@ fn detect_version(text: &str) -> Option<IfcVersion> {
 fn build_indexes(
     tree: &Option<Tree>,
     text: &str,
-) -> (HashMap<u32, Range>, HashMap<u32, Vec<Range>>) {
+) -> (HashMap<u32, DefinitionInfo>, HashMap<u32, Vec<Range>>) {
     let mut definitions = HashMap::new();
     let mut references = HashMap::new();
 
@@ -78,7 +84,7 @@ fn build_indexes(
 fn traverse(
     cursor: &mut TreeCursor,
     text: &str,
-    definitions: &mut HashMap<u32, Range>,
+    definitions: &mut HashMap<u32, DefinitionInfo>,
     references: &mut HashMap<u32, Vec<Range>>,
 ) {
     loop {
@@ -91,13 +97,30 @@ fn traverse(
             {
                 if let Ok(id_text) = id_node.utf8_text(text.as_bytes()) {
                     if let Ok(id) = id_text.trim_start_matches('#').parse::<u32>() {
-                        let start = id_node.start_position();
-                        let end = id_node.end_position();
+                        let id_start = id_node.start_position();
+                        let id_end = id_node.end_position();
+                        let entity_start = node.start_position();
+                        let entity_end = node.end_position();
                         definitions.insert(
                             id,
-                            Range {
-                                start: Position::new(start.row as u32, start.column as u32),
-                                end: Position::new(end.row as u32, end.column as u32),
+                            DefinitionInfo {
+                                id_range: Range {
+                                    start: Position::new(
+                                        id_start.row as u32,
+                                        id_start.column as u32,
+                                    ),
+                                    end: Position::new(id_end.row as u32, id_end.column as u32),
+                                },
+                                entity_range: Range {
+                                    start: Position::new(
+                                        entity_start.row as u32,
+                                        entity_start.column as u32,
+                                    ),
+                                    end: Position::new(
+                                        entity_end.row as u32,
+                                        entity_end.column as u32,
+                                    ),
+                                },
                             },
                         );
                     }
@@ -190,6 +213,20 @@ mod tests {
         let document = parse_document(text);
         assert!(document.definitions.contains_key(&1));
         assert!(document.references.is_empty());
+        assert_eq!(
+            document.definitions[&1].id_range,
+            Range {
+                start: Position::new(0, 0),
+                end: Position::new(0, 2),
+            }
+        );
+        assert_eq!(
+            document.definitions[&1].entity_range,
+            Range {
+                start: Position::new(0, 0),
+                end: Position::new(0, text.len() as u32),
+            }
+        );
     }
 
     #[test]
