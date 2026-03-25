@@ -51,41 +51,24 @@ pub fn hover(document: &Document, position: Position, schema_docs: &SchemaDocs) 
 fn render_entity_hover(entity_doc: &EntityDoc) -> String {
     let mut markdown = format!("# {}", entity_doc.name);
 
-    if !entity_doc.attributes.is_empty() {
-        let inherited_attributes: Vec<_> = entity_doc
-            .attributes
-            .iter()
-            .filter(|attribute| {
-                !attribute.declared_in.is_empty() && attribute.declared_in != entity_doc.name
-            })
-            .collect();
-        let direct_attributes: Vec<_> = entity_doc
-            .attributes
-            .iter()
-            .filter(|attribute| attribute.declared_in == entity_doc.name)
-            .collect();
-        let has_origin_info = entity_doc
-            .attributes
-            .iter()
-            .any(|attribute| !attribute.declared_in.is_empty());
+    let inherited_attributes: Vec<_> = entity_doc
+        .attributes
+        .iter()
+        .filter(|attribute| attribute.declared_in != entity_doc.name)
+        .collect();
+    let direct_attributes: Vec<_> = entity_doc
+        .attributes
+        .iter()
+        .filter(|attribute| attribute.declared_in == entity_doc.name)
+        .collect();
 
-        if has_origin_info {
-            if !inherited_attributes.is_empty() {
-                markdown.push_str("\n\n## Inherited Attributes");
-                markdown.push_str(&render_attribute_table(&inherited_attributes));
-            }
-
-            if !direct_attributes.is_empty() {
-                markdown.push_str("\n\n## Attributes Declared In This Entity");
-                markdown.push_str(&render_attribute_table(&direct_attributes));
-            }
-        } else {
-            markdown.push_str("\n\n## Attributes");
-            markdown.push_str(&render_attribute_table(
-                &entity_doc.attributes.iter().collect::<Vec<_>>(),
-            ));
-        }
+    if !inherited_attributes.is_empty() {
+        markdown.push_str("\n\n## Inherited Attributes");
+        markdown.push_str(&render_attribute_table(&inherited_attributes));
     }
+
+    markdown.push_str("\n\n## Attributes Declared In This Entity");
+    markdown.push_str(&render_attribute_table(&direct_attributes));
 
     markdown.push_str(&format!("\n\n[Official documentation]({})", entity_doc.url));
 
@@ -283,5 +266,24 @@ mod tests {
         assert!(markdown.contains("| PredefinedType | OPTIONAL IfcWallTypeEnum |"));
         assert!(!markdown.contains("Declared In |"));
         assert!(markdown.contains("[Official documentation](https://example.invalid/IfcWall.htm)"));
+    }
+
+    #[test]
+    fn render_entity_hover_omits_empty_inherited_table() {
+        let entity = EntityDoc {
+            name: "IfcRoot".to_string(),
+            attributes: vec![EntityAttributeDoc {
+                name: "GlobalId".to_string(),
+                type_name: "IfcGloballyUniqueId".to_string(),
+                declared_in: "IfcRoot".to_string(),
+            }],
+            url: "https://example.invalid/IfcRoot.htm".to_string(),
+        };
+
+        let markdown = render_entity_hover(&entity);
+
+        assert!(!markdown.contains("## Inherited Attributes"));
+        assert!(markdown.contains("## Attributes Declared In This Entity"));
+        assert!(markdown.contains("| GlobalId | IfcGloballyUniqueId |"));
     }
 }
