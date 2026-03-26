@@ -1,74 +1,97 @@
 # IFC-Language-Server
 
-**IFC-Language-Server** is a lightweight Language Server Protocol (LSP) server for **IFC STEP** files (ISO 10303). It provides syntax-aware tooling powered by a Tree-sitter parser.
+`ifc-language-server` is a lightweight Language Server Protocol server for [IFC STEP P21](https://technical.buildingsmart.org/standards/ifc/ifc-schema-specifications/) files (ISO 10303). It provides schema-aware hover information and local symbol navigation for IFC entity instances.
 
-> ⚠️ Early development — most features are not yet implemented.
 
-## Desired Features
+## Current Capabilities
 
-- [ ] Hover
-  - [ ] Preview for references (e.g. `#123`)
-  - [ ] Info for IFC entity names (e.g. `IFCWALL`, `IFCSPACE`)
-- [ ] Go-To Definition (jump to the line where an entity is defined)
-- [ ] Find References (find and list all occurrences of a symbol)
-- [ ] Syntax highlighting (based on Tree-sitter)
-- [ ] Semantic validation
+- Hover on IFC entity names such as `IFCWALL` and `IFCSPACE`
+- Hover preview for entity references such as `#123`
+- Go-to-definition for local entity references
+- Find-references within the current document
 
-## Prerequisites
+## Supported IFC Schema Versions
 
-- Rust (stable) — https://www.rust-lang.org/tools/install
-- A compatible editor with LSP client support (e.g. [Helix](https://docs.helix-editor.com/languages.html), [Neovim](https://neovim.io/doc/user/lsp.html), [VS Code](https://code.visualstudio.com/api/language-extensions/language-server-extension-guide))
+Bundled entity documentation is currently included for:
 
-## Build & Run
+- IFC 2.3.0.1
+- IFC 4.0.2.1
+- IFC 4.3.2.0
 
-From the repository root:
+## Current Limitations
 
-```sh
-cargo build --release
-```
+- Single-document navigation only
+- Full-document reparsing on open and change
+- No semantic diagnostics yet
+- No completion, rename, code actions, or formatting support
+- Syntax highlighting depends on editor grammar support such as `tree-sitter-ifc`; it is not provided by the LSP server itself
 
-To run the server directly (useful for debugging):
+## Installation
 
-```sh
-cargo run --release
-```
+Release binaries are available on the [Releases](https://github.com/NepomukWolf/IFC-Language-Server/releases) page.
 
-> Note: The language server communicates over stdin/stdout and is meant to be launched by an LSP client (editor).
+After downloading a release:
 
-## Using with an Editor
+1. Place the `ifc-language-server` binary somewhere on your `PATH`, or configure your editor to point to the absolute binary path.
+2. Register it as the language server for IFC STEP files in your editor or IDE.
 
-Coming soon!
-
-## Documentation
-
-- [Architecture](./docs/architecture.md) — overview of project structure and design decisions
-- [Coding Guidelines](./docs/coding-guidelines.md) — formatting, style, and conventions
-- [Requirements](./docs/requirements.md) — detailed feature requirements and scope
+Editor-specific integration is currently manual.
 
 ## Development
 
-### Grammar & Parser
+### Prerequisites
 
-This project uses the published [`tree-sitter-ifc`](https://crates.io/crates/tree-sitter-ifc) crate for IFC parsing.
+- Rust (stable): https://www.rust-lang.org/tools/install
+- An editor with LSP client support such as [Helix](https://docs.helix-editor.com/languages.html), [Neovim](https://neovim.io/doc/user/lsp.html), [VS Code](https://code.visualstudio.com/api/language-extensions/language-server-extension-guide), or Zed
+
+### Build
+
+Build a release binary with:
+
+```bash
+cargo build --release
+```
+
+Run the server directly for debugging:
+
+```bash
+cargo run --release
+```
+
+The server communicates over `stdin`/`stdout` and is intended to be launched by an LSP client.
+
+### Tests
+
+Run the test suite with:
+
+```bash
+cargo test
+```
+
+### Grammar And Parser
+
+This project depends on the published [`tree-sitter-ifc`](https://crates.io/crates/tree-sitter-ifc) crate for IFC parsing.
 
 If you are developing the grammar itself, work in the [`tree-sitter-ifc`](https://github.com/NepomukWolf/tree-sitter-ifc) repository and publish a new crate version when needed. During local development, you can temporarily override the crates.io dependency with a `[patch.crates-io]` entry that points at a local checkout.
 
-### Running Tests
+### Formatting
 
-Coming soon!
+This project uses:
+
+- `rustfmt` for Rust via `cargo fmt`
+- Prettier for Markdown
+
+## Documentation
+
+- [Architecture](./docs/architecture.md)
+- [Coding Guidelines](./docs/coding-guidelines.md)
+- [Requirements](./docs/requirements.md)
 
 ## Contributing
 
-Contributions are welcome! Check out the open issues on GitHub.
+Contributions are welcome. Read [Architecture](./docs/architecture.md) and [Coding Guidelines](./docs/coding-guidelines.md) before submitting a PR.
 
-Please read the [Architecture](./docs/architecture.md) and [Coding Guidelines](./docs/coding-guidelines.md) before submitting a PR.
-
-### Formatting
-
-This project uses the following formatters:
-
-- `rustfmt` for Rust
-- `Prettier` for Markdown
+For debugging editor integration issues, check the files in [`logs/`](./logs) when available.
 
 ## License
 
