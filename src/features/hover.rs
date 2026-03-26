@@ -64,25 +64,28 @@ fn render_entity_hover(entity_doc: &EntityDoc) -> String {
 
     if !inherited_attributes.is_empty() {
         markdown.push_str("\n\n## Inherited Attributes");
-        markdown.push_str(&render_attribute_table(&inherited_attributes));
+        markdown.push_str(&render_attribute_table(&inherited_attributes, 1));
     }
 
     markdown.push_str("\n\n## Attributes Declared In This Entity");
-    markdown.push_str(&render_attribute_table(&direct_attributes));
+    markdown.push_str(&render_attribute_table(
+        &direct_attributes,
+        inherited_attributes.len() + 1,
+    ));
 
     markdown.push_str(&format!("\n\n[Official documentation]({})", entity_doc.url));
 
     markdown
 }
 
-fn render_attribute_table(attributes: &[&EntityAttributeDoc]) -> String {
+fn render_attribute_table(attributes: &[&EntityAttributeDoc], start_index: usize) -> String {
     let mut markdown = String::new();
 
     markdown.push_str("\n\n| # | Attribute | Type |\n| --- | --- | --- |");
     for (index, attribute) in attributes.iter().enumerate() {
         markdown.push_str(&format!(
             "\n| {} | {} | {} |",
-            index + 1,
+            start_index + index,
             format_attribute_name(&attribute.name),
             format_attribute_type(&attribute.type_name),
         ));
@@ -272,7 +275,7 @@ mod tests {
         assert!(markdown.contains("## Inherited Attributes"));
         assert!(markdown.contains("| 1 | *GlobalId* | `IfcGloballyUniqueId` |"));
         assert!(markdown.contains("## Attributes Declared In This Entity"));
-        assert!(markdown.contains("| 1 | *PredefinedType* | `OPTIONAL IfcWallTypeEnum` |"));
+        assert!(markdown.contains("| 2 | *PredefinedType* | `OPTIONAL IfcWallTypeEnum` |"));
         assert!(!markdown.contains("Declared In |"));
         assert!(markdown.contains("[Official documentation](https://example.invalid/IfcWall.htm)"));
     }
