@@ -84,24 +84,14 @@ TAGS.*
 __pycache__/
 *.py[cod]
 *$py.class
-venv
-uv.lock
+.python-version
 pyproject.toml
-.python-version
-.python-version
+uv.lock
 .venv/
 venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-.python-version
-pyproject.toml
-uv.lock
-venv
-.python-version
-pyproject.toml
-uv.lock
-venv
 
 ## Node
 node_modules
