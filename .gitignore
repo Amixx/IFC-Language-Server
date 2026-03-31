@@ -87,11 +87,11 @@ __pycache__/
 .python-version
 pyproject.toml
 uv.lock
-venv
-.python-version
-pyproject.toml
-uv.lock
-venv
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 ## Node
 node_modules
