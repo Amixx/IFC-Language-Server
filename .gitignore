@@ -84,19 +84,26 @@ TAGS.*
 __pycache__/
 *.py[cod]
 *$py.class
-<<<<<<< Updated upstream
 venv
 uv.lock
 pyproject.toml
 .python-version
-=======
 .python-version
 .venv/
 venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
->>>>>>> Stashed changes
+=======
+.python-version
+pyproject.toml
+uv.lock
+venv
+.python-version
+pyproject.toml
+uv.lock
+venv
+>>>>>>> dev
 
 ## Node
 node_modules
