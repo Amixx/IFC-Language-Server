@@ -94,7 +94,6 @@ venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-=======
 .python-version
 pyproject.toml
 uv.lock
@@ -103,7 +102,6 @@ venv
 pyproject.toml
 uv.lock
 venv
->>>>>>> dev
 
 ## Node
 node_modules
