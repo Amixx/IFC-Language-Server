@@ -4,123 +4,165 @@
 
 ## Goal
 
-This project should stay small and focused.
+This project currently stays small and focused.
 
-The architecture should support the features in `requirements.md` without introducing unnecessary layers, abstractions, or infrastructure.
+The implemented architecture is built around one open IFC document, one tree-sitter parse, and a small in-memory index that supports the currently shipped LSP features:
 
-The main design goal is:
-
-- parse one IFC document
-- build a small in-memory index for that document
-- answer LSP feature requests from that index
+- hover
+- go-to-definition
+- find-references
 
 ## Core Design
 
-The system only needs three main concepts:
+The codebase currently revolves around three main runtime concepts:
 
 - `Backend`
-  The LSP entrypoint. It receives requests from the editor and forwards them to internal feature logic.
+  The `tower-lsp` entrypoint. It owns the open-document map, a shared `tree_sitter::Parser`, and bundled schema docs.
 - `Document`
-  The parsed state of one open IFC file. It stores the source text, parse tree, schema version, and a small symbol index.
+  The parsed state of one IFC file. It stores the source text, optional syntax tree, detected schema version, definitions, and references.
 - `SchemaDocs`
-  A lookup layer for IFC entity documentation by schema version and entity name.
+  A synchronous in-memory lookup for bundled IFC entity documentation by schema version and entity name.
 
-Everything else should remain a thin helper around these concepts.
+Feature modules in `src/features/` stay thin and operate on `&Document`.
 
 ## Data Flow
 
-The expected flow is:
+The current flow is:
 
-1. A document is opened or changed.
-2. The backend reparses the full text.
-3. A `Document` object is rebuilt from the current text.
-4. The `Document` builds a small index for definitions, references, and entity names.
-5. Hover, definition, and references requests read from that index.
+1. An editor opens a document or sends a full-text change.
+2. `Backend` reparses the full text with the shared tree-sitter parser.
+3. `Document::parse` detects the schema version and rebuilds the per-document indexes.
+4. The rebuilt `Document` replaces the previous entry in the backend's `HashMap<Url, Document>`.
+5. Hover, definition, and references handlers read directly from that stored `Document`.
 
-This keeps all language features consistent and avoids duplicating lookup logic in multiple handlers.
+There is no incremental parsing, background indexing, or cross-document state.
+
+## Backend
+
+`src/backend.rs` currently owns:
+
+- `client: Client`
+- `documents: Arc<RwLock<HashMap<Url, Document>>>`
+- `parser: Arc<RwLock<Parser>>`
+- `schema_docs: SchemaDocs`
+
+The server currently advertises these capabilities:
+
+- `textDocument/hover`
+- full text document sync
+- `textDocument/definition`
+- `textDocument/references`
+
+Diagnostics are not published yet.
 
 ## Document Model
 
-The `Document` type should be the core internal representation of an open IFC file.
-
-It only needs enough information to support the current requirements.
-
-Example shape:
+The `Document` type in `src/document.rs` is the central internal representation:
 
 ```rust
-struct Document {
-    text: String,
-    tree: tree_sitter::Tree,
-    version: IfcVersion,
-    definitions: HashMap<String, Range>,
-    references: HashMap<String, Vec<Range>>,
+pub struct Document {
+    pub text: String,
+    pub tree: Option<tree_sitter::Tree>,
+    pub version: Option<IfcVersion>,
+    pub definitions: HashMap<u32, DefinitionInfo>,
+    pub references: HashMap<u32, Vec<Range>>,
+}
+
+pub struct DefinitionInfo {
+    pub id_range: Range,
+    pub entity_range: Range,
 }
 ```
 
-This model is intentionally small.
+Important details:
 
 - `text`
-  Needed for hover previews and extracting snippets.
+  Used for hover rendering and node text extraction.
 - `tree`
-  Needed for tree-sitter based syntax lookup.
+  Stored as `Option<Tree>` because parsing may fail.
 - `version`
-  Needed for version-specific entity documentation lookup.
+  Detected with a simple `FILE_SCHEMA` text scan. Unknown schemas remain `None`.
 - `definitions`
-  Maps entity ids such as `#123` to the range where they are defined.
+  Maps numeric ids such as `123` to both the `instance_id` range and the full entity-instance range.
 - `references`
-  Maps entity ids such as `#123` to all reference locations in the same file.
+  Maps numeric ids to all `reference` ranges in the same document.
 
-If needed, entity-name lookup can either be derived from the syntax tree or stored in an additional small structure later. That should only be added when it clearly improves the implementation.
+The document index is built by traversing the syntax tree and recording:
+
+- `entity_instance` nodes for definitions
+- `reference` nodes for references
+
+Ids are stored as `u32`, not as raw `#123` strings.
 
 ## tree-sitter Integration
 
-The main `ifc-language-server` crate depends on the published `tree-sitter-ifc` crate from crates.io. At runtime, the language server creates a `tree_sitter::Parser`, loads the language from `tree_sitter_ifc`, and parses IFC source text into a `tree_sitter::Tree`.
+The server depends on the published `tree-sitter-ifc` crate from crates.io.
 
-That syntax tree is then used to:
+At runtime:
 
-- identify the node under the cursor
-- distinguish entity names from entity references
-- support building the small per-document index used by hover, go-to-definition, and find-references
+- `Backend::new` creates one `tree_sitter::Parser`
+- the parser is configured with `tree_sitter_ifc::LANGUAGE`
+- document text is parsed into a `tree_sitter::Tree`
+- feature handlers use `Document::node_at_position` to inspect the node under the cursor
 
-The `tree-sitter-ifc` repository should be treated as the source of truth for IFC syntax parsing, while the main crate should focus on indexing and LSP feature behavior built on top of that parse tree.
+The tree-sitter grammar remains the source of truth for IFC syntax recognition. This crate is responsible for indexing and LSP behavior on top of that parse tree.
 
-## Feature Design
+## Feature Behavior
 
 ### Hover
 
-Hover should support two cases:
+`src/features/hover.rs` currently supports:
 
-- hovering over an entity definition such as `IFCWALL`
-- hovering over an entity id such as `#1234`
+- entity-name hover for `entity_name` nodes when `Document::version` is known and bundled docs exist
+- reference hover for `reference` nodes by rendering the full defining entity instance as an IFC code block
+- a generic instructional hover for other node kinds
 
-Behavior:
+Entity hover currently renders:
 
-- If the cursor is on an entity name, resolve the IFC schema version from the `Document` and fetch documentation from `SchemaDocs`.
-- If the cursor is on an entity id, resolve the target definition from `definitions` and render a short preview of the defining line.
+- the entity name
+- an inherited attribute table
+- a direct-attribute table
+- a link to the official documentation page
+
+Although the generated JSON assets include more data, the runtime `EntityDoc` currently consumes only:
+
+- `name`
+- `attributes`
+- `url`
 
 ### Go To Definition
 
-Go to definition should:
+`src/features/definition.rs` only resolves `reference` nodes.
 
-- identify whether the cursor is on an entity reference such as `#123`
-- resolve that id using `definitions`
-- return the corresponding location
-
-This feature should not implement its own parsing logic beyond finding the relevant token at the cursor.
+It returns the `id_range` of the matching local definition. It does not jump from an `instance_id` token to itself, and it does not perform cross-file lookup.
 
 ### Find References
 
-Find references should:
+`src/features/references.rs` accepts either:
 
-- identify the entity id at the cursor
-- resolve all matching locations from `references`
-- return those locations
+- an `instance_id`
+- a `reference`
 
-Per the current requirements, this should remain single-document only.
+It returns:
+
+- the definition location if present
+- every indexed reference location for the same id in the same document
+
+## Schema Documentation Assets
+
+Schema documentation is bundled into the binary with `include_str!` from:
+
+- `data/schema-docs/ifc2x3_tc1_express_docs.json`
+- `data/schema-docs/ifc4_add2_tc1_express_docs.json`
+- `data/schema-docs/ifc4x3_add2_express_docs.json`
+
+These files are generated by the scripts in `scripts/` and loaded eagerly by `SchemaDocs::new()`.
+
+Hover requests do not fetch documentation over the network.
 
 ## Project Structure
 
-The codebase should stay close to this structure:
+The current codebase is intentionally small:
 
 ```text
 src/
@@ -129,73 +171,45 @@ src/
   document.rs
   schema.rs
   features/
+    mod.rs
     hover.rs
     definition.rs
     references.rs
+data/
+  schema-docs/
+scripts/
+  generate_ifc2x3_express_docs.py
+  generate_ifc4_express_docs.py
+  generate_ifc4x3_express_docs.py
+samples/
+  *.ifc
 ```
-
-### File Responsibilities
-
-- `src/main.rs`
-  Starts the LSP server and wires the backend.
-- `src/backend.rs`
-  Contains the `tower-lsp` `LanguageServer` implementation and stores open documents.
-- `src/document.rs`
-  Parses IFC text and builds the in-memory document index.
-- `src/schema.rs`
-  Loads and serves entity documentation for supported IFC versions.
-- `src/features/hover.rs`
-  Contains hover-specific logic.
-- `src/features/definition.rs`
-  Contains go-to-definition logic.
-- `src/features/references.rs`
-  Contains find-references logic.
-
-This structure is enough for the current feature set and leaves room for moderate growth without becoming fragmented.
-
-## Schema Documentation
-
-Entity documentation should not be fetched live during hover requests.
-
-Instead, the project should use preprocessed local documentation assets for:
-
-- IFC 2.3.0.1
-- IFC 4.0.2.1
-- IFC 4.3.2.0
-
-`SchemaDocs` should expose a simple interface like:
-
-```rust
-fn get_entity_doc(version: IfcVersion, entity_name: &str) -> Option<EntityDoc>
-```
-
-This keeps hover fast, predictable, and independent of network availability.
 
 ## Testing Approach
 
-Testing should stay simple and focused on function-level behavior.
+Tests currently live next to the implementation in the same Rust modules.
 
-- Put unit tests near the relevant implementation files.
-- Test parsing helpers, indexing logic, hover rendering, definition resolution, and reference lookup.
-- Avoid testing raw JSON-RPC payloads unless there is a clear need later.
+Existing tests mainly cover:
 
-If sample-file testing becomes useful, add a small integration test later. It should exercise internal feature functions, not the full protocol transport.
+- document parsing and index building
+- schema-doc loading
+- hover rendering behavior
 
-## Non-Goals
+There is not yet dedicated test coverage for the definition and references modules, even though those features are implemented.
 
-The current architecture should avoid introducing:
+## Non-Goals For The Current Architecture
+
+The current project should continue to avoid:
 
 - cross-file indexing
+- incremental parsing infrastructure
 - background worker systems
-- plugin systems
-- service registries
-- complex domain layering
-- runtime downloading of schema documentation
-
-These would add complexity without being required by the current scope.
+- runtime schema downloads
+- large abstraction layers or service registries
+- premature support for unimplemented LSP features
 
 ## Guiding Principle
 
-For now, the project should prefer a direct implementation over a reusable framework.
+Keep the implementation direct.
 
-If a new abstraction does not clearly support one of the documented requirements, it should not be introduced.
+If a new abstraction does not clearly support the currently shipped feature set, it probably does not belong here yet.
