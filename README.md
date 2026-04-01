@@ -91,8 +91,6 @@ This project uses:
 
 Contributions are welcome. Read [Architecture](./docs/architecture.md) and [Coding Guidelines](./docs/coding-guidelines.md) before submitting a PR.
 
-For debugging editor integration issues, check the files in [`logs/`](./logs) when available.
-
 ## License
 
 MIT
