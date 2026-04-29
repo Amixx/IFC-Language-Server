@@ -32,9 +32,9 @@ Bundled entity documentation is currently included for:
 
 Extensions for VSCode and Zed are available for local installation (though still under development):
 
-- [VSCode](github.com/NepomukWolf/vscode-ifc)
+- [VSCode](https://github.com/NepomukWolf/vscode-ifc)
 
-- [Zed](github.com/Finradon/zed-ifc)
+- [Zed](https://github.com/Finradon/zed-ifc)
 
 ### Manual
 
