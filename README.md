@@ -28,14 +28,22 @@ Bundled entity documentation is currently included for:
 
 ## Installation
 
+### Editor integrations
+
+Extensions for VSCode and Zed are available for local installation (though still under development):
+
+- [VSCode](github.com/NepomukWolf/vscode-ifc)
+
+- [Zed](github.com/Finradon/zed-ifc)
+
+### Manual
+
 Release binaries are available on the [Releases](https://github.com/NepomukWolf/IFC-Language-Server/releases) page.
 
 After downloading a release:
 
 1. Place the `ifc-language-server` binary somewhere on your `PATH`, or configure your editor to point to the absolute binary path.
 2. Register it as the language server for IFC STEP files in your editor or IDE.
-
-Editor-specific integration is currently manual.
 
 ## Development
 
