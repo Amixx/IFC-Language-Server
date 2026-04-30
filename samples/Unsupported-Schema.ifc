@@ -1,0 +1,15 @@
+ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('ViewDefinition [CoordinationView]'),'2;1');
+FILE_NAME('Unsupported-Schema.ifc','2026-04-30T00:00:00',('OpenAI'),('OpenAI'),'ifc-language-server','','');
+FILE_SCHEMA(('IFC5'));
+ENDSEC;
+DATA;
+#1=IFCPROJECT('0pP9z9XlD7q8mV7mS3tNQ0',$,'Unsupported Schema Project',$,$,$,$,(#2),#3);
+#2=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-5,#4,$);
+#3=IFCUNITASSIGNMENT((#5));
+#4=IFCAXIS2PLACEMENT3D(#6,$,$);
+#5=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);
+#6=IFCCARTESIANPOINT((0.,0.,0.));
+ENDSEC;
+END-ISO-10303-21;

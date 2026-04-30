@@ -40,7 +40,23 @@ impl Backend {
         }
     }
 
-    async fn parse_document(&self, uri: &Url, text: String) {
+    async fn store_document(&self, document: Document, uri: &Url) {
+        let mut documents = self.documents.write().await;
+        documents.insert(uri.clone(), document);
+    }
+
+    async fn check_schema_version(&self, document: &Document) {
+        if document.version.is_none() {
+            self.client
+                .show_message(
+                    MessageType::WARNING,
+                    "This IFC file uses an unknown or unsupported schema version. Schema-aware diagnostics and hover information may be incomplete.",
+                )
+                .await;
+        }
+    }
+
+    async fn parse_document(&self, uri: &Url, text: String) -> Document {
         let mut parser = self.parser.write().await;
         let document = Document::parse(&mut parser, text);
         let diagnostics = document
@@ -49,12 +65,10 @@ impl Backend {
             .map(|schema| datatype::collect(&document, schema))
             .unwrap_or_default();
 
-        let mut documents = self.documents.write().await;
-        documents.insert(uri.clone(), document);
-
         self.client
             .publish_diagnostics(uri.clone(), diagnostics, None)
             .await;
+        document
     }
 }
 
@@ -93,13 +107,16 @@ impl LanguageServer for Backend {
             .log_message(MessageType::INFO, format!("Document opened: {}", uri))
             .await;
 
-        self.parse_document(&uri, text).await;
+        let document = self.parse_document(&uri, text).await;
+        self.check_schema_version(&document).await;
+        self.store_document(document, &uri).await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri;
         if let Some(change) = params.content_changes.into_iter().next() {
-            self.parse_document(&uri, change.text).await;
+            let document = self.parse_document(&uri, change.text).await;
+            self.store_document(document, &uri).await;
         }
     }
 
