@@ -9,6 +9,12 @@
 - Hover preview for entity references such as `#123`
 - Go-to-definition for local entity references
 - Find-references within the current document
+- Schema-aware diagnostics for:
+  - invalid local reference targets
+  - primitive datatype mismatches
+  - invalid enumeration values
+  - incorrect entity argument counts
+  - invalid `$` / `*` usage for attributes
 
 ## Supported IFC Schema Versions
 
@@ -22,7 +28,7 @@ Bundled entity documentation is currently included for:
 
 - Single-document navigation only
 - Full-document reparsing on open and change
-- No semantic diagnostics yet
+- Diagnostics currently focus on entity-instance argument validation, not full EXPRESS rule evaluation
 - No completion, rename, code actions, or formatting support
 - Syntax highlighting depends on editor grammar support such as `tree-sitter-ifc`; it is not provided by the LSP server itself
 
@@ -76,6 +82,18 @@ Run the test suite with:
 cargo test
 ```
 
+### Schema Model Generation
+
+Schema-aware diagnostics use generated schema-model assets derived from the EXPRESS schemas in `data/express/`.
+
+Regenerate those assets with:
+
+```bash
+cargo run -p schema-model-gen
+```
+
+The generated files are written to `data/schema-models/` and should be committed when the schema-model format or extraction logic changes.
+
 ### Grammar And Parser
 
 This project depends on the published [`tree-sitter-ifc`](https://crates.io/crates/tree-sitter-ifc) crate for IFC parsing.
@@ -93,6 +111,7 @@ This project uses:
 
 - [Architecture](./docs/architecture.md)
 - [Coding Guidelines](./docs/coding-guidelines.md)
+- [Diagnostics Capabilities](./docs/diagnostics-capabilities.md)
 - [Requirements](./docs/requirements.md)
 
 ## Contributing

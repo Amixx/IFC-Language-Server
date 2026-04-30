@@ -62,3 +62,16 @@ Examples include:
 - values that do not match the expected type or role for a referenced attribute
 
 Diagnostics should highlight the most relevant range in the document and distinguish errors from less severe issues where appropriate.
+
+### Current Implementation Status
+
+The current implementation covers an initial subset of semantic checking:
+
+- local reference target compatibility
+- unresolved local references
+- primitive datatype mismatches
+- enumeration mismatches
+- incorrect argument counts for entity instances
+- invalid `$` / `*` usage for attributes
+
+General EXPRESS `WHERE` rule evaluation and broader semantic validation are not implemented yet.
