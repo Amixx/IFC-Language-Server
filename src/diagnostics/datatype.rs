@@ -7,7 +7,7 @@ use crate::document::{Document, ParameterValue};
 use crate::schema_model::{ResolvedEntity, ResolvedSchema, unwrap_named_type};
 
 pub fn collect(document: &Document, schema: &ResolvedSchema) -> Vec<Diagnostic> {
-    let mut diagnostics = Vec::new();
+    let mut diagnostics = collect_syntax_diagnostics(document);
 
     for instance in &document.instances {
         let Some(entity) = schema.entity(&instance.entity_name) else {
@@ -44,9 +44,7 @@ fn validate_instance(
     }
 
     for (value, attribute) in instance.parameters.iter().zip(&entity.all_attributes) {
-        if let Some(message) =
-            validate_value(document, schema, value, &attribute.ty, attribute.optional)
-        {
+        if let Some(message) = validate_value(document, schema, value, attribute) {
             diagnostics.push(Diagnostic {
                 range: value.range(),
                 severity: Some(DiagnosticSeverity::ERROR),
@@ -61,21 +59,24 @@ fn validate_value(
     document: &Document,
     schema: &ResolvedSchema,
     value: &ParameterValue,
-    expected: &TypeRef,
-    optional: bool,
+    attribute: &crate::schema_model::ResolvedAttribute,
 ) -> Option<String> {
     match value {
         ParameterValue::Null { .. } => {
-            if optional {
+            if attribute.optional {
                 None
             } else {
                 Some("attribute is required and does not allow `$`".to_string())
             }
         }
         ParameterValue::Omitted { .. } => {
-            Some("`*` is not supported for explicit attribute values".to_string())
+            if attribute.allows_omitted {
+                None
+            } else {
+                Some("`*` is not supported for this attribute".to_string())
+            }
         }
-        _ => validate_non_null_value(document, schema, value, expected),
+        _ => validate_non_null_value(document, schema, value, &attribute.ty),
     }
 }
 
@@ -106,22 +107,22 @@ fn validate_named_type(
     value: &ParameterValue,
     type_name: &str,
 ) -> Option<String> {
-    if let ParameterValue::Typed {
-        type_name: inline_name,
-        inner,
-        ..
-    } = value
-    {
-        if inline_name != type_name {
-            return Some(format!(
-                "expected typed value `{}` but found `{}`",
-                type_name, inline_name
-            ));
-        }
+    let type_def = unwrap_named_type(schema, type_name)?;
+    match type_def {
+        TypeDef::Alias(alias) => {
+            if let ParameterValue::Typed {
+                type_name: inline_name,
+                inner,
+                ..
+            } = value
+            {
+                if inline_name != type_name {
+                    return Some(format!(
+                        "expected typed value `{}` but found `{}`",
+                        type_name, inline_name
+                    ));
+                }
 
-        let type_def = unwrap_named_type(schema, type_name)?;
-        return match type_def {
-            TypeDef::Alias(alias) => {
                 if inner.len() != 1 {
                     Some(format!(
                         "typed value `{}` should contain exactly one argument",
@@ -130,8 +131,24 @@ fn validate_named_type(
                 } else {
                     validate_non_null_value(document, schema, &inner[0], &alias.target)
                 }
+            } else {
+                validate_non_null_value(document, schema, value, &alias.target)
             }
-            TypeDef::Enumeration(enum_def) => {
+        }
+        TypeDef::Enumeration(enum_def) => {
+            if let ParameterValue::Typed {
+                type_name: inline_name,
+                inner,
+                ..
+            } = value
+            {
+                if inline_name != type_name {
+                    return Some(format!(
+                        "expected typed value `{}` but found `{}`",
+                        type_name, inline_name
+                    ));
+                }
+
                 if inner.len() != 1 {
                     Some(format!(
                         "typed value `{}` should contain exactly one argument",
@@ -140,15 +157,10 @@ fn validate_named_type(
                 } else {
                     validate_enum_value(&inner[0], &enum_def.items)
                 }
+            } else {
+                validate_enum_value(value, &enum_def.items)
             }
-            TypeDef::Select(select) => validate_select(document, schema, inner.first()?, select),
-        };
-    }
-
-    let type_def = unwrap_named_type(schema, type_name)?;
-    match type_def {
-        TypeDef::Alias(alias) => validate_non_null_value(document, schema, value, &alias.target),
-        TypeDef::Enumeration(enum_def) => validate_enum_value(value, &enum_def.items),
+        }
         TypeDef::Select(select) => validate_select(document, schema, value, select),
     }
 }
@@ -328,12 +340,61 @@ impl AggregateKindDisplay for schema_model::AggregateKind {
     }
 }
 
+fn collect_syntax_diagnostics(document: &Document) -> Vec<Diagnostic> {
+    let Some(tree) = &document.tree else {
+        return Vec::new();
+    };
+
+    let mut diagnostics = Vec::new();
+    let mut cursor = tree.root_node().walk();
+    collect_error_nodes(&mut cursor, &mut diagnostics);
+    diagnostics
+}
+
+fn collect_error_nodes(
+    cursor: &mut tree_sitter::TreeCursor<'_>,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    loop {
+        let node = cursor.node();
+
+        if node.is_error() {
+            diagnostics.push(Diagnostic {
+                range: node_range(&node),
+                severity: Some(DiagnosticSeverity::ERROR),
+                message: "Invalid IFC STEP syntax".to_string(),
+                ..Default::default()
+            });
+        }
+
+        if cursor.goto_first_child() {
+            collect_error_nodes(cursor, diagnostics);
+            cursor.goto_parent();
+        }
+
+        if !cursor.goto_next_sibling() {
+            break;
+        }
+    }
+}
+
+fn node_range(node: &tree_sitter::Node<'_>) -> tower_lsp::lsp_types::Range {
+    let start = node.start_position();
+    let end = node.end_position();
+
+    tower_lsp::lsp_types::Range {
+        start: tower_lsp::lsp_types::Position::new(start.row as u32, start.column as u32),
+        end: tower_lsp::lsp_types::Position::new(end.row as u32, end.column as u32),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
 
     use schema_model::{
-        AttributeDef, EntityDef, NamedTypeRef, PrimitiveType, SchemaModel, normalize_name,
+        AttributeDef, DerivedAttributeDef, EntityDef, NamedTypeRef, PrimitiveType, SchemaModel,
+        normalize_name,
     };
     use tower_lsp::lsp_types::{Position, Range};
     use tree_sitter::Parser;
@@ -385,6 +446,7 @@ mod tests {
                     optional: false,
                     position: 0,
                 }],
+                derived_attributes: Vec::new(),
                 supertypes: Vec::new(),
                 where_rules: Vec::new(),
             },
@@ -402,6 +464,7 @@ mod tests {
                     optional: true,
                     position: 0,
                 }],
+                derived_attributes: Vec::new(),
                 supertypes: vec!["IFCROOT".to_string()],
                 where_rules: Vec::new(),
             },
@@ -487,6 +550,7 @@ mod tests {
                     optional: false,
                     position: 0,
                 }],
+                derived_attributes: Vec::new(),
                 supertypes: Vec::new(),
                 where_rules: Vec::new(),
             },
@@ -504,6 +568,7 @@ mod tests {
                     optional: false,
                     position: 0,
                 }],
+                derived_attributes: Vec::new(),
                 supertypes: vec!["IFCROOT".to_string()],
                 where_rules: Vec::new(),
             },
@@ -513,5 +578,223 @@ mod tests {
 
         assert_eq!(diagnostics.len(), 1);
         assert!(diagnostics[0].message.contains("does not resolve"));
+    }
+
+    #[test]
+    fn datatype_validator_allows_omitted_for_derived_inherited_attribute() {
+        let mut schema = SchemaModel::new("IFC4");
+        schema.types.insert(
+            normalize_name("IfcUnitEnum"),
+            TypeDef::Enumeration(schema_model::EnumerationTypeDef {
+                name: "IfcUnitEnum".to_string(),
+                items: vec!["LENGTHUNIT".to_string()],
+                extensible: false,
+                where_rules: Vec::new(),
+            }),
+        );
+        schema.types.insert(
+            normalize_name("IfcSIPrefix"),
+            TypeDef::Enumeration(schema_model::EnumerationTypeDef {
+                name: "IfcSIPrefix".to_string(),
+                items: vec!["MILLI".to_string()],
+                extensible: false,
+                where_rules: Vec::new(),
+            }),
+        );
+        schema.types.insert(
+            normalize_name("IfcSIUnitName"),
+            TypeDef::Enumeration(schema_model::EnumerationTypeDef {
+                name: "IfcSIUnitName".to_string(),
+                items: vec!["METRE".to_string()],
+                extensible: false,
+                where_rules: Vec::new(),
+            }),
+        );
+        schema.entities.insert(
+            normalize_name("IfcDimensionalExponents"),
+            EntityDef {
+                name: "IfcDimensionalExponents".to_string(),
+                attributes: Vec::new(),
+                derived_attributes: Vec::new(),
+                supertypes: Vec::new(),
+                where_rules: Vec::new(),
+            },
+        );
+        schema.entities.insert(
+            normalize_name("IfcNamedUnit"),
+            EntityDef {
+                name: "IfcNamedUnit".to_string(),
+                attributes: vec![
+                    AttributeDef {
+                        name: "Dimensions".to_string(),
+                        ty: TypeRef::Named(NamedTypeRef {
+                            name: "IFCDIMENSIONALEXPONENTS".to_string(),
+                            kind: NamedTypeKind::Entity,
+                        }),
+                        optional: false,
+                        position: 0,
+                    },
+                    AttributeDef {
+                        name: "UnitType".to_string(),
+                        ty: TypeRef::Named(NamedTypeRef {
+                            name: "IFCUNITENUM".to_string(),
+                            kind: NamedTypeKind::Type,
+                        }),
+                        optional: false,
+                        position: 1,
+                    },
+                ],
+                derived_attributes: Vec::new(),
+                supertypes: Vec::new(),
+                where_rules: Vec::new(),
+            },
+        );
+        schema.entities.insert(
+            normalize_name("IfcSIUnit"),
+            EntityDef {
+                name: "IfcSIUnit".to_string(),
+                attributes: vec![
+                    AttributeDef {
+                        name: "Prefix".to_string(),
+                        ty: TypeRef::Named(NamedTypeRef {
+                            name: "IFCSIPREFIX".to_string(),
+                            kind: NamedTypeKind::Type,
+                        }),
+                        optional: true,
+                        position: 0,
+                    },
+                    AttributeDef {
+                        name: "Name".to_string(),
+                        ty: TypeRef::Named(NamedTypeRef {
+                            name: "IFCSIUNITNAME".to_string(),
+                            kind: NamedTypeKind::Type,
+                        }),
+                        optional: false,
+                        position: 1,
+                    },
+                ],
+                derived_attributes: vec![DerivedAttributeDef {
+                    name: "Dimensions".to_string(),
+                    declared_in: Some("IFCNAMEDUNIT".to_string()),
+                }],
+                supertypes: vec!["IFCNAMEDUNIT".to_string()],
+                where_rules: Vec::new(),
+            },
+        );
+
+        let doc = parse_document("#15=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);");
+        let diagnostics = collect(&doc, &ResolvedSchema::from_model(schema));
+
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    }
+
+    #[test]
+    fn datatype_validator_reports_invalid_step_syntax() {
+        let doc = parse_document(r#"#14=IFCUNITASSIGNMENT((#15,#16,#17, "test"));"#);
+        let diagnostics = collect(&doc, &test_schema());
+
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.message.contains("Invalid IFC STEP syntax")),
+            "{diagnostics:?}"
+        );
+    }
+
+    #[test]
+    fn datatype_validator_accepts_inline_typed_values_for_selects() {
+        let mut schema = SchemaModel::new("IFC4");
+        schema.types.insert(
+            normalize_name("IfcLabel"),
+            TypeDef::Alias(schema_model::AliasTypeDef {
+                name: "IfcLabel".to_string(),
+                target: TypeRef::Primitive(PrimitiveType::String {
+                    width: Some(255),
+                    fixed: false,
+                }),
+                where_rules: Vec::new(),
+            }),
+        );
+        schema.types.insert(
+            normalize_name("IfcLengthMeasure"),
+            TypeDef::Alias(schema_model::AliasTypeDef {
+                name: "IfcLengthMeasure".to_string(),
+                target: TypeRef::Primitive(PrimitiveType::Real),
+                where_rules: Vec::new(),
+            }),
+        );
+        schema.types.insert(
+            normalize_name("IfcValue"),
+            TypeDef::Select(schema_model::SelectTypeDef {
+                name: "IfcValue".to_string(),
+                options: vec![
+                    TypeRef::Named(NamedTypeRef {
+                        name: "IFCLABEL".to_string(),
+                        kind: NamedTypeKind::Type,
+                    }),
+                    TypeRef::Named(NamedTypeRef {
+                        name: "IFCLENGTHMEASURE".to_string(),
+                        kind: NamedTypeKind::Type,
+                    }),
+                ],
+                extensible: false,
+                generic_entity: false,
+                where_rules: Vec::new(),
+            }),
+        );
+        schema.entities.insert(
+            normalize_name("IfcRoot"),
+            EntityDef {
+                name: "IfcRoot".to_string(),
+                attributes: vec![AttributeDef {
+                    name: "Name".to_string(),
+                    ty: TypeRef::Named(NamedTypeRef {
+                        name: "IFCLABEL".to_string(),
+                        kind: NamedTypeKind::Type,
+                    }),
+                    optional: false,
+                    position: 0,
+                }],
+                derived_attributes: Vec::new(),
+                supertypes: Vec::new(),
+                where_rules: Vec::new(),
+            },
+        );
+        schema.entities.insert(
+            normalize_name("IfcPropertySingleValue"),
+            EntityDef {
+                name: "IfcPropertySingleValue".to_string(),
+                attributes: vec![
+                    AttributeDef {
+                        name: "Description".to_string(),
+                        ty: TypeRef::Named(NamedTypeRef {
+                            name: "IFCLABEL".to_string(),
+                            kind: NamedTypeKind::Type,
+                        }),
+                        optional: true,
+                        position: 0,
+                    },
+                    AttributeDef {
+                        name: "NominalValue".to_string(),
+                        ty: TypeRef::Named(NamedTypeRef {
+                            name: "IFCVALUE".to_string(),
+                            kind: NamedTypeKind::Type,
+                        }),
+                        optional: true,
+                        position: 1,
+                    },
+                ],
+                derived_attributes: Vec::new(),
+                supertypes: vec!["IFCROOT".to_string()],
+                where_rules: Vec::new(),
+            },
+        );
+
+        let doc = parse_document(
+            "#1=IFCPROPERTYSINGLEVALUE('Name',$,IFCLABEL('Living Room'));\n#2=IFCPROPERTYSINGLEVALUE('Offset',$,IFCLENGTHMEASURE(2.6));",
+        );
+        let diagnostics = collect(&doc, &ResolvedSchema::from_model(schema));
+
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
 }

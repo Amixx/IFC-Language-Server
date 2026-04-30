@@ -38,6 +38,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONTROL"
       ],
@@ -58,6 +59,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCOBJECT"
       ],
@@ -100,6 +102,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": [
         {
@@ -122,6 +125,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONCONTROLELEMENT"
       ],
@@ -149,6 +153,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONCONTROLELEMENTTYPE"
       ],
@@ -195,6 +200,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": [
         {
@@ -205,6 +211,7 @@
     "IFCADVANCEDBREP": {
       "name": "IfcAdvancedBrep",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCMANIFOLDSOLIDBREP"
       ],
@@ -242,6 +249,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCADVANCEDBREP"
       ],
@@ -254,6 +262,7 @@
     "IFCADVANCEDFACE": {
       "name": "IfcAdvancedFace",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFACESURFACE"
       ],
@@ -284,6 +293,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINAL"
       ],
@@ -311,6 +321,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWCONTROLLER"
       ],
@@ -338,6 +349,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWCONTROLLERTYPE"
       ],
@@ -362,6 +374,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINALTYPE"
       ],
@@ -386,6 +399,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -413,6 +427,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -437,6 +452,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONCONTROLELEMENT"
       ],
@@ -464,6 +480,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONCONTROLELEMENTTYPE"
       ],
@@ -488,6 +505,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCLINEARPOSITIONINGELEMENT"
       ],
@@ -508,6 +526,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCLINEARELEMENT"
       ],
@@ -594,6 +613,7 @@
           "position": 6
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCALIGNMENTPARAMETERSEGMENT"
       ],
@@ -602,6 +622,7 @@
     "IFCALIGNMENTHORIZONTAL": {
       "name": "IfcAlignmentHorizontal",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCLINEARELEMENT"
       ],
@@ -688,6 +709,7 @@
           "position": 6
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCALIGNMENTPARAMETERSEGMENT"
       ],
@@ -719,6 +741,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -737,6 +760,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCLINEARELEMENT"
       ],
@@ -745,6 +769,7 @@
     "IFCALIGNMENTVERTICAL": {
       "name": "IfcAlignmentVertical",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCLINEARELEMENT"
       ],
@@ -831,6 +856,7 @@
           "position": 6
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCALIGNMENTPARAMETERSEGMENT"
       ],
@@ -851,6 +877,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRODUCT"
       ],
@@ -895,6 +922,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -948,6 +976,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -1078,6 +1107,7 @@
           "position": 9
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -1184,6 +1214,7 @@
           "position": 8
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": [
         {
@@ -1230,6 +1261,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRESOURCELEVELRELATIONSHIP"
       ],
@@ -1250,6 +1282,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROFILEDEF"
       ],
@@ -1280,6 +1313,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROFILEDEF"
       ],
@@ -1320,6 +1354,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCARBITRARYCLOSEDPROFILEDEF"
       ],
@@ -1438,6 +1473,7 @@
           "position": 8
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCGROUP"
       ],
@@ -1579,6 +1615,7 @@
           "position": 11
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPARAMETERIZEDPROFILEDEF"
       ],
@@ -1612,6 +1649,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINAL"
       ],
@@ -1639,6 +1677,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINALTYPE"
       ],
@@ -1661,6 +1700,12 @@
           },
           "optional": true,
           "position": 0
+        }
+      ],
+      "derived_attributes": [
+        {
+          "name": "Z",
+          "declared_in": null
         }
       ],
       "supertypes": [
@@ -1691,6 +1736,12 @@
           },
           "optional": true,
           "position": 0
+        }
+      ],
+      "derived_attributes": [
+        {
+          "name": "P",
+          "declared_in": null
         }
       ],
       "supertypes": [
@@ -1732,6 +1783,12 @@
           },
           "optional": true,
           "position": 1
+        }
+      ],
+      "derived_attributes": [
+        {
+          "name": "P",
+          "declared_in": null
         }
       ],
       "supertypes": [
@@ -1784,6 +1841,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPLACEMENT"
       ],
@@ -1811,6 +1869,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -1838,6 +1897,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -1862,6 +1922,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -1889,6 +1950,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -1924,6 +1986,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSURFACETEXTURE"
       ],
@@ -1973,6 +2036,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCSGPRIMITIVE3D"
       ],
@@ -1993,6 +2057,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -2020,6 +2085,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -2032,6 +2098,7 @@
     "IFCBOOLEANCLIPPINGRESULT": {
       "name": "IfcBooleanClippingResult",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBOOLEANRESULT"
       ],
@@ -2084,6 +2151,12 @@
           "position": 2
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "Dim",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -2102,6 +2175,7 @@
     "IFCBOREHOLE": {
       "name": "IfcBorehole",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCGEOTECHNICALASSEMBLY"
       ],
@@ -2122,12 +2196,14 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
     "IFCBOUNDARYCURVE": {
       "name": "IfcBoundaryCurve",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCOMPOSITECURVEONSURFACE"
       ],
@@ -2207,6 +2283,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBOUNDARYCONDITION"
       ],
@@ -2249,6 +2326,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBOUNDARYCONDITION"
       ],
@@ -2324,6 +2402,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBOUNDARYCONDITION"
       ],
@@ -2344,6 +2423,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBOUNDARYNODECONDITION"
       ],
@@ -2352,6 +2432,7 @@
     "IFCBOUNDEDCURVE": {
       "name": "IfcBoundedCurve",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCURVE"
       ],
@@ -2360,6 +2441,7 @@
     "IFCBOUNDEDSURFACE": {
       "name": "IfcBoundedSurface",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSURFACE"
       ],
@@ -2413,6 +2495,12 @@
           "position": 3
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "Dim",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -2433,6 +2521,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCHALFSPACESOLID"
       ],
@@ -2457,6 +2546,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFACILITY"
       ],
@@ -2481,6 +2571,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFACILITYPART"
       ],
@@ -2562,6 +2653,16 @@
           "position": 4
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "UpperIndexOnControlPoints",
+          "declared_in": null
+        },
+        {
+          "name": "ControlPoints",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCBOUNDEDCURVE"
       ],
@@ -2632,6 +2733,12 @@
           },
           "optional": false,
           "position": 2
+        }
+      ],
+      "derived_attributes": [
+        {
+          "name": "UpperIndexOnKnots",
+          "declared_in": null
         }
       ],
       "supertypes": [
@@ -2753,6 +2860,20 @@
           "position": 6
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "UUpper",
+          "declared_in": null
+        },
+        {
+          "name": "VUpper",
+          "declared_in": null
+        },
+        {
+          "name": "ControlPoints",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCBOUNDEDSURFACE"
       ],
@@ -2869,6 +2990,16 @@
           "position": 4
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "KnotVUpper",
+          "declared_in": null
+        },
+        {
+          "name": "KnotUUpper",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCBSPLINESURFACE"
       ],
@@ -2924,6 +3055,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFACILITY"
       ],
@@ -2944,6 +3076,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTCOMPONENT"
       ],
@@ -2971,6 +3104,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTCOMPONENTTYPE"
       ],
@@ -2995,6 +3129,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -3025,6 +3160,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -3049,6 +3185,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSPATIALSTRUCTUREELEMENT"
       ],
@@ -3080,6 +3217,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSYSTEM"
       ],
@@ -3092,6 +3230,7 @@
     "IFCBUILTELEMENT": {
       "name": "IfcBuiltElement",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENT"
       ],
@@ -3104,6 +3243,7 @@
     "IFCBUILTELEMENTTYPE": {
       "name": "IfcBuiltElementType",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTTYPE"
       ],
@@ -3135,6 +3275,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSYSTEM"
       ],
@@ -3159,6 +3300,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -3186,6 +3328,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -3210,6 +3353,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWFITTING"
       ],
@@ -3237,6 +3381,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWFITTINGTYPE"
       ],
@@ -3261,6 +3406,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWSEGMENT"
       ],
@@ -3288,6 +3434,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWSEGMENTTYPE"
       ],
@@ -3312,6 +3459,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWFITTING"
       ],
@@ -3339,6 +3487,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWFITTINGTYPE"
       ],
@@ -3363,6 +3512,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWSEGMENT"
       ],
@@ -3390,6 +3540,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWSEGMENTTYPE"
       ],
@@ -3414,6 +3565,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDEEPFOUNDATION"
       ],
@@ -3441,6 +3593,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDEEPFOUNDATIONTYPE"
       ],
@@ -3480,6 +3633,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPOINT"
       ],
@@ -3492,6 +3646,12 @@
     "IFCCARTESIANPOINTLIST": {
       "name": "IfcCartesianPointList",
       "attributes": [],
+      "derived_attributes": [
+        {
+          "name": "Dim",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -3564,6 +3724,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCARTESIANPOINTLIST"
       ],
@@ -3636,6 +3797,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCARTESIANPOINTLIST"
       ],
@@ -3689,6 +3851,16 @@
           "position": 3
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "Scl",
+          "declared_in": null
+        },
+        {
+          "name": "Dim",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -3701,6 +3873,12 @@
     "IFCCARTESIANTRANSFORMATIONOPERATOR2D": {
       "name": "IfcCartesianTransformationOperator2D",
       "attributes": [],
+      "derived_attributes": [
+        {
+          "name": "U",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCCARTESIANTRANSFORMATIONOPERATOR"
       ],
@@ -3731,6 +3909,12 @@
           "position": 0
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "Scl2",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCCARTESIANTRANSFORMATIONOPERATOR2D"
       ],
@@ -3753,6 +3937,12 @@
           },
           "optional": true,
           "position": 0
+        }
+      ],
+      "derived_attributes": [
+        {
+          "name": "U",
+          "declared_in": null
         }
       ],
       "supertypes": [
@@ -3799,6 +3989,16 @@
           "position": 1
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "Scl2",
+          "declared_in": null
+        },
+        {
+          "name": "Scl3",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCCARTESIANTRANSFORMATIONOPERATOR3D"
       ],
@@ -3826,6 +4026,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCARBITRARYOPENPROFILEDEF"
       ],
@@ -3846,6 +4047,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -3873,6 +4075,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -3897,6 +4100,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -3924,6 +4128,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -3948,6 +4153,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONIC"
       ],
@@ -3968,6 +4174,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCIRCLEPROFILEDEF"
       ],
@@ -3992,6 +4199,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPARAMETERIZEDPROFILEDEF"
       ],
@@ -4000,6 +4208,7 @@
     "IFCCIVILELEMENT": {
       "name": "IfcCivilElement",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENT"
       ],
@@ -4008,6 +4217,7 @@
     "IFCCIVILELEMENTTYPE": {
       "name": "IfcCivilElementType",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTTYPE"
       ],
@@ -4107,6 +4317,7 @@
           "position": 6
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCEXTERNALINFORMATION"
       ],
@@ -4149,6 +4360,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCEXTERNALREFERENCE"
       ],
@@ -4157,6 +4369,7 @@
     "IFCCLOSEDSHELL": {
       "name": "IfcClosedShell",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONNECTEDFACESET"
       ],
@@ -4177,6 +4390,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSPIRAL"
       ],
@@ -4197,6 +4411,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -4224,6 +4439,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -4270,6 +4486,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCOLOURSPECIFICATION"
       ],
@@ -4318,6 +4535,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONITEM"
       ],
@@ -4338,6 +4556,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONITEM"
       ],
@@ -4358,6 +4577,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -4385,6 +4605,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -4409,6 +4630,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINAL"
       ],
@@ -4436,6 +4658,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINALTYPE"
       ],
@@ -4484,6 +4707,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROPERTY"
       ],
@@ -4546,6 +4770,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROPERTYTEMPLATE"
       ],
@@ -4597,6 +4822,16 @@
           "position": 1
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "NSegments",
+          "declared_in": null
+        },
+        {
+          "name": "ClosedCurve",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCBOUNDEDCURVE"
       ],
@@ -4612,6 +4847,12 @@
     "IFCCOMPOSITECURVEONSURFACE": {
       "name": "IfcCompositeCurveOnSurface",
       "attributes": [],
+      "derived_attributes": [
+        {
+          "name": "BasisSurface",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCCOMPOSITECURVE"
       ],
@@ -4647,6 +4888,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSEGMENT"
       ],
@@ -4695,6 +4937,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROFILEDEF"
       ],
@@ -4722,6 +4965,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWMOVINGDEVICE"
       ],
@@ -4749,6 +4993,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWMOVINGDEVICETYPE"
       ],
@@ -4773,6 +5018,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -4800,6 +5046,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -4824,6 +5071,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCURVE"
       ],
@@ -4857,6 +5105,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTOPOLOGICALREPRESENTATIONITEM"
       ],
@@ -4888,6 +5137,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONNECTIONGEOMETRY"
       ],
@@ -4896,6 +5146,7 @@
     "IFCCONNECTIONGEOMETRY": {
       "name": "IfcConnectionGeometry",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -4936,6 +5187,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONNECTIONPOINTGEOMETRY"
       ],
@@ -4967,6 +5219,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONNECTIONGEOMETRY"
       ],
@@ -4998,6 +5251,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONNECTIONGEOMETRY"
       ],
@@ -5029,6 +5283,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONNECTIONGEOMETRY"
       ],
@@ -5115,6 +5370,7 @@
           "position": 6
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": [
         {
@@ -5137,6 +5393,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONSTRUCTIONRESOURCE"
       ],
@@ -5161,6 +5418,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONSTRUCTIONRESOURCETYPE"
       ],
@@ -5185,6 +5443,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONSTRUCTIONRESOURCE"
       ],
@@ -5209,6 +5468,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONSTRUCTIONRESOURCETYPE"
       ],
@@ -5233,6 +5493,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONSTRUCTIONRESOURCE"
       ],
@@ -5257,6 +5518,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONSTRUCTIONRESOURCETYPE"
       ],
@@ -5316,6 +5578,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRESOURCE"
       ],
@@ -5360,6 +5623,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTYPERESOURCE"
       ],
@@ -5437,6 +5701,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCOBJECTDEFINITION"
       ],
@@ -5457,6 +5722,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCNAMEDUNIT"
       ],
@@ -5477,6 +5743,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCOBJECT"
       ],
@@ -5497,6 +5764,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONCONTROLELEMENT"
       ],
@@ -5524,6 +5792,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONCONTROLELEMENTTYPE"
       ],
@@ -5559,6 +5828,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCNAMEDUNIT"
       ],
@@ -5579,6 +5849,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONVERSIONBASEDUNIT"
       ],
@@ -5599,6 +5870,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWSEGMENT"
       ],
@@ -5626,6 +5898,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWSEGMENTTYPE"
       ],
@@ -5650,6 +5923,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -5677,6 +5951,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -5701,6 +5976,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -5728,6 +6004,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -5763,6 +6040,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -5803,6 +6081,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": [
         {
@@ -5836,6 +6115,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSPIRAL"
       ],
@@ -5904,6 +6184,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONTROL"
       ],
@@ -5957,6 +6238,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONTROL"
       ],
@@ -5965,6 +6247,7 @@
     "IFCCOSTVALUE": {
       "name": "IfcCostValue",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCAPPLIEDVALUE"
       ],
@@ -5985,6 +6268,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -6012,6 +6296,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -6036,6 +6321,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -6063,6 +6349,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -6087,6 +6374,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONSTRUCTIONRESOURCE"
       ],
@@ -6111,6 +6399,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONSTRUCTIONRESOURCETYPE"
       ],
@@ -6135,6 +6424,12 @@
           "position": 0
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "Dim",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -6155,6 +6450,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSOLIDMODEL"
       ],
@@ -6219,6 +6515,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPARAMETERIZEDPROFILEDEF"
       ],
@@ -6293,6 +6590,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRESOURCELEVELRELATIONSHIP"
       ],
@@ -6313,6 +6611,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -6340,6 +6639,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -6352,6 +6652,12 @@
     "IFCCURVE": {
       "name": "IfcCurve",
       "attributes": [],
+      "derived_attributes": [
+        {
+          "name": "Dim",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -6407,6 +6713,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBOUNDEDSURFACE"
       ],
@@ -6462,6 +6769,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBOUNDEDSURFACE"
       ],
@@ -6515,6 +6823,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSEGMENT"
       ],
@@ -6568,6 +6877,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONSTYLE"
       ],
@@ -6619,6 +6929,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONITEM"
       ],
@@ -6661,6 +6972,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONITEM"
       ],
@@ -6692,6 +7004,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONITEM"
       ],
@@ -6716,6 +7029,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTARYSURFACE"
       ],
@@ -6736,6 +7050,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWCONTROLLER"
       ],
@@ -6763,6 +7078,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWCONTROLLERTYPE"
       ],
@@ -6775,6 +7091,7 @@
     "IFCDEEPFOUNDATION": {
       "name": "IfcDeepFoundation",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -6787,6 +7104,7 @@
     "IFCDEEPFOUNDATIONTYPE": {
       "name": "IfcDeepFoundationType",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -6829,6 +7147,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROFILEDEF"
       ],
@@ -6899,6 +7218,12 @@
           "position": 3
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "Dimensions",
+          "declared_in": null
+        }
+      ],
       "supertypes": [],
       "where_rules": [
         {
@@ -6932,6 +7257,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -6995,6 +7321,7 @@
           "position": 6
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -7026,6 +7353,12 @@
           },
           "optional": false,
           "position": 0
+        }
+      ],
+      "derived_attributes": [
+        {
+          "name": "Dim",
+          "declared_in": null
         }
       ],
       "supertypes": [
@@ -7074,6 +7407,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSWEPTAREASOLID"
       ],
@@ -7086,6 +7420,7 @@
     "IFCDIRECTRIXDERIVEDREFERENCESWEPTAREASOLID": {
       "name": "IfcDirectrixDerivedReferenceSweptAreaSolid",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFIXEDREFERENCESWEPTAREASOLID"
       ],
@@ -7106,6 +7441,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTCOMPONENT"
       ],
@@ -7133,6 +7469,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTCOMPONENTTYPE"
       ],
@@ -7157,6 +7494,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWCONTROLLER"
       ],
@@ -7184,6 +7522,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWCONTROLLERTYPE"
       ],
@@ -7208,6 +7547,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONFLOWELEMENT"
       ],
@@ -7235,6 +7575,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONFLOWELEMENTTYPE"
       ],
@@ -7247,6 +7588,7 @@
     "IFCDISTRIBUTIONCIRCUIT": {
       "name": "IfcDistributionCircuit",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONSYSTEM"
       ],
@@ -7255,6 +7597,7 @@
     "IFCDISTRIBUTIONCONTROLELEMENT": {
       "name": "IfcDistributionControlElement",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONELEMENT"
       ],
@@ -7263,6 +7606,7 @@
     "IFCDISTRIBUTIONCONTROLELEMENTTYPE": {
       "name": "IfcDistributionControlElementType",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONELEMENTTYPE"
       ],
@@ -7271,6 +7615,7 @@
     "IFCDISTRIBUTIONELEMENT": {
       "name": "IfcDistributionElement",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENT"
       ],
@@ -7279,6 +7624,7 @@
     "IFCDISTRIBUTIONELEMENTTYPE": {
       "name": "IfcDistributionElementType",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTTYPE"
       ],
@@ -7287,6 +7633,7 @@
     "IFCDISTRIBUTIONFLOWELEMENT": {
       "name": "IfcDistributionFlowElement",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONELEMENT"
       ],
@@ -7295,6 +7642,7 @@
     "IFCDISTRIBUTIONFLOWELEMENTTYPE": {
       "name": "IfcDistributionFlowElementType",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONELEMENTTYPE"
       ],
@@ -7337,6 +7685,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPORT"
       ],
@@ -7368,6 +7717,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSYSTEM"
       ],
@@ -7581,6 +7931,7 @@
           "position": 16
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCEXTERNALINFORMATION"
       ],
@@ -7636,6 +7987,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRESOURCELEVELRELATIONSHIP"
       ],
@@ -7667,6 +8019,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCEXTERNALREFERENCE"
       ],
@@ -7735,6 +8088,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -7894,6 +8248,7 @@
           "position": 12
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPREDEFINEDPROPERTYSET"
       ],
@@ -7974,6 +8329,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPREDEFINEDPROPERTYSET"
       ],
@@ -8031,6 +8387,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -8043,6 +8400,7 @@
     "IFCDRAUGHTINGPREDEFINEDCOLOUR": {
       "name": "IfcDraughtingPreDefinedColour",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPREDEFINEDCOLOUR"
       ],
@@ -8055,6 +8413,7 @@
     "IFCDRAUGHTINGPREDEFINEDCURVEFONT": {
       "name": "IfcDraughtingPreDefinedCurveFont",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPREDEFINEDCURVEFONT"
       ],
@@ -8079,6 +8438,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWFITTING"
       ],
@@ -8106,6 +8466,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWFITTINGTYPE"
       ],
@@ -8130,6 +8491,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWSEGMENT"
       ],
@@ -8157,6 +8519,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWSEGMENTTYPE"
       ],
@@ -8181,6 +8544,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTREATMENTDEVICE"
       ],
@@ -8208,6 +8572,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTREATMENTDEVICETYPE"
       ],
@@ -8232,6 +8597,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFEATUREELEMENTSUBTRACTION"
       ],
@@ -8244,6 +8610,7 @@
     "IFCEARTHWORKSELEMENT": {
       "name": "IfcEarthworksElement",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -8264,6 +8631,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCEARTHWORKSELEMENT"
       ],
@@ -8299,6 +8667,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTOPOLOGICALREPRESENTATIONITEM"
       ],
@@ -8330,6 +8699,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCEDGE"
       ],
@@ -8363,6 +8733,12 @@
           "position": 0
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "Ne",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCLOOP"
       ],
@@ -8390,6 +8766,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINAL"
       ],
@@ -8417,6 +8794,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINALTYPE"
       ],
@@ -8441,6 +8819,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWCONTROLLER"
       ],
@@ -8468,6 +8847,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWCONTROLLERTYPE"
       ],
@@ -8492,6 +8872,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWSTORAGEDEVICE"
       ],
@@ -8519,6 +8900,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWSTORAGEDEVICETYPE"
       ],
@@ -8543,6 +8925,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTREATMENTDEVICE"
       ],
@@ -8570,6 +8953,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTREATMENTDEVICETYPE"
       ],
@@ -8594,6 +8978,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -8621,6 +9006,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -8645,6 +9031,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -8672,6 +9059,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -8696,6 +9084,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWCONTROLLER"
       ],
@@ -8723,6 +9112,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWCONTROLLERTYPE"
       ],
@@ -8747,6 +9137,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRODUCT"
       ],
@@ -8767,6 +9158,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSURFACE"
       ],
@@ -8798,6 +9190,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENT"
       ],
@@ -8825,6 +9218,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTTYPE"
       ],
@@ -8837,6 +9231,7 @@
     "IFCELEMENTCOMPONENT": {
       "name": "IfcElementComponent",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENT"
       ],
@@ -8845,6 +9240,7 @@
     "IFCELEMENTCOMPONENTTYPE": {
       "name": "IfcElementComponentType",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTTYPE"
       ],
@@ -8889,6 +9285,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCQUANTITYSET"
       ],
@@ -8913,6 +9310,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTYPEPRODUCT"
       ],
@@ -8944,6 +9342,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONIC"
       ],
@@ -8975,6 +9374,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPARAMETERIZEDPROFILEDEF"
       ],
@@ -8983,6 +9383,7 @@
     "IFCENERGYCONVERSIONDEVICE": {
       "name": "IfcEnergyConversionDevice",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONFLOWELEMENT"
       ],
@@ -8991,6 +9392,7 @@
     "IFCENERGYCONVERSIONDEVICETYPE": {
       "name": "IfcEnergyConversionDeviceType",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONFLOWELEMENTTYPE"
       ],
@@ -9011,6 +9413,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -9038,6 +9441,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -9062,6 +9466,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -9089,6 +9494,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -9113,6 +9519,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -9140,6 +9547,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -9197,6 +9605,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROCESS"
       ],
@@ -9257,6 +9666,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSCHEDULINGTIME"
       ],
@@ -9299,6 +9709,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTYPEPROCESS"
       ],
@@ -9361,6 +9772,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROPERTYABSTRACTION"
       ],
@@ -9369,12 +9781,14 @@
     "IFCEXTERNALINFORMATION": {
       "name": "IfcExternalInformation",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
     "IFCEXTERNALLYDEFINEDHATCHSTYLE": {
       "name": "IfcExternallyDefinedHatchStyle",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCEXTERNALREFERENCE"
       ],
@@ -9383,6 +9797,7 @@
     "IFCEXTERNALLYDEFINEDSURFACESTYLE": {
       "name": "IfcExternallyDefinedSurfaceStyle",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCEXTERNALREFERENCE"
       ],
@@ -9391,6 +9806,7 @@
     "IFCEXTERNALLYDEFINEDTEXTFONT": {
       "name": "IfcExternallyDefinedTextFont",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCEXTERNALREFERENCE"
       ],
@@ -9433,6 +9849,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": [
         {
@@ -9479,6 +9896,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRESOURCELEVELRELATIONSHIP"
       ],
@@ -9499,6 +9917,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCEXTERNALSPATIALSTRUCTUREELEMENT"
       ],
@@ -9507,6 +9926,7 @@
     "IFCEXTERNALSPATIALSTRUCTUREELEMENT": {
       "name": "IfcExternalSpatialStructureElement",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSPATIALELEMENT"
       ],
@@ -9538,6 +9958,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSWEPTAREASOLID"
       ],
@@ -9562,6 +9983,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCEXTRUDEDAREASOLID"
       ],
@@ -9599,6 +10021,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTOPOLOGICALREPRESENTATIONITEM"
       ],
@@ -9636,6 +10059,12 @@
           "position": 0
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "Dim",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -9667,6 +10096,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTOPOLOGICALREPRESENTATIONITEM"
       ],
@@ -9675,6 +10105,7 @@
     "IFCFACEOUTERBOUND": {
       "name": "IfcFaceOuterBound",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFACEBOUND"
       ],
@@ -9706,6 +10137,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFACE"
       ],
@@ -9714,6 +10146,7 @@
     "IFCFACETEDBREP": {
       "name": "IfcFacetedBrep",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCMANIFOLDSOLIDBREP"
       ],
@@ -9747,6 +10180,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFACETEDBREP"
       ],
@@ -9755,6 +10189,7 @@
     "IFCFACILITY": {
       "name": "IfcFacility",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSPATIALSTRUCTUREELEMENT"
       ],
@@ -9775,6 +10210,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSPATIALSTRUCTUREELEMENT"
       ],
@@ -9795,6 +10231,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFACILITYPART"
       ],
@@ -9874,6 +10311,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALCONNECTIONCONDITION"
       ],
@@ -9894,6 +10332,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWMOVINGDEVICE"
       ],
@@ -9921,6 +10360,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWMOVINGDEVICETYPE"
       ],
@@ -9945,6 +10385,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTCOMPONENT"
       ],
@@ -9972,6 +10413,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTCOMPONENTTYPE"
       ],
@@ -9984,6 +10426,7 @@
     "IFCFEATUREELEMENT": {
       "name": "IfcFeatureElement",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENT"
       ],
@@ -9996,6 +10439,7 @@
     "IFCFEATUREELEMENTADDITION": {
       "name": "IfcFeatureElementAddition",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFEATUREELEMENT"
       ],
@@ -10004,6 +10448,7 @@
     "IFCFEATUREELEMENTSUBTRACTION": {
       "name": "IfcFeatureElementSubtraction",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFEATUREELEMENT"
       ],
@@ -10055,6 +10500,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONSTYLE"
       ],
@@ -10129,6 +10575,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -10206,6 +10653,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -10226,6 +10674,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTREATMENTDEVICE"
       ],
@@ -10253,6 +10702,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTREATMENTDEVICETYPE"
       ],
@@ -10277,6 +10727,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINAL"
       ],
@@ -10304,6 +10755,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINALTYPE"
       ],
@@ -10328,6 +10780,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDIRECTRIXCURVESWEPTAREASOLID"
       ],
@@ -10336,6 +10789,7 @@
     "IFCFLOWCONTROLLER": {
       "name": "IfcFlowController",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONFLOWELEMENT"
       ],
@@ -10344,6 +10798,7 @@
     "IFCFLOWCONTROLLERTYPE": {
       "name": "IfcFlowControllerType",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONFLOWELEMENTTYPE"
       ],
@@ -10352,6 +10807,7 @@
     "IFCFLOWFITTING": {
       "name": "IfcFlowFitting",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONFLOWELEMENT"
       ],
@@ -10360,6 +10816,7 @@
     "IFCFLOWFITTINGTYPE": {
       "name": "IfcFlowFittingType",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONFLOWELEMENTTYPE"
       ],
@@ -10380,6 +10837,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONCONTROLELEMENT"
       ],
@@ -10407,6 +10865,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONCONTROLELEMENTTYPE"
       ],
@@ -10431,6 +10890,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWCONTROLLER"
       ],
@@ -10458,6 +10918,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWCONTROLLERTYPE"
       ],
@@ -10470,6 +10931,7 @@
     "IFCFLOWMOVINGDEVICE": {
       "name": "IfcFlowMovingDevice",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONFLOWELEMENT"
       ],
@@ -10478,6 +10940,7 @@
     "IFCFLOWMOVINGDEVICETYPE": {
       "name": "IfcFlowMovingDeviceType",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONFLOWELEMENTTYPE"
       ],
@@ -10486,6 +10949,7 @@
     "IFCFLOWSEGMENT": {
       "name": "IfcFlowSegment",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONFLOWELEMENT"
       ],
@@ -10494,6 +10958,7 @@
     "IFCFLOWSEGMENTTYPE": {
       "name": "IfcFlowSegmentType",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONFLOWELEMENTTYPE"
       ],
@@ -10502,6 +10967,7 @@
     "IFCFLOWSTORAGEDEVICE": {
       "name": "IfcFlowStorageDevice",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONFLOWELEMENT"
       ],
@@ -10510,6 +10976,7 @@
     "IFCFLOWSTORAGEDEVICETYPE": {
       "name": "IfcFlowStorageDeviceType",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONFLOWELEMENTTYPE"
       ],
@@ -10518,6 +10985,7 @@
     "IFCFLOWTERMINAL": {
       "name": "IfcFlowTerminal",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONFLOWELEMENT"
       ],
@@ -10526,6 +10994,7 @@
     "IFCFLOWTERMINALTYPE": {
       "name": "IfcFlowTerminalType",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONFLOWELEMENTTYPE"
       ],
@@ -10534,6 +11003,7 @@
     "IFCFLOWTREATMENTDEVICE": {
       "name": "IfcFlowTreatmentDevice",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONFLOWELEMENT"
       ],
@@ -10542,6 +11012,7 @@
     "IFCFLOWTREATMENTDEVICETYPE": {
       "name": "IfcFlowTreatmentDeviceType",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONFLOWELEMENTTYPE"
       ],
@@ -10562,6 +11033,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -10589,6 +11061,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -10601,6 +11074,7 @@
     "IFCFURNISHINGELEMENT": {
       "name": "IfcFurnishingElement",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENT"
       ],
@@ -10609,6 +11083,7 @@
     "IFCFURNISHINGELEMENTTYPE": {
       "name": "IfcFurnishingElementType",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTTYPE"
       ],
@@ -10629,6 +11104,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFURNISHINGELEMENT"
       ],
@@ -10667,6 +11143,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFURNISHINGELEMENTTYPE"
       ],
@@ -10713,6 +11190,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCOORDINATEREFERENCESYSTEM"
       ],
@@ -10740,6 +11218,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENT"
       ],
@@ -10767,6 +11246,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTTYPE"
       ],
@@ -10779,6 +11259,7 @@
     "IFCGEOMETRICCURVESET": {
       "name": "IfcGeometricCurveSet",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCGEOMETRICSET"
       ],
@@ -10836,6 +11317,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCREPRESENTATIONCONTEXT"
       ],
@@ -10848,6 +11330,7 @@
     "IFCGEOMETRICREPRESENTATIONITEM": {
       "name": "IfcGeometricRepresentationItem",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCREPRESENTATIONITEM"
       ],
@@ -10901,6 +11384,24 @@
           "position": 3
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "WorldCoordinateSystem",
+          "declared_in": "IFCGEOMETRICREPRESENTATIONCONTEXT"
+        },
+        {
+          "name": "CoordinateSpaceDimension",
+          "declared_in": "IFCGEOMETRICREPRESENTATIONCONTEXT"
+        },
+        {
+          "name": "TrueNorth",
+          "declared_in": "IFCGEOMETRICREPRESENTATIONCONTEXT"
+        },
+        {
+          "name": "Precision",
+          "declared_in": "IFCGEOMETRICREPRESENTATIONCONTEXT"
+        }
+      ],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONCONTEXT"
       ],
@@ -10944,6 +11445,12 @@
           "position": 0
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "Dim",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -10956,6 +11463,7 @@
     "IFCGEOMODEL": {
       "name": "IfcGeomodel",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCGEOTECHNICALASSEMBLY"
       ],
@@ -10964,6 +11472,7 @@
     "IFCGEOSLICE": {
       "name": "IfcGeoslice",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCGEOTECHNICALASSEMBLY"
       ],
@@ -10972,6 +11481,7 @@
     "IFCGEOTECHNICALASSEMBLY": {
       "name": "IfcGeotechnicalAssembly",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCGEOTECHNICALELEMENT"
       ],
@@ -10980,6 +11490,7 @@
     "IFCGEOTECHNICALELEMENT": {
       "name": "IfcGeotechnicalElement",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENT"
       ],
@@ -11000,6 +11511,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCGEOTECHNICALELEMENT"
       ],
@@ -11035,6 +11547,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCOMPOSITECURVE"
       ],
@@ -11127,6 +11640,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPOSITIONINGELEMENT"
       ],
@@ -11169,6 +11683,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": [
         {
@@ -11205,6 +11720,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCOBJECTPLACEMENT"
       ],
@@ -11213,6 +11729,7 @@
     "IFCGROUP": {
       "name": "IfcGroup",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCOBJECT"
       ],
@@ -11244,6 +11761,12 @@
           "position": 1
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "Dim",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -11264,6 +11787,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -11291,6 +11815,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -11315,6 +11840,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -11342,6 +11868,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -11366,6 +11893,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSURFACETEXTURE"
       ],
@@ -11386,6 +11914,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTCOMPONENT"
       ],
@@ -11413,6 +11942,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTCOMPONENTTYPE"
       ],
@@ -11483,6 +12013,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONITEM"
       ],
@@ -11538,6 +12069,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBOUNDEDCURVE"
       ],
@@ -11575,6 +12107,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTESSELLATEDITEM"
       ],
@@ -11621,6 +12154,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCINDEXEDPOLYGONALFACE"
       ],
@@ -11654,6 +12188,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCINDEXEDTEXTUREMAP"
       ],
@@ -11685,6 +12220,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTEXTURECOORDINATE"
       ],
@@ -11733,6 +12269,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCINDEXEDTEXTUREMAP"
       ],
@@ -11753,6 +12290,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTREATMENTDEVICE"
       ],
@@ -11780,6 +12318,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTREATMENTDEVICETYPE"
       ],
@@ -11792,6 +12331,7 @@
     "IFCINTERSECTIONCURVE": {
       "name": "IfcIntersectionCurve",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSURFACECURVE"
       ],
@@ -11887,6 +12427,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCGROUP"
       ],
@@ -11920,6 +12461,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTIMESERIES"
       ],
@@ -11964,6 +12506,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -12048,6 +12591,7 @@
           "position": 6
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPARAMETERIZEDPROFILEDEF"
       ],
@@ -12078,6 +12622,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWFITTING"
       ],
@@ -12105,6 +12650,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWFITTINGTYPE"
       ],
@@ -12129,6 +12675,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -12156,6 +12703,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -12180,6 +12728,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONSTRUCTIONRESOURCE"
       ],
@@ -12204,6 +12753,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONSTRUCTIONRESOURCETYPE"
       ],
@@ -12239,6 +12789,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSCHEDULINGTIME"
       ],
@@ -12259,6 +12810,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINAL"
       ],
@@ -12286,6 +12838,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINALTYPE"
       ],
@@ -12365,6 +12918,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCEXTERNALINFORMATION"
       ],
@@ -12407,6 +12961,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCEXTERNALREFERENCE"
       ],
@@ -12475,6 +13030,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -12493,6 +13049,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINAL"
       ],
@@ -12520,6 +13077,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINALTYPE"
       ],
@@ -12568,6 +13126,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -12619,6 +13178,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -12627,6 +13187,7 @@
     "IFCLIGHTSOURCEAMBIENT": {
       "name": "IfcLightSourceAmbient",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCLIGHTSOURCE"
       ],
@@ -12647,6 +13208,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCLIGHTSOURCE"
       ],
@@ -12722,6 +13284,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCLIGHTSOURCE"
       ],
@@ -12786,6 +13349,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCLIGHTSOURCE"
       ],
@@ -12839,6 +13403,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCLIGHTSOURCEPOSITIONAL"
       ],
@@ -12870,6 +13435,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCURVE"
       ],
@@ -12882,6 +13448,7 @@
     "IFCLINEARELEMENT": {
       "name": "IfcLinearElement",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRODUCT"
       ],
@@ -12913,6 +13480,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCOBJECTPLACEMENT"
       ],
@@ -12921,6 +13489,7 @@
     "IFCLINEARPOSITIONINGELEMENT": {
       "name": "IfcLinearPositioningElement",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPOSITIONINGELEMENT"
       ],
@@ -12941,6 +13510,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINAL"
       ],
@@ -12968,6 +13538,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINALTYPE"
       ],
@@ -12992,6 +13563,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCOBJECTPLACEMENT"
       ],
@@ -13004,6 +13576,7 @@
     "IFCLOOP": {
       "name": "IfcLoop",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTOPOLOGICALREPRESENTATIONITEM"
       ],
@@ -13079,6 +13652,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPARAMETERIZEDPROFILEDEF"
       ],
@@ -13103,6 +13677,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSOLIDMODEL"
       ],
@@ -13178,6 +13753,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCOORDINATEOPERATION"
       ],
@@ -13224,6 +13800,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCMAPCONVERSION"
       ],
@@ -13255,6 +13832,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCREPRESENTATIONITEM"
       ],
@@ -13275,6 +13853,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFACILITY"
       ],
@@ -13299,6 +13878,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFACILITYPART"
       ],
@@ -13345,6 +13925,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCMATERIALDEFINITION"
       ],
@@ -13389,6 +13970,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -13451,6 +14033,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCMATERIALDEFINITION"
       ],
@@ -13506,6 +14089,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCMATERIALDEFINITION"
       ],
@@ -13514,6 +14098,7 @@
     "IFCMATERIALDEFINITION": {
       "name": "IfcMaterialDefinition",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -13532,6 +14117,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRODUCTREPRESENTATION"
       ],
@@ -13622,6 +14208,7 @@
           "position": 6
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCMATERIALDEFINITION"
       ],
@@ -13679,6 +14266,12 @@
           },
           "optional": true,
           "position": 2
+        }
+      ],
+      "derived_attributes": [
+        {
+          "name": "TotalThickness",
+          "declared_in": null
         }
       ],
       "supertypes": [
@@ -13745,6 +14338,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCMATERIALUSAGEDEFINITION"
       ],
@@ -13791,6 +14385,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCMATERIALLAYER"
       ],
@@ -13824,6 +14419,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -13897,6 +14493,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCMATERIALDEFINITION"
       ],
@@ -13967,6 +14564,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCMATERIALDEFINITION"
       ],
@@ -14009,6 +14607,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCMATERIALUSAGEDEFINITION"
       ],
@@ -14040,6 +14639,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCMATERIALPROFILESETUSAGE"
       ],
@@ -14075,6 +14675,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCMATERIALPROFILE"
       ],
@@ -14095,6 +14696,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCEXTENDEDPROPERTIES"
       ],
@@ -14150,6 +14752,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRESOURCELEVELRELATIONSHIP"
       ],
@@ -14158,6 +14761,7 @@
     "IFCMATERIALUSAGEDEFINITION": {
       "name": "IfcMaterialUsageDefinition",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -14187,6 +14791,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -14227,6 +14832,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTCOMPONENT"
       ],
@@ -14276,6 +14882,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTCOMPONENTTYPE"
       ],
@@ -14300,6 +14907,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINAL"
       ],
@@ -14327,6 +14935,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINALTYPE"
       ],
@@ -14351,6 +14960,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -14378,6 +14988,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -14435,6 +15046,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONSTRAINT"
       ],
@@ -14443,6 +15055,12 @@
     "IFCMIRROREDPROFILEDEF": {
       "name": "IfcMirroredProfileDef",
       "attributes": [],
+      "derived_attributes": [
+        {
+          "name": "Operator",
+          "declared_in": "IFCDERIVEDPROFILEDEF"
+        }
+      ],
       "supertypes": [
         "IFCDERIVEDPROFILEDEF"
       ],
@@ -14463,6 +15081,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINAL"
       ],
@@ -14490,6 +15109,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINALTYPE"
       ],
@@ -14514,6 +15134,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -14532,6 +15153,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -14559,6 +15181,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -14583,6 +15206,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -14610,6 +15234,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -14645,6 +15270,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": [
         {
@@ -14667,6 +15293,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -14694,6 +15321,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -14718,6 +15346,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCOBJECTDEFINITION"
       ],
@@ -14730,6 +15359,7 @@
     "IFCOBJECTDEFINITION": {
       "name": "IfcObjectDefinition",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCROOT"
       ],
@@ -14796,6 +15426,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONSTRAINT"
       ],
@@ -14820,6 +15451,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -14838,6 +15470,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCACTOR"
       ],
@@ -14862,6 +15495,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCURVE"
       ],
@@ -14893,6 +15527,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCOFFSETCURVE"
       ],
@@ -14939,6 +15574,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCOFFSETCURVE"
       ],
@@ -14987,6 +15623,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCOFFSETCURVE"
       ],
@@ -15090,6 +15727,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROFILEDEF"
       ],
@@ -15120,6 +15758,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFEATUREELEMENTSUBTRACTION"
       ],
@@ -15132,6 +15771,7 @@
     "IFCOPENSHELL": {
       "name": "IfcOpenShell",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONNECTEDFACESET"
       ],
@@ -15222,6 +15862,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -15264,6 +15905,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRESOURCELEVELRELATIONSHIP"
       ],
@@ -15295,6 +15937,16 @@
           "position": 1
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "EdgeStart",
+          "declared_in": "IFCEDGE"
+        },
+        {
+          "name": "EdgeEnd",
+          "declared_in": "IFCEDGE"
+        }
+      ],
       "supertypes": [
         "IFCEDGE"
       ],
@@ -15307,6 +15959,7 @@
     "IFCOUTERBOUNDARYCURVE": {
       "name": "IfcOuterBoundaryCurve",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBOUNDARYCURVE"
       ],
@@ -15327,6 +15980,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINAL"
       ],
@@ -15354,6 +16008,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINALTYPE"
       ],
@@ -15455,6 +16110,7 @@
           "position": 7
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": [
         {
@@ -15477,6 +16133,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROFILEDEF"
       ],
@@ -15510,6 +16167,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTOPOLOGICALREPRESENTATIONITEM"
       ],
@@ -15534,6 +16192,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -15561,6 +16220,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -15596,6 +16256,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCURVE"
       ],
@@ -15631,6 +16292,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONTROL"
       ],
@@ -15695,6 +16357,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPREDEFINEDPROPERTYSET"
       ],
@@ -15737,6 +16400,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONTROL"
       ],
@@ -15899,6 +16563,7 @@
           "position": 7
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": [
         {
@@ -15959,6 +16624,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -16023,6 +16689,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPHYSICALQUANTITY"
       ],
@@ -16061,6 +16728,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -16079,6 +16747,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPHYSICALQUANTITY"
       ],
@@ -16110,6 +16779,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDEEPFOUNDATION"
       ],
@@ -16137,6 +16807,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDEEPFOUNDATIONTYPE"
       ],
@@ -16161,6 +16832,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWFITTING"
       ],
@@ -16188,6 +16860,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWFITTINGTYPE"
       ],
@@ -16212,6 +16885,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWSEGMENT"
       ],
@@ -16239,6 +16913,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWSEGMENTTYPE"
       ],
@@ -16309,6 +16984,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSURFACETEXTURE"
       ],
@@ -16345,6 +17021,12 @@
           "position": 0
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "Dim",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -16365,6 +17047,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPLANAREXTENT"
       ],
@@ -16396,6 +17079,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -16404,6 +17088,7 @@
     "IFCPLANE": {
       "name": "IfcPlane",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTARYSURFACE"
       ],
@@ -16424,6 +17109,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -16451,6 +17137,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -16463,6 +17150,12 @@
     "IFCPOINT": {
       "name": "IfcPoint",
       "attributes": [],
+      "derived_attributes": [
+        {
+          "name": "Dim",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -16527,6 +17220,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPOINT"
       ],
@@ -16558,6 +17252,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPOINT"
       ],
@@ -16600,6 +17295,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPOINT"
       ],
@@ -16631,6 +17327,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCHALFSPACESOLID"
       ],
@@ -16706,6 +17403,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTESSELLATEDFACESET"
       ],
@@ -16739,6 +17437,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBOUNDEDCURVE"
       ],
@@ -16776,6 +17475,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCLOOP"
       ],
@@ -16872,6 +17572,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCURVE"
       ],
@@ -16887,6 +17588,7 @@
     "IFCPORT": {
       "name": "IfcPort",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRODUCT"
       ],
@@ -16895,6 +17597,7 @@
     "IFCPOSITIONINGELEMENT": {
       "name": "IfcPositioningElement",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRODUCT"
       ],
@@ -16998,6 +17701,7 @@
           "position": 6
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCADDRESS"
       ],
@@ -17010,6 +17714,7 @@
     "IFCPREDEFINEDCOLOUR": {
       "name": "IfcPreDefinedColour",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPREDEFINEDITEM"
       ],
@@ -17018,6 +17723,7 @@
     "IFCPREDEFINEDCURVEFONT": {
       "name": "IfcPreDefinedCurveFont",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPREDEFINEDITEM"
       ],
@@ -17038,6 +17744,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONITEM"
       ],
@@ -17046,6 +17753,7 @@
     "IFCPREDEFINEDPROPERTIES": {
       "name": "IfcPreDefinedProperties",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROPERTYABSTRACTION"
       ],
@@ -17054,6 +17762,7 @@
     "IFCPREDEFINEDPROPERTYSET": {
       "name": "IfcPreDefinedPropertySet",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROPERTYSETDEFINITION"
       ],
@@ -17062,6 +17771,7 @@
     "IFCPREDEFINEDTEXTFONT": {
       "name": "IfcPreDefinedTextFont",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPREDEFINEDITEM"
       ],
@@ -17070,6 +17780,7 @@
     "IFCPRESENTATIONITEM": {
       "name": "IfcPresentationItem",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -17134,6 +17845,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": [
         {
@@ -17202,6 +17914,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONLAYERASSIGNMENT"
       ],
@@ -17226,6 +17939,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -17244,6 +17958,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROCESS"
       ],
@@ -17271,6 +17986,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTYPEPROCESS"
       ],
@@ -17306,6 +18022,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCOBJECT"
       ],
@@ -17337,6 +18054,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCOBJECT"
       ],
@@ -17349,6 +18067,7 @@
     "IFCPRODUCTDEFINITIONSHAPE": {
       "name": "IfcProductDefinitionShape",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRODUCTREPRESENTATION"
       ],
@@ -17408,6 +18127,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -17437,6 +18157,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -17455,6 +18176,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCEXTENDEDPROPERTIES"
       ],
@@ -17463,6 +18185,7 @@
     "IFCPROJECT": {
       "name": "IfcProject",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONTEXT"
       ],
@@ -17526,6 +18249,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCOORDINATEREFERENCESYSTEM"
       ],
@@ -17550,6 +18274,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFEATUREELEMENTADDITION"
       ],
@@ -17562,6 +18287,7 @@
     "IFCPROJECTLIBRARY": {
       "name": "IfcProjectLibrary",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONTEXT"
       ],
@@ -17604,6 +18330,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONTROL"
       ],
@@ -17635,6 +18362,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROPERTYABSTRACTION"
       ],
@@ -17643,6 +18371,7 @@
     "IFCPROPERTYABSTRACTION": {
       "name": "IfcPropertyAbstraction",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -17694,6 +18423,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSIMPLEPROPERTY"
       ],
@@ -17712,6 +18442,7 @@
     "IFCPROPERTYDEFINITION": {
       "name": "IfcPropertyDefinition",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCROOT"
       ],
@@ -17754,6 +18485,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRESOURCELEVELRELATIONSHIP"
       ],
@@ -17802,6 +18534,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSIMPLEPROPERTY"
       ],
@@ -17861,6 +18594,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROPERTYABSTRACTION"
       ],
@@ -17909,6 +18643,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSIMPLEPROPERTY"
       ],
@@ -17944,6 +18679,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSIMPLEPROPERTY"
       ],
@@ -17977,6 +18713,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROPERTYSETDEFINITION"
       ],
@@ -17992,6 +18729,7 @@
     "IFCPROPERTYSETDEFINITION": {
       "name": "IfcPropertySetDefinition",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROPERTYDEFINITION"
       ],
@@ -18047,6 +18785,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROPERTYTEMPLATEDEFINITION"
       ],
@@ -18085,6 +18824,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSIMPLEPROPERTY"
       ],
@@ -18186,6 +18926,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSIMPLEPROPERTY"
       ],
@@ -18204,6 +18945,7 @@
     "IFCPROPERTYTEMPLATE": {
       "name": "IfcPropertyTemplate",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROPERTYTEMPLATEDEFINITION"
       ],
@@ -18212,6 +18954,7 @@
     "IFCPROPERTYTEMPLATEDEFINITION": {
       "name": "IfcPropertyTemplateDefinition",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROPERTYDEFINITION"
       ],
@@ -18232,6 +18975,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWCONTROLLER"
       ],
@@ -18259,6 +19003,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONCONTROLELEMENT"
       ],
@@ -18286,6 +19031,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONCONTROLELEMENTTYPE"
       ],
@@ -18310,6 +19056,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWCONTROLLERTYPE"
       ],
@@ -18334,6 +19081,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWMOVINGDEVICE"
       ],
@@ -18361,6 +19109,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWMOVINGDEVICETYPE"
       ],
@@ -18396,6 +19145,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPHYSICALSIMPLEQUANTITY"
       ],
@@ -18434,6 +19184,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPHYSICALSIMPLEQUANTITY"
       ],
@@ -18469,6 +19220,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPHYSICALSIMPLEQUANTITY"
       ],
@@ -18507,6 +19259,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPHYSICALSIMPLEQUANTITY"
       ],
@@ -18515,6 +19268,7 @@
     "IFCQUANTITYSET": {
       "name": "IfcQuantitySet",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROPERTYSETDEFINITION"
       ],
@@ -18546,6 +19300,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPHYSICALSIMPLEQUANTITY"
       ],
@@ -18584,6 +19339,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPHYSICALSIMPLEQUANTITY"
       ],
@@ -18622,6 +19378,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPHYSICALSIMPLEQUANTITY"
       ],
@@ -18649,6 +19406,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -18676,6 +19434,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -18703,6 +19462,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -18727,6 +19487,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -18751,6 +19512,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFACILITY"
       ],
@@ -18775,6 +19537,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFACILITYPART"
       ],
@@ -18799,6 +19562,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -18826,6 +19590,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -18853,6 +19618,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -18877,6 +19643,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -18912,6 +19679,12 @@
           },
           "optional": false,
           "position": 0
+        }
+      ],
+      "derived_attributes": [
+        {
+          "name": "Weights",
+          "declared_in": null
         }
       ],
       "supertypes": [
@@ -18967,6 +19740,12 @@
           "position": 0
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "Weights",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCBSPLINESURFACEWITHKNOTS"
       ],
@@ -19016,6 +19795,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRECTANGLEPROFILEDEF"
       ],
@@ -19057,6 +19837,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPARAMETERIZEDPROFILEDEF"
       ],
@@ -19099,6 +19880,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCSGPRIMITIVE3D"
       ],
@@ -19185,6 +19967,7 @@
           "position": 6
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBOUNDEDSURFACE"
       ],
@@ -19347,6 +20130,7 @@
           "position": 7
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -19422,6 +20206,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -19440,6 +20225,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPOSITIONINGELEMENT"
       ],
@@ -19484,6 +20270,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTIMESERIES"
       ],
@@ -19504,6 +20291,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCEARTHWORKSELEMENT"
       ],
@@ -19583,6 +20371,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPREDEFINEDPROPERTIES"
       ],
@@ -19627,6 +20416,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPREDEFINEDPROPERTYSET"
       ],
@@ -19691,6 +20481,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCREINFORCINGELEMENT"
       ],
@@ -19797,6 +20588,7 @@
           "position": 6
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCREINFORCINGELEMENTTYPE"
       ],
@@ -19824,6 +20616,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTCOMPONENT"
       ],
@@ -19832,6 +20625,7 @@
     "IFCREINFORCINGELEMENTTYPE": {
       "name": "IfcReinforcingElementType",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTCOMPONENTTYPE"
       ],
@@ -19940,6 +20734,7 @@
           "position": 8
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCREINFORCINGELEMENT"
       ],
@@ -20090,6 +20885,7 @@
           "position": 10
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCREINFORCINGELEMENTTYPE"
       ],
@@ -20141,6 +20937,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELDECOMPOSES"
       ],
@@ -20185,6 +20982,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELDECOMPOSES"
       ],
@@ -20233,6 +21031,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELATIONSHIP"
       ],
@@ -20264,6 +21063,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELASSIGNS"
       ],
@@ -20288,6 +21088,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELASSIGNS"
       ],
@@ -20312,6 +21113,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELASSIGNS"
       ],
@@ -20336,6 +21138,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELASSIGNSTOGROUP"
       ],
@@ -20367,6 +21170,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELASSIGNS"
       ],
@@ -20391,6 +21195,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELASSIGNS"
       ],
@@ -20415,6 +21220,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELASSIGNS"
       ],
@@ -20452,6 +21258,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELATIONSHIP"
       ],
@@ -20472,6 +21279,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELASSOCIATES"
       ],
@@ -20492,6 +21300,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELASSOCIATES"
       ],
@@ -20523,6 +21332,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELASSOCIATES"
       ],
@@ -20543,6 +21353,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELASSOCIATES"
       ],
@@ -20563,6 +21374,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELASSOCIATES"
       ],
@@ -20583,6 +21395,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELASSOCIATES"
       ],
@@ -20610,6 +21423,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELASSOCIATES"
       ],
@@ -20618,6 +21432,7 @@
     "IFCRELATIONSHIP": {
       "name": "IfcRelationship",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCROOT"
       ],
@@ -20626,6 +21441,7 @@
     "IFCRELCONNECTS": {
       "name": "IfcRelConnects",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELATIONSHIP"
       ],
@@ -20668,6 +21484,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELCONNECTS"
       ],
@@ -20751,6 +21568,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELCONNECTSELEMENTS"
       ],
@@ -20800,6 +21618,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELCONNECTS"
       ],
@@ -20835,6 +21654,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELCONNECTS"
       ],
@@ -20866,6 +21686,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELCONNECTS"
       ],
@@ -20941,6 +21762,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELCONNECTS"
       ],
@@ -20961,6 +21783,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELCONNECTSSTRUCTURALMEMBER"
       ],
@@ -21005,6 +21828,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELCONNECTSELEMENTS"
       ],
@@ -21049,6 +21873,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELCONNECTS"
       ],
@@ -21097,6 +21922,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELCONNECTS"
       ],
@@ -21141,6 +21967,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELCONNECTS"
       ],
@@ -21185,6 +22012,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELATIONSHIP"
       ],
@@ -21197,6 +22025,7 @@
     "IFCRELDECOMPOSES": {
       "name": "IfcRelDecomposes",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELATIONSHIP"
       ],
@@ -21205,6 +22034,7 @@
     "IFCRELDEFINES": {
       "name": "IfcRelDefines",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELATIONSHIP"
       ],
@@ -21249,6 +22079,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELDEFINES"
       ],
@@ -21293,6 +22124,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELDEFINES"
       ],
@@ -21341,6 +22173,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELDEFINES"
       ],
@@ -21385,6 +22218,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELDEFINES"
       ],
@@ -21416,6 +22250,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELCONNECTS"
       ],
@@ -21460,6 +22295,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELCONNECTS"
       ],
@@ -21535,6 +22371,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELCONNECTS"
       ],
@@ -21583,6 +22420,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELDECOMPOSES"
       ],
@@ -21631,6 +22469,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELCONNECTS"
       ],
@@ -21666,6 +22505,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELDECOMPOSES"
       ],
@@ -21710,6 +22550,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELCONNECTS"
       ],
@@ -21778,6 +22619,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELCONNECTS"
       ],
@@ -21829,6 +22671,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELCONNECTS"
       ],
@@ -21893,6 +22736,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELCONNECTS"
       ],
@@ -21917,6 +22761,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELSPACEBOUNDARY"
       ],
@@ -21937,6 +22782,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELSPACEBOUNDARY1STLEVEL"
       ],
@@ -21968,6 +22814,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRELDECOMPOSES"
       ],
@@ -21988,6 +22835,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCOMPOSITECURVESEGMENT"
       ],
@@ -22058,6 +22906,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -22087,12 +22936,14 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
     "IFCREPRESENTATIONITEM": {
       "name": "IfcRepresentationItem",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -22122,6 +22973,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": [
         {
@@ -22155,6 +23007,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCOBJECT"
       ],
@@ -22199,6 +23052,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRESOURCELEVELRELATIONSHIP"
       ],
@@ -22243,6 +23097,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRESOURCELEVELRELATIONSHIP"
       ],
@@ -22274,6 +23129,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -22446,6 +23302,7 @@
           "position": 14
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSCHEDULINGTIME"
       ],
@@ -22477,6 +23334,12 @@
           "position": 1
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "AxisLine",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCSWEPTAREASOLID"
       ],
@@ -22504,6 +23367,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCREVOLVEDAREASOLID"
       ],
@@ -22539,6 +23403,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCSGPRIMITIVE3D"
       ],
@@ -22570,6 +23435,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCSGPRIMITIVE3D"
       ],
@@ -22612,6 +23478,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCOORDINATEOPERATION"
       ],
@@ -22636,6 +23503,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFACILITY"
       ],
@@ -22660,6 +23528,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFACILITYPART"
       ],
@@ -22684,6 +23553,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -22711,6 +23581,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -22768,6 +23639,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -22786,6 +23658,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCRECTANGLEPROFILEDEF"
       ],
@@ -22810,6 +23683,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINAL"
       ],
@@ -22837,6 +23711,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINALTYPE"
       ],
@@ -22883,12 +23758,14 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
     "IFCSEAMCURVE": {
       "name": "IfcSeamCurve",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSURFACECURVE"
       ],
@@ -22938,6 +23815,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSPIRAL"
       ],
@@ -22982,6 +23860,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSOLIDMODEL"
       ],
@@ -23025,6 +23904,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSECTIONEDSOLID"
       ],
@@ -23098,6 +23978,12 @@
           },
           "optional": false,
           "position": 2
+        }
+      ],
+      "derived_attributes": [
+        {
+          "name": "Dim",
+          "declared_in": null
         }
       ],
       "supertypes": [
@@ -23178,6 +24064,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSURFACE"
       ],
@@ -23236,6 +24123,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPREDEFINEDPROPERTIES"
       ],
@@ -23324,6 +24212,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPREDEFINEDPROPERTIES"
       ],
@@ -23342,6 +24231,12 @@
           },
           "optional": false,
           "position": 0
+        }
+      ],
+      "derived_attributes": [
+        {
+          "name": "Dim",
+          "declared_in": null
         }
       ],
       "supertypes": [
@@ -23375,6 +24270,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCOMPOSITECURVE"
       ],
@@ -23395,6 +24291,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONCONTROLELEMENT"
       ],
@@ -23422,6 +24319,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONCONTROLELEMENTTYPE"
       ],
@@ -23523,6 +24421,7 @@
           "position": 7
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSPIRAL"
       ],
@@ -23543,6 +24442,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -23570,6 +24470,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -23651,12 +24552,14 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
     "IFCSHAPEMODEL": {
       "name": "IfcShapeModel",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCREPRESENTATION"
       ],
@@ -23669,6 +24572,7 @@
     "IFCSHAPEREPRESENTATION": {
       "name": "IfcShapeRepresentation",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSHAPEMODEL"
       ],
@@ -23718,6 +24622,12 @@
           "position": 0
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "Dim",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -23738,6 +24648,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTCOMPONENT"
       ],
@@ -23765,6 +24676,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINAL"
       ],
@@ -23792,6 +24704,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINALTYPE"
       ],
@@ -23816,6 +24729,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTCOMPONENTTYPE"
       ],
@@ -23828,6 +24742,7 @@
     "IFCSIMPLEPROPERTY": {
       "name": "IfcSimpleProperty",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROPERTY"
       ],
@@ -23925,6 +24840,7 @@
           "position": 7
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROPERTYTEMPLATE"
       ],
@@ -23967,6 +24883,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSPIRAL"
       ],
@@ -24031,6 +24948,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSPATIALSTRUCTUREELEMENT"
       ],
@@ -24062,6 +24980,12 @@
           "position": 1
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "Dimensions",
+          "declared_in": "IFCNAMEDUNIT"
+        }
+      ],
       "supertypes": [
         "IFCNAMEDUNIT"
       ],
@@ -24082,6 +25006,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -24109,6 +25034,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -24155,6 +25081,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALCONNECTIONCONDITION"
       ],
@@ -24175,6 +25102,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -24202,6 +25130,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -24214,6 +25143,12 @@
     "IFCSOLIDMODEL": {
       "name": "IfcSolidModel",
       "attributes": [],
+      "derived_attributes": [
+        {
+          "name": "Dim",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -24245,6 +25180,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSPATIALSTRUCTUREELEMENT"
       ],
@@ -24272,6 +25208,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINAL"
       ],
@@ -24299,6 +25236,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINALTYPE"
       ],
@@ -24334,6 +25272,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSPATIALSTRUCTUREELEMENTTYPE"
       ],
@@ -24358,6 +25297,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRODUCT"
       ],
@@ -24378,6 +25318,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTYPEPRODUCT"
       ],
@@ -24398,6 +25339,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSPATIALELEMENT"
       ],
@@ -24410,6 +25352,7 @@
     "IFCSPATIALSTRUCTUREELEMENTTYPE": {
       "name": "IfcSpatialStructureElementType",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSPATIALELEMENTTYPE"
       ],
@@ -24430,6 +25373,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSPATIALELEMENT"
       ],
@@ -24468,6 +25412,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSPATIALELEMENTTYPE"
       ],
@@ -24492,6 +25437,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCSGPRIMITIVE3D"
       ],
@@ -24512,6 +25458,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTARYSURFACE"
       ],
@@ -24532,6 +25479,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCURVE"
       ],
@@ -24552,6 +25500,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINAL"
       ],
@@ -24579,6 +25528,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINALTYPE"
       ],
@@ -24603,6 +25553,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -24674,6 +25625,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -24701,6 +25653,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -24725,6 +25678,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -24749,6 +25703,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALACTIVITY"
       ],
@@ -24780,6 +25735,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRODUCT"
       ],
@@ -24870,6 +25826,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSYSTEM"
       ],
@@ -24894,6 +25851,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALITEM"
       ],
@@ -24914,6 +25872,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -24943,6 +25902,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALACTION"
       ],
@@ -24973,6 +25933,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALCONNECTION"
       ],
@@ -25004,6 +25965,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALMEMBER"
       ],
@@ -25016,6 +25978,7 @@
     "IFCSTRUCTURALCURVEMEMBERVARYING": {
       "name": "IfcStructuralCurveMemberVarying",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALCURVEMEMBER"
       ],
@@ -25036,6 +25999,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALREACTION"
       ],
@@ -25051,6 +26015,7 @@
     "IFCSTRUCTURALITEM": {
       "name": "IfcStructuralItem",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRODUCT"
       ],
@@ -25059,6 +26024,7 @@
     "IFCSTRUCTURALLINEARACTION": {
       "name": "IfcStructuralLinearAction",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALCURVEACTION"
       ],
@@ -25086,6 +26052,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -25119,6 +26086,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALLOADGROUP"
       ],
@@ -25195,6 +26163,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALLOAD"
       ],
@@ -25263,6 +26232,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCGROUP"
       ],
@@ -25342,6 +26312,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALLOADSTATIC"
       ],
@@ -25350,6 +26321,7 @@
     "IFCSTRUCTURALLOADORRESULT": {
       "name": "IfcStructuralLoadOrResult",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALLOAD"
       ],
@@ -25392,6 +26364,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALLOADSTATIC"
       ],
@@ -25467,6 +26440,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALLOADSTATIC"
       ],
@@ -25487,6 +26461,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALLOADSINGLEDISPLACEMENT"
       ],
@@ -25562,6 +26537,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALLOADSTATIC"
       ],
@@ -25582,6 +26558,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALLOADSINGLEFORCE"
       ],
@@ -25590,6 +26567,7 @@
     "IFCSTRUCTURALLOADSTATIC": {
       "name": "IfcStructuralLoadStatic",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALLOADORRESULT"
       ],
@@ -25632,6 +26610,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALLOADSTATIC"
       ],
@@ -25640,6 +26619,7 @@
     "IFCSTRUCTURALMEMBER": {
       "name": "IfcStructuralMember",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALITEM"
       ],
@@ -25648,6 +26628,7 @@
     "IFCSTRUCTURALPLANARACTION": {
       "name": "IfcStructuralPlanarAction",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALSURFACEACTION"
       ],
@@ -25663,6 +26644,7 @@
     "IFCSTRUCTURALPOINTACTION": {
       "name": "IfcStructuralPointAction",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALACTION"
       ],
@@ -25687,6 +26669,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALCONNECTION"
       ],
@@ -25695,6 +26678,7 @@
     "IFCSTRUCTURALPOINTREACTION": {
       "name": "IfcStructuralPointReaction",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALREACTION"
       ],
@@ -25707,6 +26691,7 @@
     "IFCSTRUCTURALREACTION": {
       "name": "IfcStructuralReaction",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALACTIVITY"
       ],
@@ -25749,6 +26734,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCGROUP"
       ],
@@ -25784,6 +26770,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALACTION"
       ],
@@ -25799,6 +26786,7 @@
     "IFCSTRUCTURALSURFACECONNECTION": {
       "name": "IfcStructuralSurfaceConnection",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALCONNECTION"
       ],
@@ -25830,6 +26818,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALMEMBER"
       ],
@@ -25842,6 +26831,7 @@
     "IFCSTRUCTURALSURFACEMEMBERVARYING": {
       "name": "IfcStructuralSurfaceMemberVarying",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALSURFACEMEMBER"
       ],
@@ -25862,6 +26852,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALREACTION"
       ],
@@ -25921,6 +26912,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCREPRESENTATIONITEM"
       ],
@@ -25933,6 +26925,7 @@
     "IFCSTYLEDREPRESENTATION": {
       "name": "IfcStyledRepresentation",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTYLEMODEL"
       ],
@@ -25945,6 +26938,7 @@
     "IFCSTYLEMODEL": {
       "name": "IfcStyleModel",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCREPRESENTATION"
       ],
@@ -25965,6 +26959,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONSTRUCTIONRESOURCE"
       ],
@@ -25989,6 +26984,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONSTRUCTIONRESOURCETYPE"
       ],
@@ -26013,6 +27009,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCEDGE"
       ],
@@ -26021,6 +27018,12 @@
     "IFCSURFACE": {
       "name": "IfcSurface",
       "attributes": [],
+      "derived_attributes": [
+        {
+          "name": "Dim",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -26078,6 +27081,12 @@
           "position": 2
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "BasisSurface",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCCURVE"
       ],
@@ -26105,6 +27114,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDIRECTRIXCURVESWEPTAREASOLID"
       ],
@@ -26125,6 +27135,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFEATUREELEMENT"
       ],
@@ -26160,6 +27171,12 @@
           "position": 1
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "ExtrusionAxis",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCSWEPTSURFACE"
       ],
@@ -26182,6 +27199,12 @@
           },
           "optional": false,
           "position": 0
+        }
+      ],
+      "derived_attributes": [
+        {
+          "name": "AxisLine",
+          "declared_in": null
         }
       ],
       "supertypes": [
@@ -26256,6 +27279,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSTRUCTURALLOADORRESULT"
       ],
@@ -26315,6 +27339,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONSTYLE"
       ],
@@ -26384,6 +27409,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONITEM"
       ],
@@ -26415,6 +27441,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONITEM"
       ],
@@ -26501,6 +27528,7 @@
           "position": 6
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSURFACESTYLESHADING"
       ],
@@ -26532,6 +27560,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONITEM"
       ],
@@ -26565,6 +27594,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONITEM"
       ],
@@ -26642,6 +27672,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONITEM"
       ],
@@ -26673,6 +27704,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSOLIDMODEL"
       ],
@@ -26741,6 +27773,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSOLIDMODEL"
       ],
@@ -26771,6 +27804,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSWEPTDISKSOLID"
       ],
@@ -26809,6 +27843,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSURFACE"
       ],
@@ -26833,6 +27868,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWCONTROLLER"
       ],
@@ -26860,6 +27896,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWCONTROLLERTYPE"
       ],
@@ -26872,6 +27909,7 @@
     "IFCSYSTEM": {
       "name": "IfcSystem",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCGROUP"
       ],
@@ -26892,6 +27930,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFURNISHINGELEMENT"
       ],
@@ -26919,6 +27958,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFURNISHINGELEMENTTYPE"
       ],
@@ -26991,6 +28031,20 @@
           "position": 2
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "NumberOfCellsInRow",
+          "declared_in": null
+        },
+        {
+          "name": "NumberOfHeadings",
+          "declared_in": null
+        },
+        {
+          "name": "NumberOfDataRows",
+          "declared_in": null
+        }
+      ],
       "supertypes": [],
       "where_rules": [
         {
@@ -27060,6 +28114,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -27102,6 +28157,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -27120,6 +28176,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWSTORAGEDEVICE"
       ],
@@ -27147,6 +28204,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWSTORAGEDEVICETYPE"
       ],
@@ -27226,6 +28284,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPROCESS"
       ],
@@ -27429,6 +28488,7 @@
           "position": 16
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSCHEDULINGTIME"
       ],
@@ -27449,6 +28509,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTASKTIME"
       ],
@@ -27480,6 +28541,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTYPEPROCESS"
       ],
@@ -27611,6 +28673,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCADDRESS"
       ],
@@ -27712,6 +28775,7 @@
           "position": 7
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCREINFORCINGELEMENT"
       ],
@@ -27739,6 +28803,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCREINFORCINGELEMENT"
       ],
@@ -27766,6 +28831,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCREINFORCINGELEMENTTYPE"
       ],
@@ -27790,6 +28856,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCREINFORCINGELEMENT"
       ],
@@ -27817,6 +28884,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCREINFORCINGELEMENTTYPE"
       ],
@@ -27874,6 +28942,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCREINFORCINGELEMENTTYPE"
       ],
@@ -27898,6 +28967,12 @@
           "position": 0
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "Dim",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCTESSELLATEDITEM"
       ],
@@ -27906,6 +28981,7 @@
     "IFCTESSELLATEDITEM": {
       "name": "IfcTessellatedItem",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -27948,6 +29024,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -27979,6 +29056,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTEXTLITERAL"
       ],
@@ -28036,6 +29114,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONSTYLE"
       ],
@@ -28113,6 +29192,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPREDEFINEDTEXTFONT"
       ],
@@ -28148,6 +29228,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONITEM"
       ],
@@ -28234,6 +29315,7 @@
           "position": 6
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONITEM"
       ],
@@ -28267,6 +29349,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONITEM"
       ],
@@ -28311,6 +29394,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTEXTURECOORDINATE"
       ],
@@ -28355,6 +29439,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -28399,6 +29484,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTEXTURECOORDINATEINDICES"
       ],
@@ -28443,6 +29529,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTEXTURECOORDINATE"
       ],
@@ -28478,6 +29565,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONITEM"
       ],
@@ -28526,6 +29614,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPRESENTATIONITEM"
       ],
@@ -28579,6 +29668,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSPIRAL"
       ],
@@ -28610,6 +29700,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -28705,6 +29796,7 @@
           "position": 7
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -28736,12 +29828,14 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
     "IFCTOPOLOGICALREPRESENTATIONITEM": {
       "name": "IfcTopologicalRepresentationItem",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCREPRESENTATIONITEM"
       ],
@@ -28750,6 +29844,7 @@
     "IFCTOPOLOGYREPRESENTATION": {
       "name": "IfcTopologyRepresentation",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSHAPEMODEL"
       ],
@@ -28791,6 +29886,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTARYSURFACE"
       ],
@@ -28815,6 +29911,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -28842,6 +29939,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -28866,6 +29964,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -28893,6 +29992,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -28905,6 +30005,7 @@
     "IFCTRANSPORTATIONDEVICE": {
       "name": "IfcTransportationDevice",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENT"
       ],
@@ -28913,6 +30014,7 @@
     "IFCTRANSPORTATIONDEVICETYPE": {
       "name": "IfcTransportationDeviceType",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTTYPE"
       ],
@@ -28933,6 +30035,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTRANSPORTATIONDEVICE"
       ],
@@ -28960,6 +30063,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTRANSPORTATIONDEVICETYPE"
       ],
@@ -29017,6 +30121,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPARAMETERIZEDPROFILEDEF"
       ],
@@ -29139,6 +30244,12 @@
           "position": 3
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "NumberOfTriangles",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCTESSELLATEDFACESET"
       ],
@@ -29172,6 +30283,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTRIANGULATEDFACESET"
       ],
@@ -29270,6 +30382,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBOUNDEDCURVE"
       ],
@@ -29388,6 +30501,7 @@
           "position": 8
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPARAMETERIZEDPROFILEDEF"
       ],
@@ -29415,6 +30529,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -29442,6 +30557,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -29490,6 +30606,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCOBJECTDEFINITION"
       ],
@@ -29539,6 +30656,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTYPEOBJECT"
       ],
@@ -29583,6 +30701,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTYPEOBJECT"
       ],
@@ -29629,6 +30748,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTYPEOBJECT"
       ],
@@ -29649,6 +30769,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONCONTROLELEMENT"
       ],
@@ -29676,6 +30797,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCDISTRIBUTIONCONTROLELEMENTTYPE"
       ],
@@ -29700,6 +30822,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICE"
       ],
@@ -29727,6 +30850,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCENERGYCONVERSIONDEVICETYPE"
       ],
@@ -29764,6 +30888,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": [
         {
@@ -29852,6 +30977,7 @@
           "position": 6
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPARAMETERIZEDPROFILEDEF"
       ],
@@ -29879,6 +31005,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWCONTROLLER"
       ],
@@ -29906,6 +31033,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWCONTROLLERTYPE"
       ],
@@ -29941,6 +31069,12 @@
           "position": 1
         }
       ],
+      "derived_attributes": [
+        {
+          "name": "Dim",
+          "declared_in": null
+        }
+      ],
       "supertypes": [
         "IFCGEOMETRICREPRESENTATIONITEM"
       ],
@@ -29965,6 +31099,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTRANSPORTATIONDEVICE"
       ],
@@ -29992,6 +31127,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTRANSPORTATIONDEVICETYPE"
       ],
@@ -30004,6 +31140,7 @@
     "IFCVERTEX": {
       "name": "IfcVertex",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCTOPOLOGICALREPRESENTATIONITEM"
       ],
@@ -30024,6 +31161,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCLOOP"
       ],
@@ -30044,6 +31182,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCVERTEX"
       ],
@@ -30064,6 +31203,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTCOMPONENT"
       ],
@@ -30091,6 +31231,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTCOMPONENTTYPE"
       ],
@@ -30115,6 +31256,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTCOMPONENT"
       ],
@@ -30142,6 +31284,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENTCOMPONENTTYPE"
       ],
@@ -30166,6 +31309,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCELEMENT"
       ],
@@ -30231,6 +31375,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -30249,6 +31394,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFEATUREELEMENTSUBTRACTION"
       ],
@@ -30273,6 +31419,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -30288,6 +31435,7 @@
     "IFCWALLSTANDARDCASE": {
       "name": "IfcWallStandardCase",
       "attributes": [],
+      "derived_attributes": [],
       "supertypes": [
         "IFCWALL"
       ],
@@ -30312,6 +31460,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -30336,6 +31485,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINAL"
       ],
@@ -30363,6 +31513,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCFLOWTERMINALTYPE"
       ],
@@ -30398,6 +31549,7 @@
           "position": 1
         }
       ],
+      "derived_attributes": [],
       "supertypes": [],
       "where_rules": []
     },
@@ -30460,6 +31612,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENT"
       ],
@@ -30608,6 +31761,7 @@
           "position": 11
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPREDEFINEDPROPERTYSET"
       ],
@@ -30685,6 +31839,7 @@
           "position": 4
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPREDEFINEDPROPERTYSET"
       ],
@@ -30742,6 +31897,7 @@
           "position": 3
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCBUILTELEMENTTYPE"
       ],
@@ -30814,6 +31970,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONTROL"
       ],
@@ -30917,6 +32074,7 @@
           "position": 6
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCCONTROL"
       ],
@@ -30937,6 +32095,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCWORKCONTROL"
       ],
@@ -30961,6 +32120,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCWORKCONTROL"
       ],
@@ -31007,6 +32167,7 @@
           "position": 2
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSCHEDULINGTIME"
       ],
@@ -31027,6 +32188,7 @@
           "position": 0
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCSYSTEM"
       ],
@@ -31106,6 +32268,7 @@
           "position": 5
         }
       ],
+      "derived_attributes": [],
       "supertypes": [
         "IFCPARAMETERIZEDPROFILEDEF"
       ],

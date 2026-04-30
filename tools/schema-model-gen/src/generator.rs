@@ -8,8 +8,8 @@ use espr::ast::{
 };
 use schema_model::{
     AggregateBounds, AggregateKind, AggregateTypeRef, AliasTypeDef, AttributeDef, BoundValue,
-    EntityDef, EnumerationTypeDef, NamedTypeKind, NamedTypeRef, PrimitiveType, SchemaModel,
-    SelectTypeDef, TypeDef, TypeRef, WhereRuleDef, normalize_name,
+    DerivedAttributeDef, EntityDef, EnumerationTypeDef, NamedTypeKind, NamedTypeRef, PrimitiveType,
+    SchemaModel, SelectTypeDef, TypeDef, TypeRef, WhereRuleDef, normalize_name,
 };
 
 #[derive(Debug)]
@@ -118,6 +118,7 @@ fn normalize_entity(
                 normalize_attribute(attr, position, entity_names, type_names)
             })
             .collect(),
+        derived_attributes: normalize_derived_attributes(entity),
         supertypes: entity
             .subtype_of
             .as_ref()
@@ -130,6 +131,33 @@ fn normalize_entity(
             .unwrap_or_default(),
         where_rules: where_rules(&entity.where_clause),
     }
+}
+
+fn normalize_derived_attributes(entity: &Entity) -> Vec<DerivedAttributeDef> {
+    entity
+        .derive_clause
+        .as_ref()
+        .map(|clause| {
+            clause
+                .attributes
+                .iter()
+                .map(|attribute| match &attribute.attr {
+                    AttributeDecl::Reference(name) => DerivedAttributeDef {
+                        name: name.clone(),
+                        declared_in: None,
+                    },
+                    AttributeDecl::Qualified {
+                        group,
+                        attribute,
+                        rename: _,
+                    } => DerivedAttributeDef {
+                        name: attribute.clone(),
+                        declared_in: Some(normalize_name(group)),
+                    },
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn normalize_attribute(
@@ -424,6 +452,7 @@ mod tests {
         assert_eq!(wall.supertypes, vec!["IFCBUILTELEMENT".to_string()]);
         assert_eq!(wall.where_rules.len(), 1);
         assert_eq!(wall.attributes.len(), 3);
+        assert!(wall.derived_attributes.is_empty());
         assert_eq!(wall.attributes[0].name, "Name");
         assert!(wall.attributes[0].optional);
 
@@ -463,5 +492,37 @@ mod tests {
         assert!(!sanitized.contains("FUNCTION Foo"));
         assert!(!sanitized.contains("RULE Bar"));
         assert!(sanitized.contains("ENTITY IfcWall"));
+    }
+
+    #[test]
+    fn generator_preserves_derived_attribute_overrides() {
+        let source = r#"
+        SCHEMA demo;
+          ENTITY IfcNamedUnit;
+            Dimensions : IfcDimensionalExponents;
+            UnitType : IfcUnitEnum;
+          END_ENTITY;
+
+          ENTITY IfcSIUnit
+           SUBTYPE OF (IfcNamedUnit);
+            Prefix : OPTIONAL IfcSIPrefix;
+            Name : IfcSIUnitName;
+          DERIVE
+            SELF\IfcNamedUnit.Dimensions : IfcDimensionalExponents := IfcDimensionsForSiUnit(SELF.Name);
+          END_ENTITY;
+        END_SCHEMA;
+        "#;
+
+        let model = generate_schema_model(source).expect("fixture schema should parse");
+        let si_unit = model
+            .entity("IFCSIUNIT")
+            .expect("IfcSIUnit should be present");
+
+        assert_eq!(si_unit.derived_attributes.len(), 1);
+        assert_eq!(si_unit.derived_attributes[0].name, "Dimensions");
+        assert_eq!(
+            si_unit.derived_attributes[0].declared_in.as_deref(),
+            Some("IFCNAMEDUNIT")
+        );
     }
 }

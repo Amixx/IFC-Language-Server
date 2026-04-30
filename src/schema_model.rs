@@ -2,7 +2,9 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use schema_model::{NamedTypeKind, SchemaModel, TypeDef, TypeRef, normalize_name};
+use schema_model::{
+    DerivedAttributeDef, NamedTypeKind, SchemaModel, TypeDef, TypeRef, normalize_name,
+};
 
 use crate::schema::IfcVersion;
 
@@ -111,6 +113,7 @@ pub struct ResolvedAttribute {
     pub ty: TypeRef,
     pub optional: bool,
     pub declared_in: String,
+    pub allows_omitted: bool,
 }
 
 fn resolve_all_attributes(
@@ -133,15 +136,37 @@ fn resolve_all_attributes(
         attributes.extend(resolve_all_attributes(entities, supertype, visiting));
     }
 
+    let derived_attributes = entity.derived_attributes.clone();
+
     attributes.extend(entity.attributes.iter().map(|attr| ResolvedAttribute {
         name: attr.name.clone(),
         ty: attr.ty.clone(),
         optional: attr.optional,
         declared_in: entity.name.clone(),
+        allows_omitted: false,
     }));
+
+    for attribute in &mut attributes {
+        if matches_derived_override(attribute, &derived_attributes) {
+            attribute.allows_omitted = true;
+        }
+    }
 
     visiting.remove(name);
     attributes
+}
+
+fn matches_derived_override(
+    attribute: &ResolvedAttribute,
+    derived_attributes: &[DerivedAttributeDef],
+) -> bool {
+    derived_attributes.iter().any(|derived| {
+        derived.name.eq_ignore_ascii_case(&attribute.name)
+            && derived
+                .declared_in
+                .as_ref()
+                .is_none_or(|declared_in| declared_in.eq_ignore_ascii_case(&attribute.declared_in))
+    })
 }
 
 fn resolve_all_supertypes(
@@ -194,6 +219,7 @@ mod tests {
                     optional: false,
                     position: 0,
                 }],
+                derived_attributes: Vec::new(),
                 supertypes: Vec::new(),
                 where_rules: Vec::new(),
             },
@@ -211,6 +237,7 @@ mod tests {
                     optional: true,
                     position: 0,
                 }],
+                derived_attributes: Vec::new(),
                 supertypes: vec!["IFCROOT".to_string()],
                 where_rules: Vec::new(),
             },
@@ -228,6 +255,7 @@ mod tests {
                     optional: true,
                     position: 0,
                 }],
+                derived_attributes: Vec::new(),
                 supertypes: vec!["IFCELEMENT".to_string()],
                 where_rules: Vec::new(),
             },

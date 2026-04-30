@@ -31,6 +31,7 @@ impl SchemaModel {
 pub struct EntityDef {
     pub name: String,
     pub attributes: Vec<AttributeDef>,
+    #[serde(default)]
     pub derived_attributes: Vec<DerivedAttributeDef>,
     pub supertypes: Vec<String>,
     pub where_rules: Vec<WhereRuleDef>,
