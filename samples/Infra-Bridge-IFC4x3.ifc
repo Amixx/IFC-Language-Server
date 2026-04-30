@@ -18,7 +18,7 @@ DATA;
 #11=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,$,#7,$);
 #12=IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#11,$,.MODEL_VIEW.,$);
 #13=IFCPROJECT('2Ndyd$OSX7s9A04nc4lyye',#1,'ifc silly sample scene - project','Demystifying IFC with a playful scene using diverse building elements and compositions.',$,$,$,(#11),#14);
-#14=IFCUNITASSIGNMENT((#15,#16,#17));
+#14=IFCUNITASSIGNMENT((#15,#16,#17, "test"));
 #15=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);
 #16=IFCSIUNIT(*,.AREAUNIT.,$,.SQUARE_METRE.);
 #17=IFCSIUNIT(*,.VOLUMEUNIT.,$,.CUBIC_METRE.);

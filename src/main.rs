@@ -2,9 +2,11 @@
 //! Wires the backend into `tower-lsp` and starts serving requests.
 
 mod backend;
+mod diagnostics;
 mod document;
 mod features;
 mod schema;
+mod schema_model;
 
 use backend::Backend;
 use tower_lsp::{LspService, Server};

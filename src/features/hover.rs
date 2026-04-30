@@ -246,6 +246,7 @@ mod tests {
             version: None,
             definitions: HashMap::new(),
             references: HashMap::new(),
+            instances: Vec::new(),
         };
 
         assert!(hover(&document, Position::new(0, 0), &SchemaDocs::new()).is_none());

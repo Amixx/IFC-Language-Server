@@ -10,15 +10,18 @@ use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer};
 use tree_sitter::Parser;
 
+use crate::diagnostics::datatype;
 use crate::document::Document;
 use crate::features::{definition, hover, references};
 use crate::schema::SchemaDocs;
+use crate::schema_model::SchemaModelStore;
 
 pub struct Backend {
     client: Client,
     documents: Arc<RwLock<HashMap<Url, Document>>>,
     parser: Arc<RwLock<Parser>>,
     schema_docs: SchemaDocs,
+    schema_models: SchemaModelStore,
 }
 
 impl Backend {
@@ -33,15 +36,25 @@ impl Backend {
             documents: Arc::new(RwLock::new(HashMap::new())),
             parser: Arc::new(RwLock::new(parser)),
             schema_docs: SchemaDocs::new(),
+            schema_models: SchemaModelStore::new(),
         }
     }
 
     async fn parse_document(&self, uri: &Url, text: String) {
         let mut parser = self.parser.write().await;
         let document = Document::parse(&mut parser, text);
+        let diagnostics = document
+            .version
+            .and_then(|version| self.schema_models.get(version))
+            .map(|schema| datatype::collect(&document, schema))
+            .unwrap_or_default();
 
         let mut documents = self.documents.write().await;
         documents.insert(uri.clone(), document);
+
+        self.client
+            .publish_diagnostics(uri.clone(), diagnostics, None)
+            .await;
     }
 }
 

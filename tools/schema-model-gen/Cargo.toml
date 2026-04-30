@@ -1,0 +1,9 @@
+[package]
+name = "schema-model-gen"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+espr = "0.4.0"
+schema-model = { path = "../../crates/schema-model" }
+serde_json.workspace = true
