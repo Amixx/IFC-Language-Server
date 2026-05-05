@@ -82,18 +82,6 @@ Run the test suite with:
 cargo test
 ```
 
-### Schema Model Generation
-
-Schema-aware diagnostics use generated schema-model assets derived from the EXPRESS schemas in `data/express/`.
-
-Regenerate those assets with:
-
-```bash
-cargo run -p schema-model-gen
-```
-
-The generated files are written to `data/schema-models/` and should be committed when the schema-model format or extraction logic changes.
-
 ### Grammar And Parser
 
 This project depends on the published [`tree-sitter-ifc`](https://crates.io/crates/tree-sitter-ifc) crate for IFC parsing.
