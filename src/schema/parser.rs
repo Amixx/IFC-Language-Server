@@ -1,3 +1,8 @@
+//! EXPRESS parser and normalizer.
+//! This module uses `espr` to parse EXPRESS text, then maps the declarations needed by current
+//! hover and datatype diagnostics into the internal raw schema model.
+//! Global algorithm and rule blocks are stripped because current features do not evaluate them.
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use espr::ast::{

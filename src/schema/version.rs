@@ -1,3 +1,6 @@
+//! Supported IFC schema versions and version-specific metadata.
+//! These mappings provide official EXPRESS download URLs and hover documentation links.
+
 use std::fmt;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]

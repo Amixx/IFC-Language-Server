@@ -1,3 +1,7 @@
+//! Resolver for parsed raw schemas.
+//! It flattens inherited attributes, marks derived inherited attributes as omittable, and records
+//! transitive supertypes for reference compatibility checks.
+
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::schema::types::{DerivedAttributeDef, EntityDef, RawSchema};

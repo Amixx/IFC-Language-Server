@@ -1,3 +1,7 @@
+//! Schema data model shared by hover, diagnostics, parsing, and resolution.
+//! Public types form the runtime `SchemaDoc` API; `pub(crate)` types are parser/resolver
+//! intermediates that should not leak into feature code.
+
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 #[derive(Debug, Clone)]

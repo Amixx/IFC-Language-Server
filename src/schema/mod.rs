@@ -1,5 +1,6 @@
 //! Runtime EXPRESS loading and schema lookup.
 //! Schema docs are generated in memory from official EXPRESS definitions at startup.
+//! Submodules keep version metadata, loading, parsing, resolution, and data types separate.
 
 mod collection;
 mod loader;

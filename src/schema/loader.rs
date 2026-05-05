@@ -1,3 +1,7 @@
+//! Loading boundary for official and custom EXPRESS schema text.
+//! `load_express` converts EXPRESS text into a resolved `SchemaDoc`; official schemas are fetched
+//! from buildingSMART at language-server startup.
+
 use std::error::Error;
 use std::fmt;
 

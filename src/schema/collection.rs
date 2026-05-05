@@ -1,3 +1,7 @@
+//! In-memory collection of loaded IFC schema docs by version.
+//! The backend owns one collection and uses it for both hover and datatype diagnostics.
+//! Startup loading is best-effort: failures are recorded instead of panicking.
+
 use std::collections::HashMap;
 
 use crate::schema::loader::load_official_schema;
