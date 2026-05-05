@@ -26,7 +26,7 @@ cargo fmt
 
 ## Architectural Discipline
 
-- Keep changes aligned with the current `Backend` / `Document` / `SchemaDocs` split.
+- Keep changes aligned with the current `Backend` / `Document` / `SchemaDocCollection` split.
 - Prefer feature logic that operates on `&Document` instead of pushing more logic into the LSP trait implementation.
 - Preserve the current single-document model unless the work explicitly requires widening scope.
 - Prefer full-document reparsing over incremental parsing complexity unless there is a demonstrated need.

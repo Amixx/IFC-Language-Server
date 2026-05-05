@@ -18,11 +18,11 @@ The implemented architecture is built around one open IFC document, one tree-sit
 The codebase currently revolves around four main runtime concepts:
 
 - `Backend`
-  The `tower-lsp` entrypoint. It owns the open-document map, a shared `tree_sitter::Parser`, bundled schema docs, and the resolved schema-model store used for diagnostics.
+  The `tower-lsp` entrypoint. It owns the open-document map, a shared `tree_sitter::Parser`, and the runtime-generated schema docs used for hover and diagnostics.
 - `Document`
   The parsed state of one IFC file. It stores the source text, optional syntax tree, detected schema version, definitions, references, and parsed entity-instance arguments.
 - `SchemaDocCollection` & `SchemaDoc`
-  A synchronous in-memory lookup for bundled IFC entity & type documentation by schema version and entity name. 
+  A synchronous in-memory lookup for runtime-generated IFC entity & type documentation by schema version and entity name.
 
 Feature modules in `src/features/` stay thin and operate on `&Document`.
 Diagnostics operate on `&Document` plus `&SchemaDoc`/`SchemaDocCollection`.
@@ -105,13 +105,23 @@ Ids are stored as `u32`, not as raw `#123` strings.
 
 ## Schema Documentation
 
-The `SchemaDoc`and `SchemaDocCollection`structs are defined as follows:
+The `SchemaDoc` and `SchemaDocCollection` structs are defined as follows:
 
 ```rust
+pub struct EntityAttributeDoc {
+    pub name: String,
+    pub type_name: String,
+    pub declared_in: String,
+    pub ty: TypeRef,
+    pub optional: bool,
+    pub allows_omitted: bool,
+}
+
 pub struct EntityDoc {
     pub name: String,
     pub attributes: Vec<EntityAttributeDoc>,
     pub url: String,
+    pub all_supertypes: HashSet<String>,
 }
 
 pub enum TypeDoc {
@@ -121,8 +131,10 @@ pub enum TypeDoc {
 }
 
 pub struct SchemaDoc {
+    pub schema_name: String,
     pub entities: HashMap<String, EntityDoc>,
     pub types: HashMap<String, TypeDoc>,
+}
 
 pub struct SchemaDocCollection {
     pub docs: HashMap<IfcVersion, SchemaDoc>,
@@ -140,10 +152,11 @@ A `SchemaDoc` contains information about:
   - Enumeration Types (e.g. one of a set of values)
   - Select Types (can be one of many types)
 
-The `SchemaDoc`is the single-source of truth for all information about entities and types of a IfcVersion, with all relevant hover and diagnostics information sourced from it. A `SchemaDocCollection` is simply collection of those docs by IfcVersion. 
+The `SchemaDoc` is the single-source of truth for all information about entities and types of an IfcVersion, with all relevant hover and diagnostics information sourced from it. A `SchemaDocCollection` is simply a collection of those docs by IfcVersion.
 
-The Docs for the officially supported IfcVersions are generated at runtime during startup of the LS, and are created by pulling the the official EXPRESS definitions and using the `eprs` crate. Support for the loading of custom IFC EXPRESS definitions is also possible in the future. 
+The docs for the officially supported IfcVersions are generated at runtime during startup of the LS. They are created by fetching the official EXPRESS definitions from buildingSMART and parsing them with the `espr` crate. `load_express` is the central conversion function from EXPRESS text to `SchemaDoc`; support for custom IFC EXPRESS definitions is also possible in the future.
 
+Startup currently requires network access to buildingSMART. If fetching or parsing a supported schema fails, that schema is omitted from the `SchemaDocCollection`, the backend logs a warning, and schema-aware hover and diagnostics are unavailable for that IfcVersion.
 
 ## tree-sitter Integration
 
@@ -164,7 +177,7 @@ The tree-sitter grammar remains the source of truth for IFC syntax recognition. 
 
 `src/features/hover.rs` currently supports:
 
-- entity-name hover for `entity_name` nodes when `Document::version` is known and bundled `SchemaDoc` exist
+- entity-name hover for `entity_name` nodes when `Document::version` is known and a matching loaded `SchemaDoc` exists
 - reference hover for `reference` nodes by rendering the full defining entity instance as an IFC code block
 - a generic instructional hover for other node kinds
 
@@ -201,7 +214,7 @@ It returns:
 
 ### Diagnostics
 
-`src/diagnostics/datatype.rs` currently validates IFC entity instance arguments against a generated schema documentation. 
+`src/diagnostics/datatype.rs` currently validates IFC entity instance arguments against runtime-generated schema documentation.
 
 The current diagnostics provider supports:
 
@@ -250,7 +263,7 @@ Existing tests mainly cover:
 
 - document parsing and index building
 - schema-doc loading
-- schema-model resolution
+- EXPRESS schema loading and resolution
 - datatype diagnostics behavior
 - hover rendering behavior
 
