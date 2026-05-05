@@ -36,6 +36,12 @@ pub struct EntityInstanceInfo {
     pub parameters: Vec<ParameterValue>,
 }
 
+type DocumentIndexes = (
+    HashMap<u32, DefinitionInfo>,
+    HashMap<u32, Vec<Range>>,
+    Vec<EntityInstanceInfo>,
+);
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ParameterValue {
     Reference {
@@ -144,14 +150,7 @@ fn detect_version(text: &str) -> Option<IfcVersion> {
     }
 }
 
-fn build_indexes(
-    tree: &Option<Tree>,
-    text: &str,
-) -> (
-    HashMap<u32, DefinitionInfo>,
-    HashMap<u32, Vec<Range>>,
-    Vec<EntityInstanceInfo>,
-) {
+fn build_indexes(tree: &Option<Tree>, text: &str) -> DocumentIndexes {
     let mut definitions = HashMap::new();
     let mut references = HashMap::new();
     let mut instances = Vec::new();
@@ -199,12 +198,11 @@ fn traverse(
                 }
                 instances.push(instance);
             }
-        } else if node.kind() == "reference" {
-            if let Ok(ref_text) = node.utf8_text(text.as_bytes()) {
-                if let Ok(id) = ref_text.trim_start_matches('#').parse::<u32>() {
-                    references.entry(id).or_default().push(node_range(&node));
-                }
-            }
+        } else if node.kind() == "reference"
+            && let Ok(ref_text) = node.utf8_text(text.as_bytes())
+            && let Ok(id) = ref_text.trim_start_matches('#').parse::<u32>()
+        {
+            references.entry(id).or_default().push(node_range(&node));
         }
 
         if cursor.goto_first_child() {

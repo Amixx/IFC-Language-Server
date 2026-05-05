@@ -13,15 +13,13 @@ use tree_sitter::Parser;
 use crate::diagnostics::datatype;
 use crate::document::Document;
 use crate::features::{definition, hover, references};
-use crate::schema::SchemaDocs;
-use crate::schema_model::SchemaModelStore;
+use crate::schema::SchemaDocCollection;
 
 pub struct Backend {
     client: Client,
     documents: Arc<RwLock<HashMap<Url, Document>>>,
     parser: Arc<RwLock<Parser>>,
-    schema_docs: SchemaDocs,
-    schema_models: SchemaModelStore,
+    schema_docs: SchemaDocCollection,
 }
 
 impl Backend {
@@ -35,8 +33,7 @@ impl Backend {
             client,
             documents: Arc::new(RwLock::new(HashMap::new())),
             parser: Arc::new(RwLock::new(parser)),
-            schema_docs: SchemaDocs::new(),
-            schema_models: SchemaModelStore::new(),
+            schema_docs: SchemaDocCollection::new(),
         }
     }
 
@@ -61,7 +58,7 @@ impl Backend {
         let document = Document::parse(&mut parser, text);
         let diagnostics = document
             .version
-            .and_then(|version| self.schema_models.get(version))
+            .and_then(|version| self.schema_docs.get(version))
             .map(|schema| datatype::collect(&document, schema))
             .unwrap_or_default();
 
@@ -93,6 +90,12 @@ impl LanguageServer for Backend {
         self.client
             .log_message(MessageType::INFO, "IFC LSP server initialized!")
             .await;
+
+        for error in self.schema_docs.load_errors() {
+            self.client
+                .log_message(MessageType::WARNING, error.clone())
+                .await;
+        }
     }
 
     async fn shutdown(&self) -> Result<()> {

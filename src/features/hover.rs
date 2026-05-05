@@ -4,9 +4,13 @@
 use tower_lsp::lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position};
 
 use crate::document::{DefinitionInfo, Document};
-use crate::schema::{EntityAttributeDoc, EntityDoc, SchemaDocs};
+use crate::schema::{EntityAttributeDoc, EntityDoc, SchemaDocCollection};
 
-pub fn hover(document: &Document, position: Position, schema_docs: &SchemaDocs) -> Option<Hover> {
+pub fn hover(
+    document: &Document,
+    position: Position,
+    schema_docs: &SchemaDocCollection,
+) -> Option<Hover> {
     document.tree.as_ref()?;
 
     if let Some(node) = document.node_at_position(position) {
@@ -151,7 +155,7 @@ fn format_attribute_type(type_name: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
 
     use super::*;
     use crate::schema::EntityAttributeDoc;
@@ -188,13 +192,42 @@ mod tests {
         }
     }
 
+    fn empty_schema_docs() -> SchemaDocCollection {
+        SchemaDocCollection::empty()
+    }
+
+    fn schema_docs_with_wall() -> SchemaDocCollection {
+        let source = r#"
+        SCHEMA IFC4;
+          TYPE IfcGloballyUniqueId = STRING(22) FIXED;
+          END_TYPE;
+          TYPE IfcWallTypeEnum = ENUMERATION OF (MOVABLE, USERDEFINED);
+          END_TYPE;
+          ENTITY IfcRoot;
+            GlobalId : IfcGloballyUniqueId;
+          END_ENTITY;
+          ENTITY IfcWall
+            SUBTYPE OF (IfcRoot);
+            PredefinedType : OPTIONAL IfcWallTypeEnum;
+          END_ENTITY;
+        END_SCHEMA;
+        "#;
+        let schema = crate::schema::load_express(crate::schema::IfcVersion::Ifc4Add2Tc1, source)
+            .expect("fixture schema should parse");
+        SchemaDocCollection::from_docs([(crate::schema::IfcVersion::Ifc4Add2Tc1, schema)])
+    }
+
     #[test]
     fn hover_returns_schema_docs_for_entity_names_with_detected_version() {
         let text = "ISO-10303-21;HEADER;FILE_SCHEMA(('IFC4'));ENDSEC;DATA;#1=IFCWALL($);ENDSEC;END-ISO-10303-21;";
         let document = parse_document(text);
 
-        let hover = hover(&document, position_at(text, "IFCWALL"), &SchemaDocs::new())
-            .expect("hover should exist");
+        let hover = hover(
+            &document,
+            position_at(text, "IFCWALL"),
+            &schema_docs_with_wall(),
+        )
+        .expect("hover should exist");
         let value = hover_text(hover);
 
         assert!(value.contains("# IfcWall"));
@@ -207,7 +240,7 @@ mod tests {
         let document = parse_document(text);
 
         let hover =
-            hover(&document, position_at(text, "#1"), &SchemaDocs::new()).expect("hover exists");
+            hover(&document, position_at(text, "#1"), &empty_schema_docs()).expect("hover exists");
         let value = hover_text(hover);
 
         assert!(value.contains("Hover over an IFC entity name"));
@@ -218,8 +251,12 @@ mod tests {
         let text = "#1=IFCWALL($);\n#2=IFCDOOR(#1);";
         let document = parse_document(text);
 
-        let hover = hover(&document, position_at_last(text, "#1"), &SchemaDocs::new())
-            .expect("hover exists");
+        let hover = hover(
+            &document,
+            position_at_last(text, "#1"),
+            &empty_schema_docs(),
+        )
+        .expect("hover exists");
         let value = hover_text(hover);
 
         assert!(value.contains("#1=IFCWALL($);"));
@@ -231,7 +268,7 @@ mod tests {
         let document = parse_document(text);
 
         let hover =
-            hover(&document, position_at(text, "#1"), &SchemaDocs::new()).expect("hover exists");
+            hover(&document, position_at(text, "#1"), &empty_schema_docs()).expect("hover exists");
         let value = hover_text(hover);
 
         assert!(value.contains("Hover over an IFC entity name"));
@@ -249,7 +286,7 @@ mod tests {
             instances: Vec::new(),
         };
 
-        assert!(hover(&document, Position::new(0, 0), &SchemaDocs::new()).is_none());
+        assert!(hover(&document, Position::new(0, 0), &empty_schema_docs()).is_none());
     }
 
     #[test]
@@ -261,14 +298,27 @@ mod tests {
                     name: "GlobalId".to_string(),
                     type_name: "IfcGloballyUniqueId".to_string(),
                     declared_in: "IfcRoot".to_string(),
+                    ty: crate::schema::TypeRef::Primitive(crate::schema::PrimitiveType::String {
+                        width: None,
+                        fixed: false,
+                    }),
+                    optional: false,
+                    allows_omitted: false,
                 },
                 EntityAttributeDoc {
                     name: "PredefinedType".to_string(),
                     type_name: "OPTIONAL IfcWallTypeEnum".to_string(),
                     declared_in: "IfcWall".to_string(),
+                    ty: crate::schema::TypeRef::Named(crate::schema::NamedTypeRef {
+                        name: "IFCWALLTYPEENUM".to_string(),
+                        kind: crate::schema::NamedTypeKind::Type,
+                    }),
+                    optional: true,
+                    allows_omitted: false,
                 },
             ],
             url: "https://example.invalid/IfcWall.htm".to_string(),
+            all_supertypes: HashSet::new(),
         };
 
         let markdown = render_entity_hover(&entity);
@@ -289,8 +339,15 @@ mod tests {
                 name: "GlobalId".to_string(),
                 type_name: "IfcGloballyUniqueId".to_string(),
                 declared_in: "IfcRoot".to_string(),
+                ty: crate::schema::TypeRef::Primitive(crate::schema::PrimitiveType::String {
+                    width: None,
+                    fixed: false,
+                }),
+                optional: false,
+                allows_omitted: false,
             }],
             url: "https://example.invalid/IfcRoot.htm".to_string(),
+            all_supertypes: HashSet::new(),
         };
 
         let markdown = render_entity_hover(&entity);
