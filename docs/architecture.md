@@ -18,11 +18,11 @@ The implemented architecture is built around one open IFC document, one tree-sit
 The codebase currently revolves around four main runtime concepts:
 
 - `Backend`
-  The `tower-lsp` entrypoint. It owns the open-document map, a shared `tree_sitter::Parser`, and the runtime-generated schema docs used for hover and diagnostics.
+  The `tower-lsp` entrypoint. It owns the open-document map, a shared `tree_sitter::Parser`, and the in-memory schema docs used for hover and diagnostics.
 - `Document`
   The parsed state of one IFC file. It stores the source text, optional syntax tree, detected schema version, definitions, references, and parsed entity-instance arguments.
 - `SchemaDocCollection` & `SchemaDoc`
-  A synchronous in-memory lookup for runtime-generated IFC entity & type documentation by schema version and entity name.
+  A synchronous in-memory lookup for IFC entity & type documentation by schema version and entity name.
 
 Feature modules in `src/features/` stay thin and operate on `&Document`.
 Diagnostics operate on `&Document` plus `&SchemaDoc`/`SchemaDocCollection`.
@@ -153,9 +153,9 @@ A `SchemaDoc` contains information about:
 
 The `SchemaDoc` is the single-source of truth for all information about entities and types of an IfcVersion, with all relevant hover and diagnostics information sourced from it. A `SchemaDocCollection` is simply a collection of those docs by IfcVersion.
 
-The docs for the officially supported IfcVersions are generated at runtime during startup of the LS. They are created by fetching the official EXPRESS definitions from buildingSMART and parsing them with the `espr` crate. `load_express` is the central conversion function from EXPRESS text to `SchemaDoc`; support for custom IFC EXPRESS definitions is also possible in the future.
+The official EXPRESS definitions for the supported IfcVersions are fetched from buildingSMART at compile time by `build.rs`, written into Cargo's `OUT_DIR`, and embedded into the binary with `include_str!`. At runtime startup, the LS reads those bundled EXPRESS strings and parses them with the `espr` crate to build the in-memory `SchemaDocCollection`. `load_express` is the central conversion function from EXPRESS text to `SchemaDoc`; support for custom IFC EXPRESS definitions is also possible in the future.
 
-Startup currently requires network access to buildingSMART. If fetching or parsing a supported schema fails, that schema is omitted from the `SchemaDocCollection`, the backend logs a warning, and schema-aware hover and diagnostics are unavailable for that IfcVersion.
+This keeps runtime startup and restart offline-safe for the officially supported schemas while still avoiding checked-in EXPRESS files in the repository. Fresh builds do require network access to fetch the official EXPRESS inputs. If parsing a bundled supported schema fails, that schema is omitted from the `SchemaDocCollection`, the backend logs a warning, and schema-aware hover and diagnostics are unavailable for that IfcVersion.
 
 ## tree-sitter Integration
 
@@ -187,7 +187,7 @@ Entity hover currently renders:
 - a direct-attribute table
 - a link to the official documentation page
 
-Although the `SchemaDoc` include more data, the runtime `EntityDoc` currently consumes only:
+Although the `SchemaDoc` include more data, the current hover rendering consumes only:
 
 - `name`
 - `attributes`
@@ -213,7 +213,7 @@ It returns:
 
 ### Diagnostics
 
-`src/diagnostics/datatype.rs` currently validates IFC entity instance arguments against runtime-generated schema documentation.
+`src/diagnostics/datatype.rs` currently validates IFC entity instance arguments against runtime schema documentation.
 
 The current diagnostics provider supports:
 
@@ -236,6 +236,7 @@ The current provider does not yet evaluate general EXPRESS `WHERE` rules.
 The current codebase is intentionally small:
 
 ```text
+build.rs
 src/
   main.rs
   backend.rs
