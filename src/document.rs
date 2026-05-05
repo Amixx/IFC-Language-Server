@@ -1,5 +1,7 @@
 //! Parsed in-memory representation of one IFC document.
-//! Owns the source text, syntax tree, and small per-document indexes.
+//! This module turns full IFC source text into a tree-sitter parse plus the small indexes the
+//! language server needs for hover, definition, references, and schema-aware diagnostics.
+//! It also stores structured parameter values so diagnostics can validate attribute arguments.
 
 use std::collections::HashMap;
 

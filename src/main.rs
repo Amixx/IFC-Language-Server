@@ -1,5 +1,6 @@
 //! Binary entrypoint for the IFC language server.
-//! Wires the backend into `tower-lsp` and starts serving requests.
+//! It assembles the runtime modules, binds stdin/stdout to `tower-lsp`, and starts the single
+//! backend instance that serves all editor requests for the process lifetime.
 
 mod backend;
 mod diagnostics;

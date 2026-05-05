@@ -1,5 +1,7 @@
 //! Hover feature logic.
-//! Resolves the syntax node under the cursor and renders hover content.
+//! Resolves the syntax node under the cursor and renders either schema-backed entity information
+//! or local reference previews from the current document.
+//! Hover stays synchronous by reading only the in-memory document and schema collections.
 
 use tower_lsp::lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position};
 

@@ -1,5 +1,7 @@
 //! Find-references feature entry point.
-//! This module will return single-document reference locations for entity ids.
+//! This module returns same-document usages of IFC instance ids and includes the local definition
+//! when the cursor is on either a definition or a reference.
+//! It does not attempt cross-file indexing or workspace-wide lookup.
 
 use tower_lsp::lsp_types::{Location, Position, Url};
 

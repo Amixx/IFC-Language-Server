@@ -1,4 +1,7 @@
 //! Datatype validation diagnostics for IFC entity attributes.
+//! This module compares parsed entity-instance arguments against the runtime schema docs and
+//! reports arity, reference, primitive, aggregate, enumeration, and select-type mismatches.
+//! General EXPRESS `WHERE` rules are intentionally out of scope for the current implementation.
 
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 

@@ -1,5 +1,7 @@
 //! LSP backend and document store.
-//! Receives protocol requests and forwards them to document and feature logic.
+//! This is the `tower-lsp` entry point: it owns the open-document map, the shared tree-sitter
+//! parser, and the in-memory schema docs used by hover and datatype diagnostics.
+//! Request handlers stay thin here and delegate document-specific work to the feature modules.
 
 use std::collections::HashMap;
 use std::sync::Arc;
