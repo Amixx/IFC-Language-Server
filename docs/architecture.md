@@ -131,7 +131,6 @@ pub enum TypeDoc {
 }
 
 pub struct SchemaDoc {
-    pub schema_name: String,
     pub entities: HashMap<String, EntityDoc>,
     pub types: HashMap<String, TypeDoc>,
 }
