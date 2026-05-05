@@ -1,5 +1,5 @@
 //! Runtime EXPRESS loading and schema lookup.
-//! Schema docs are generated in memory from official EXPRESS definitions at startup.
+//! Schema docs are generated in memory from official EXPRESS definitions bundled into the binary.
 //! Submodules keep version metadata, loading, parsing, resolution, and data types separate.
 
 mod collection;
@@ -150,7 +150,7 @@ mod tests {
 
     #[test]
     //    #[ignore = "requires network access to buildingSMART"]
-    fn load_official_schemas_from_buildingsmart() {
+    fn loads_bundled_official_schemas() {
         let collection = SchemaDocCollection::new();
 
         assert!(

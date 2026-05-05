@@ -1,6 +1,6 @@
 //! Loading boundary for official and custom EXPRESS schema text.
-//! `load_express` converts EXPRESS text into a resolved `SchemaDoc`; official schemas are fetched
-//! from buildingSMART at language-server startup.
+//! `load_express` converts EXPRESS text into a resolved `SchemaDoc`; the official schemas are
+//! bundled into the binary at compile time and parsed from those embedded strings at startup.
 
 use std::error::Error;
 use std::fmt;
@@ -28,16 +28,12 @@ impl Error for LoadExpressError {}
 
 #[derive(Debug)]
 pub(crate) enum SchemaLoadError {
-    Fetch { url: &'static str, message: String },
     Parse(LoadExpressError),
 }
 
 impl fmt::Display for SchemaLoadError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Fetch { url, message } => {
-                write!(f, "failed to fetch EXPRESS schema from {url}: {message}")
-            }
             Self::Parse(error) => write!(f, "{error}"),
         }
     }
@@ -51,19 +47,17 @@ pub fn load_express(version: IfcVersion, source: &str) -> Result<SchemaDoc, Load
 }
 
 pub(crate) fn load_official_schema(version: IfcVersion) -> Result<SchemaDoc, SchemaLoadError> {
-    let url = version.express_url();
-    let source = ureq::get(url)
-        .call()
-        .map_err(|error| SchemaLoadError::Fetch {
-            url,
-            message: error.to_string(),
-        })?
-        .body_mut()
-        .read_to_string()
-        .map_err(|error| SchemaLoadError::Fetch {
-            url,
-            message: error.to_string(),
-        })?;
+    load_express(version, official_express_source(version)).map_err(SchemaLoadError::Parse)
+}
 
-    load_express(version, &source).map_err(SchemaLoadError::Parse)
+fn official_express_source(version: IfcVersion) -> &'static str {
+    match version {
+        IfcVersion::Ifc2x3Tc1 => include_str!(concat!(env!("OUT_DIR"), "/express/ifc2x3_tc1.exp")),
+        IfcVersion::Ifc4Add2Tc1 => {
+            include_str!(concat!(env!("OUT_DIR"), "/express/ifc4_add2_tc1.exp"))
+        }
+        IfcVersion::Ifc4x3Add2 => {
+            include_str!(concat!(env!("OUT_DIR"), "/express/ifc4x3_add2.exp"))
+        }
+    }
 }

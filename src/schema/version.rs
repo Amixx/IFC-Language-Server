@@ -1,5 +1,6 @@
 //! Supported IFC schema versions and version-specific metadata.
-//! These mappings provide official EXPRESS download URLs and hover documentation links.
+//! These mappings provide schema names and hover documentation links for the bundled official
+//! EXPRESS definitions.
 
 use std::fmt;
 
@@ -20,20 +21,6 @@ impl IfcVersion {
             Self::Ifc2x3Tc1 => "IFC2X3",
             Self::Ifc4Add2Tc1 => "IFC4",
             Self::Ifc4x3Add2 => "IFC4X3_ADD2",
-        }
-    }
-
-    pub(crate) fn express_url(self) -> &'static str {
-        match self {
-            Self::Ifc2x3Tc1 => {
-                "https://standards.buildingsmart.org/IFC/RELEASE/IFC2x3/TC1/EXPRESS/IFC2X3_TC1.exp"
-            }
-            Self::Ifc4Add2Tc1 => {
-                "https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/EXPRESS/IFC4.exp"
-            }
-            Self::Ifc4x3Add2 => {
-                "https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/IFC4X3_ADD2.exp"
-            }
         }
     }
 
