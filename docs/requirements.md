@@ -4,7 +4,7 @@
 
 ## Scope
 
-### Supported IFC Schema Versions
+### Included Support for IFC Schema Versions:
 
 See [IFC Schema Specifications](https://technical.buildingsmart.org/standards/ifc/ifc-schema-specifications/):
 - IFC 2.3.0.1  
@@ -51,27 +51,12 @@ The language server should implement find references functionality for IFC symbo
 
 For the current scope, this should be limited to a single document. Cross-file indexing is not required.
 
-### Semantic Checking
+### Schema Diagnostics
 
-When an IFC STEP P21 file violates IFC or STEP structural or semantic rules, the language server should report diagnostics for the affected source range.
+The LS should provide schema-aware diagnostics for things like:
 
-Examples include:
+- Datatype checking (e.g., a reference points to IFCOWNERHITORY, even though it should point to an IFCWALL)
+- Unsupported IfcVersions (e.g. displaym essage to user)
+- Entity Schema Compliance (e.g., IFCALIGNMENT is not part of IFC2x3)
 
-- missing required STEP envelope sections such as `ISO-10303-21`, `HEADER`, `DATA`, or `END-ISO-10303-21`
-- invalid or inconsistent entity references
-- values that do not match the expected type or role for a referenced attribute
-
-Diagnostics should highlight the most relevant range in the document and distinguish errors from less severe issues where appropriate.
-
-### Current Implementation Status
-
-The current implementation covers an initial subset of semantic checking:
-
-- local reference target compatibility
-- unresolved local references
-- primitive datatype mismatches
-- enumeration mismatches
-- incorrect argument counts for entity instances
-- invalid `$` / `*` usage for attributes
-
-General EXPRESS `WHERE` rule evaluation and broader semantic validation are not implemented yet.
+Appropriate user-facing information (underlining, hover text) is part of the diagnostics.
