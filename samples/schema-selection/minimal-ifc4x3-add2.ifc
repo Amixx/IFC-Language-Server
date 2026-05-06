@@ -1,0 +1,15 @@
+ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('ViewDefinition [ReferenceView_V1.2]'),'2;1');
+FILE_NAME('minimal-ifc4x3-add2.ifc','2026-05-06T00:00:00',('OpenAI'),('OpenAI'),'ifc-language-server','','');
+FILE_SCHEMA(('IFC4X3_ADD2'));
+ENDSEC;
+DATA;
+#1=IFCPROJECT('0pP9z9XlD7q8mV7mS3tNQ0',$,'Minimal IFC4X3 ADD2 Project',$,$,$,$,(#2),#3);
+#2=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-5,#4,$);
+#3=IFCUNITASSIGNMENT((#5));
+#4=IFCAXIS2PLACEMENT3D(#6,$,$);
+#5=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);
+#6=IFCCARTESIANPOINT((0.,0.,0.));
+ENDSEC;
+END-ISO-10303-21;
