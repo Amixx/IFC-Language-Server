@@ -24,7 +24,6 @@ use crate::schema::{
 struct SchemaConfigState {
     forced_schema_name: Option<String>,
     additional_schema_paths: HashMap<String, std::path::PathBuf>,
-    workspace_config_supported: bool,
     pending_init_config: Option<ServerConfig>,
 }
 
@@ -136,16 +135,8 @@ impl Backend {
     }
 
     async fn apply_config(&self, config: ServerConfig) {
-        let workspace_config_supported = {
-            let schema_config = self.schema_config.read().await;
-            schema_config.workspace_config_supported
-        };
-
         let mut schema_docs = SchemaDocCollection::new();
-        let mut next_state = SchemaConfigState {
-            workspace_config_supported,
-            ..Default::default()
-        };
+        let mut next_state = SchemaConfigState::default();
 
         if let Some(path) = config.overwrite_exp_schema_with_local.as_ref() {
             match load_local_schema(path) {
@@ -196,43 +187,11 @@ impl Backend {
         *self.schema_docs.write().await = schema_docs;
         *self.schema_config.write().await = next_state;
     }
-
-    async fn fetch_workspace_config(&self) -> Option<ServerConfig> {
-        let items = vec![ConfigurationItem {
-            section: Some("ifcLsp".to_string()),
-            ..Default::default()
-        }];
-        let values = self.client.configuration(items).await.ok()?;
-        let value = values.into_iter().next()?;
-        Some(parse_server_config(&value))
-    }
-
-    async fn revalidate_open_documents(&self) {
-        let documents = {
-            let documents = self.documents.read().await;
-            documents
-                .iter()
-                .map(|(uri, document)| (uri.clone(), document.text.clone()))
-                .collect::<Vec<_>>()
-        };
-
-        for (uri, text) in documents {
-            let document = self.parse_document(&uri, text).await;
-            self.check_schema_support(&document).await;
-            self.store_document(document, &uri).await;
-        }
-    }
 }
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
-        let workspace_config_supported = params
-            .capabilities
-            .workspace
-            .as_ref()
-            .and_then(|workspace| workspace.configuration)
-            .unwrap_or(false);
         let pending_init_config = params
             .initialization_options
             .as_ref()
@@ -240,7 +199,6 @@ impl LanguageServer for Backend {
             .unwrap_or_default();
 
         let mut schema_config = self.schema_config.write().await;
-        schema_config.workspace_config_supported = workspace_config_supported;
         schema_config.pending_init_config = Some(pending_init_config);
 
         Ok(InitializeResult {
@@ -267,22 +225,13 @@ impl LanguageServer for Backend {
             self.client.log_message(MessageType::WARNING, error).await;
         }
 
-        let (pending_init_config, workspace_config_supported) = {
+        let pending_init_config = {
             let mut schema_config = self.schema_config.write().await;
-            (
-                schema_config.pending_init_config.take(),
-                schema_config.workspace_config_supported,
-            )
+            schema_config.pending_init_config.take()
         };
 
         if let Some(config) = pending_init_config {
             self.apply_config(config).await;
-        }
-
-        if workspace_config_supported
-            && let Some(workspace_config) = self.fetch_workspace_config().await
-        {
-            self.apply_config(workspace_config).await;
         }
     }
 
@@ -309,20 +258,6 @@ impl LanguageServer for Backend {
             let document = self.parse_document(&uri, change.text).await;
             self.check_schema_support(&document).await;
             self.store_document(document, &uri).await;
-        }
-    }
-
-    async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
-        let workspace_config_supported = self.schema_config.read().await.workspace_config_supported;
-        let config = if workspace_config_supported {
-            self.fetch_workspace_config().await
-        } else {
-            Some(parse_server_config(&params.settings))
-        };
-
-        if let Some(config) = config {
-            self.apply_config(config).await;
-            self.revalidate_open_documents().await;
         }
     }
 
