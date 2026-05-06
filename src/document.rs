@@ -14,6 +14,7 @@ use crate::schema::IfcVersion;
 pub struct Document {
     pub text: String,
     pub tree: Option<Tree>,
+    pub schema_name: Option<String>,
     pub version: Option<IfcVersion>,
     pub definitions: HashMap<u32, DefinitionInfo>,
     pub references: HashMap<u32, Vec<Range>>,
@@ -114,11 +115,12 @@ impl ParameterValue {
 impl Document {
     pub fn parse(parser: &mut Parser, text: String) -> Self {
         let tree = parser.parse(&text, None);
-        let version = detect_version(&text);
+        let (schema_name, version) = detect_schema(&tree, &text);
         let (definitions, references, instances) = build_indexes(&tree, &text);
         Self {
             text,
             tree,
+            schema_name,
             version,
             definitions,
             references,
@@ -137,18 +139,88 @@ impl Document {
     }
 }
 
-fn detect_version(text: &str) -> Option<IfcVersion> {
-    let schema_start = text.find("FILE_SCHEMA")?;
-    let schema_section = &text[schema_start..text.len().min(schema_start + 256)];
+fn detect_schema(tree: &Option<Tree>, text: &str) -> (Option<String>, Option<IfcVersion>) {
+    let schema_name = extract_file_schema_name(tree, text);
+    let version = schema_name.as_deref().and_then(schema_name_to_version);
+    (schema_name, version)
+}
 
-    if schema_section.contains("IFC4X3_ADD2") {
-        Some(IfcVersion::Ifc4x3Add2)
-    } else if schema_section.contains("IFC4") {
-        Some(IfcVersion::Ifc4Add2Tc1)
-    } else if schema_section.contains("IFC2X3") {
-        Some(IfcVersion::Ifc2x3Tc1)
-    } else {
-        None
+fn extract_file_schema_name(tree: &Option<Tree>, text: &str) -> Option<String> {
+    let tree = tree.as_ref()?;
+    let mut cursor = tree.root_node().walk();
+
+    find_file_schema_name(&mut cursor, text)
+}
+
+fn find_file_schema_name(cursor: &mut TreeCursor, text: &str) -> Option<String> {
+    loop {
+        let node = cursor.node();
+
+        if node.kind() == "header_entry"
+            && let Some(schema_name) = parse_file_schema_entry(node, text)
+        {
+            return Some(schema_name);
+        }
+
+        if cursor.goto_first_child() {
+            if let Some(schema_name) = find_file_schema_name(cursor, text) {
+                cursor.goto_parent();
+                return Some(schema_name);
+            }
+            cursor.goto_parent();
+        }
+
+        if !cursor.goto_next_sibling() {
+            break;
+        }
+    }
+
+    None
+}
+
+fn parse_file_schema_entry(node: Node<'_>, text: &str) -> Option<String> {
+    let mut cursor = node.walk();
+    let mut entry_name = None;
+    let mut parameter_list = None;
+
+    for child in node.children(&mut cursor) {
+        match child.kind() {
+            "entity_name" => entry_name = child.utf8_text(text.as_bytes()).ok(),
+            "parameter_list" => parameter_list = Some(child),
+            _ => {}
+        }
+    }
+
+    if entry_name? != "FILE_SCHEMA" {
+        return None;
+    }
+
+    let parameter_list = parameter_list?;
+    extract_first_string(parameter_list, text).map(|value| value.to_ascii_uppercase())
+}
+
+fn extract_first_string(node: Node<'_>, text: &str) -> Option<String> {
+    if node.kind() == "string" {
+        let raw = node.utf8_text(text.as_bytes()).ok()?;
+        return Some(raw.trim_matches('\'').to_string());
+    }
+
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if let Some(value) = extract_first_string(child, text) {
+            return Some(value);
+        }
+    }
+
+    None
+}
+
+fn schema_name_to_version(schema_name: &str) -> Option<IfcVersion> {
+    match schema_name {
+        "IFC2X3" => Some(IfcVersion::Ifc2x3Tc1),
+        "IFC4" => Some(IfcVersion::Ifc4Add2Tc1),
+        "IFC4X3_ADD2" => Some(IfcVersion::Ifc4x3Add2),
+        _ => None,
     }
 }
 
@@ -406,8 +478,27 @@ mod tests {
         let document = parse_document(text);
         assert_eq!(document.text, text);
         assert!(document.tree.is_some());
+        assert_eq!(document.schema_name, None);
         assert_eq!(document.version, None);
         // definitions and references are now populated, not empty
+    }
+
+    #[test]
+    fn parse_detects_schema_name_and_known_version_from_header() {
+        let text = "ISO-10303-21;HEADER;FILE_SCHEMA(('IFC4X3_ADD2'));ENDSEC;DATA;#1=IFCWALL($);ENDSEC;END-ISO-10303-21;";
+        let document = parse_document(text);
+
+        assert_eq!(document.schema_name.as_deref(), Some("IFC4X3_ADD2"));
+        assert_eq!(document.version, Some(IfcVersion::Ifc4x3Add2));
+    }
+
+    #[test]
+    fn parse_detects_custom_schema_name_without_mapping_to_known_version() {
+        let text = "ISO-10303-21;HEADER;FILE_SCHEMA(('IFC4X3_LOCAL_TEST'));ENDSEC;DATA;#1=IFCWALL($);ENDSEC;END-ISO-10303-21;";
+        let document = parse_document(text);
+
+        assert_eq!(document.schema_name.as_deref(), Some("IFC4X3_LOCAL_TEST"));
+        assert_eq!(document.version, None);
     }
 
     #[test]
