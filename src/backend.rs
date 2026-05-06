@@ -44,8 +44,13 @@ impl Backend {
         documents.insert(uri.clone(), document);
     }
 
-    async fn check_schema_version(&self, document: &Document) {
-        if document.schema_name.is_none() {
+    async fn check_schema_support(&self, document: &Document) {
+        let supported = document
+            .schema_name
+            .as_deref()
+            .is_some_and(|schema_name| self.schema_docs.get(schema_name).is_some());
+
+        if !supported {
             self.client
                 .show_message(
                     MessageType::WARNING,
@@ -114,7 +119,7 @@ impl LanguageServer for Backend {
             .await;
 
         let document = self.parse_document(&uri, text).await;
-        self.check_schema_version(&document).await;
+        self.check_schema_support(&document).await;
         self.store_document(document, &uri).await;
     }
 
@@ -122,6 +127,7 @@ impl LanguageServer for Backend {
         let uri = params.text_document.uri;
         if let Some(change) = params.content_changes.into_iter().next() {
             let document = self.parse_document(&uri, change.text).await;
+            self.check_schema_support(&document).await;
             self.store_document(document, &uri).await;
         }
     }
