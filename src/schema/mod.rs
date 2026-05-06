@@ -161,7 +161,7 @@ mod tests {
         for version in IfcVersion::supported() {
             assert!(
                 collection
-                    .get(version)
+                    .get(version.schema_name())
                     .and_then(|schema| schema.entity("IFCWALL"))
                     .is_some(),
                 "missing IfcWall for {version}"

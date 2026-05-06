@@ -1,15 +1,15 @@
-//! In-memory collection of loaded IFC schema docs by version.
+//! In-memory collection of loaded IFC schema docs by schema name.
 //! The backend owns one collection and uses it for both hover and datatype diagnostics.
 //! Startup loading is best-effort: failures are recorded instead of panicking.
 
 use std::collections::HashMap;
 
 use crate::schema::loader::load_official_schema;
-use crate::schema::{EntityDoc, IfcVersion, SchemaDoc};
+use crate::schema::{EntityDoc, IfcVersion, SchemaDoc, normalize_name};
 
 #[derive(Debug, Default)]
 pub struct SchemaDocCollection {
-    pub docs: HashMap<IfcVersion, SchemaDoc>,
+    pub docs: HashMap<String, SchemaDoc>,
     load_errors: Vec<String>,
 }
 
@@ -20,7 +20,7 @@ impl SchemaDocCollection {
         for version in IfcVersion::supported() {
             match load_official_schema(version) {
                 Ok(schema) => {
-                    collection.docs.insert(version, schema);
+                    collection.insert(version.schema_name(), schema);
                 }
                 Err(error) => {
                     collection
@@ -39,19 +39,23 @@ impl SchemaDocCollection {
     }
 
     #[cfg(test)]
-    pub fn from_docs(docs: impl IntoIterator<Item = (IfcVersion, SchemaDoc)>) -> Self {
+    pub fn from_docs(docs: impl IntoIterator<Item = (String, SchemaDoc)>) -> Self {
         Self {
             docs: docs.into_iter().collect(),
             load_errors: Vec::new(),
         }
     }
 
-    pub fn get(&self, version: IfcVersion) -> Option<&SchemaDoc> {
-        self.docs.get(&version)
+    pub fn insert(&mut self, schema_name: &str, schema: SchemaDoc) {
+        self.docs.insert(normalize_name(schema_name), schema);
     }
 
-    pub fn get_entity_doc(&self, version: IfcVersion, entity_name: &str) -> Option<&EntityDoc> {
-        self.get(version)?.entity(entity_name)
+    pub fn get(&self, schema_name: &str) -> Option<&SchemaDoc> {
+        self.docs.get(&normalize_name(schema_name))
+    }
+
+    pub fn get_entity_doc(&self, schema_name: &str, entity_name: &str) -> Option<&EntityDoc> {
+        self.get(schema_name)?.entity(entity_name)
     }
 
     pub fn load_errors(&self) -> &[String] {

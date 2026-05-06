@@ -18,8 +18,8 @@ pub fn hover(
     if let Some(node) = document.node_at_position(position) {
         if node.kind() == "entity_name" {
             let entity_text = node.utf8_text(document.text.as_bytes()).ok()?;
-            if let Some(version) = document.version
-                && let Some(entity_doc) = schema_docs.get_entity_doc(version, entity_text)
+            if let Some(schema_name) = document.schema_name.as_deref()
+                && let Some(entity_doc) = schema_docs.get_entity_doc(schema_name, entity_text)
             {
                 return Some(Hover {
                     contents: HoverContents::Markup(MarkupContent {
@@ -216,7 +216,7 @@ mod tests {
         "#;
         let schema = crate::schema::load_express(crate::schema::IfcVersion::Ifc4Add2Tc1, source)
             .expect("fixture schema should parse");
-        SchemaDocCollection::from_docs([(crate::schema::IfcVersion::Ifc4Add2Tc1, schema)])
+        SchemaDocCollection::from_docs([("IFC4".to_string(), schema)])
     }
 
     #[test]

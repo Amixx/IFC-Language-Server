@@ -45,7 +45,7 @@ impl Backend {
     }
 
     async fn check_schema_version(&self, document: &Document) {
-        if document.version.is_none() {
+        if document.schema_name.is_none() {
             self.client
                 .show_message(
                     MessageType::WARNING,
@@ -59,8 +59,9 @@ impl Backend {
         let mut parser = self.parser.write().await;
         let document = Document::parse(&mut parser, text);
         let diagnostics = document
-            .version
-            .and_then(|version| self.schema_docs.get(version))
+            .schema_name
+            .as_deref()
+            .and_then(|schema_name| self.schema_docs.get(schema_name))
             .map(|schema| datatype::collect(&document, schema))
             .unwrap_or_default();
 
