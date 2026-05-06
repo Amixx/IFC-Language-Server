@@ -283,7 +283,6 @@ mod tests {
             text: "#1=IFCWALL($);".to_string(),
             tree: None,
             schema_name: None,
-            version: None,
             definitions: HashMap::new(),
             references: HashMap::new(),
             instances: Vec::new(),
