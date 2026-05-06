@@ -7,7 +7,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use crate::schema::types::{DerivedAttributeDef, EntityDef, RawSchema};
 use crate::schema::{EntityAttributeDoc, EntityDoc, IfcVersion, SchemaDoc, TypeDoc};
 
-pub(crate) fn resolve_schema(version: IfcVersion, raw: RawSchema) -> SchemaDoc {
+pub(crate) fn resolve_schema(version: Option<IfcVersion>, raw: RawSchema) -> SchemaDoc {
     let mut entities = HashMap::new();
 
     for name in raw.entities.keys() {
@@ -24,7 +24,9 @@ pub(crate) fn resolve_schema(version: IfcVersion, raw: RawSchema) -> SchemaDoc {
                 name: declared.name.clone(),
                 attributes,
                 all_supertypes,
-                url: version.documentation_url(&declared.name),
+                url: version
+                    .map(|version| version.documentation_url(&declared.name))
+                    .unwrap_or_default(),
             },
         );
     }

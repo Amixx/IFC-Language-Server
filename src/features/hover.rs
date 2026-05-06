@@ -12,13 +12,14 @@ pub fn hover(
     document: &Document,
     position: Position,
     schema_docs: &SchemaDocCollection,
+    selected_schema_name: Option<&str>,
 ) -> Option<Hover> {
     document.tree.as_ref()?;
 
     if let Some(node) = document.node_at_position(position) {
         if node.kind() == "entity_name" {
             let entity_text = node.utf8_text(document.text.as_bytes()).ok()?;
-            if let Some(schema_name) = document.schema_name.as_deref()
+            if let Some(schema_name) = selected_schema_name.or(document.schema_name.as_deref())
                 && let Some(entity_doc) = schema_docs.get_entity_doc(schema_name, entity_text)
             {
                 return Some(Hover {
@@ -79,7 +80,9 @@ fn render_entity_hover(entity_doc: &EntityDoc) -> String {
         inherited_attributes.len() + 1,
     ));
 
-    markdown.push_str(&format!("\n\n[Official documentation]({})", entity_doc.url));
+    if !entity_doc.url.is_empty() {
+        markdown.push_str(&format!("\n\n[Official documentation]({})", entity_doc.url));
+    }
 
     markdown
 }
@@ -228,6 +231,7 @@ mod tests {
             &document,
             position_at(text, "IFCWALL"),
             &schema_docs_with_wall(),
+            None,
         )
         .expect("hover should exist");
         let value = hover_text(hover);
@@ -241,8 +245,13 @@ mod tests {
         let text = "#1=IFCWALL($);";
         let document = parse_document(text);
 
-        let hover =
-            hover(&document, position_at(text, "#1"), &empty_schema_docs()).expect("hover exists");
+        let hover = hover(
+            &document,
+            position_at(text, "#1"),
+            &empty_schema_docs(),
+            None,
+        )
+        .expect("hover exists");
         let value = hover_text(hover);
 
         assert!(value.contains("Hover over an IFC entity name"));
@@ -257,6 +266,7 @@ mod tests {
             &document,
             position_at_last(text, "#1"),
             &empty_schema_docs(),
+            None,
         )
         .expect("hover exists");
         let value = hover_text(hover);
@@ -269,8 +279,13 @@ mod tests {
         let text = "#1=IFCWALL($);";
         let document = parse_document(text);
 
-        let hover =
-            hover(&document, position_at(text, "#1"), &empty_schema_docs()).expect("hover exists");
+        let hover = hover(
+            &document,
+            position_at(text, "#1"),
+            &empty_schema_docs(),
+            None,
+        )
+        .expect("hover exists");
         let value = hover_text(hover);
 
         assert!(value.contains("Hover over an IFC entity name"));
@@ -288,7 +303,7 @@ mod tests {
             instances: Vec::new(),
         };
 
-        assert!(hover(&document, Position::new(0, 0), &empty_schema_docs()).is_none());
+        assert!(hover(&document, Position::new(0, 0), &empty_schema_docs(), None).is_none());
     }
 
     #[test]

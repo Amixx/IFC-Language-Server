@@ -16,6 +16,15 @@ impl IfcVersion {
         [Self::Ifc2x3Tc1, Self::Ifc4Add2Tc1, Self::Ifc4x3Add2]
     }
 
+    pub fn from_schema_name(schema_name: &str) -> Option<Self> {
+        match schema_name {
+            "IFC2X3" => Some(Self::Ifc2x3Tc1),
+            "IFC4" => Some(Self::Ifc4Add2Tc1),
+            "IFC4X3_ADD2" => Some(Self::Ifc4x3Add2),
+            _ => None,
+        }
+    }
+
     pub fn schema_name(self) -> &'static str {
         match self {
             Self::Ifc2x3Tc1 => "IFC2X3",

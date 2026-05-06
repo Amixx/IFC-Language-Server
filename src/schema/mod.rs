@@ -11,7 +11,9 @@ mod version;
 
 pub use collection::SchemaDocCollection;
 #[allow(unused_imports)]
-pub use loader::{LoadExpressError, load_express};
+pub use loader::{
+    LoadExpressError, LocalSchemaError, inspect_local_schema_name, load_express, load_local_schema,
+};
 pub use types::{
     AggregateBounds, AggregateKind, AggregateTypeRef, AliasTypeDef, BoundValue, EntityAttributeDoc,
     EntityDoc, EnumerationTypeDef, NamedTypeKind, NamedTypeRef, PrimitiveType, SchemaDoc,
