@@ -57,6 +57,26 @@ impl Backend {
     }
 
     async fn check_schema_support(&self, document: &Document) {
+        let forced_schema_name = self.schema_config.read().await.forced_schema_name.clone();
+
+        if let Some(forced_schema_name) = forced_schema_name.as_deref()
+            && let Some(document_schema_name) = document.schema_name.as_deref()
+        {
+            let normalized_document_schema_name = normalize_name(document_schema_name);
+            if normalized_document_schema_name != forced_schema_name {
+                self.client
+                    .show_message(
+                        MessageType::WARNING,
+                        format!(
+                            "This IFC file declares schema `{}`, but the server is configured to force schema `{}`. Diagnostics and hover information use the forced schema.",
+                            normalized_document_schema_name,
+                            forced_schema_name
+                        ),
+                    )
+                    .await;
+            }
+        }
+
         if self.selected_schema_name(document).await.is_none() {
             self.client
                 .show_message(
