@@ -4,8 +4,6 @@
 //! Request handlers stay thin here and delegate document-specific work to the feature modules.
 
 use std::collections::HashMap;
-use std::fs;
-use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
@@ -14,6 +12,7 @@ use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer};
 use tree_sitter::Parser;
 
+use crate::config::{ServerConfig, expand_schema_candidates, parse_server_config};
 use crate::diagnostics::datatype;
 use crate::document::Document;
 use crate::features::{definition, hover, references};
@@ -21,16 +20,10 @@ use crate::schema::{
     SchemaDocCollection, inspect_local_schema_name, load_local_schema, normalize_name,
 };
 
-#[derive(Clone, Debug, Default)]
-struct ServerConfig {
-    overwrite_exp_schema_with_local: Option<PathBuf>,
-    add_local_schema_to_selection: Vec<PathBuf>,
-}
-
 #[derive(Debug, Default)]
 struct SchemaConfigState {
     forced_schema_name: Option<String>,
-    additional_schema_paths: HashMap<String, PathBuf>,
+    additional_schema_paths: HashMap<String, std::path::PathBuf>,
     workspace_config_supported: bool,
     pending_init_config: Option<ServerConfig>,
 }
@@ -394,62 +387,4 @@ impl LanguageServer for Backend {
 
         Ok(references::find_references(&uri, document, position))
     }
-}
-
-fn parse_server_config(value: &LSPAny) -> ServerConfig {
-    let Some(object) = value.as_object() else {
-        return ServerConfig::default();
-    };
-
-    ServerConfig {
-        overwrite_exp_schema_with_local: object
-            .get("overwriteExpSchemaWithLocal")
-            .and_then(|value| value.as_str())
-            .filter(|value| !value.is_empty())
-            .map(PathBuf::from),
-        add_local_schema_to_selection: object
-            .get("addLocalSchemaToSelection")
-            .map(parse_path_list)
-            .unwrap_or_default(),
-    }
-}
-
-fn parse_path_list(value: &LSPAny) -> Vec<PathBuf> {
-    if let Some(path) = value.as_str() {
-        return vec![PathBuf::from(path)];
-    }
-
-    value
-        .as_array()
-        .into_iter()
-        .flat_map(|items| items.iter())
-        .filter_map(|item| item.as_str())
-        .filter(|item| !item.is_empty())
-        .map(PathBuf::from)
-        .collect()
-}
-
-fn expand_schema_candidates(path: &Path) -> Vec<PathBuf> {
-    if path.is_file() {
-        return vec![path.to_path_buf()];
-    }
-
-    if !path.is_dir() {
-        return Vec::new();
-    }
-
-    let Ok(entries) = fs::read_dir(path) else {
-        return Vec::new();
-    };
-
-    entries
-        .filter_map(|entry| entry.ok())
-        .map(|entry| entry.path())
-        .filter(|candidate| {
-            candidate.is_file()
-                && candidate
-                    .extension()
-                    .is_some_and(|extension| extension.eq_ignore_ascii_case("exp"))
-        })
-        .collect()
 }

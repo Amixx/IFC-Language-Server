@@ -3,6 +3,7 @@
 //! backend instance that serves all editor requests for the process lifetime.
 
 mod backend;
+mod config;
 mod diagnostics;
 mod document;
 mod features;
