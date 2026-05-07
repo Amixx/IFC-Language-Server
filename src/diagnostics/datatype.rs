@@ -30,6 +30,10 @@ pub fn collect_with_schema_name(
     diagnostics
 }
 
+pub fn collect(document: &Document, schema: &SchemaDoc) -> Vec<Diagnostic> {
+    collect_with_schema_name(document, schema, None)
+}
+
 fn validate_instance(
     document: &Document,
     schema: &SchemaDoc,
