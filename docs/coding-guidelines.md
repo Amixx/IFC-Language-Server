@@ -71,6 +71,7 @@ The following commands must pass for a change to be verified:
 ```bash
 cargo fmt --check
 cargo test --locked
+cargo build --release --locked
 ```
 
 If the tests fail repeatedly when implementing a new feature, the run should be halted and the issues presented to the user.
