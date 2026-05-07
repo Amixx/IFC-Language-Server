@@ -107,14 +107,6 @@ Example `initializationOptions`:
 }
 ```
 
-### Tests
-
-Run the test suite with:
-
-```bash
-cargo test
-```
-
 ### Grammar And Parser
 
 This project depends on the published [`tree-sitter-ifc`](https://crates.io/crates/tree-sitter-ifc) crate for IFC parsing.
