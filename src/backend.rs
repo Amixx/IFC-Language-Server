@@ -96,7 +96,9 @@ impl Backend {
             let schema_docs = self.schema_docs.read().await;
             schema_docs
                 .get(schema_name)
-                .map(|schema| datatype::collect(&document, schema))
+                .map(|schema| {
+                    datatype::collect_with_schema_name(&document, schema, Some(schema_name))
+                })
                 .unwrap_or_default()
         } else {
             Vec::new()
