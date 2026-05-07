@@ -8,6 +8,7 @@ mod diagnostics;
 mod document;
 mod features;
 mod schema;
+mod step;
 
 use backend::Backend;
 use tower_lsp::{LspService, Server};

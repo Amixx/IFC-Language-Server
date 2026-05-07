@@ -16,6 +16,7 @@ pub struct Document {
     pub definitions: HashMap<u32, DefinitionInfo>,
     pub references: HashMap<u32, Vec<Range>>,
     pub instances: Vec<EntityInstanceInfo>,
+    pub(crate) instance_indexes_by_id: HashMap<u32, usize>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -114,6 +115,11 @@ impl Document {
         let tree = parser.parse(&text, None);
         let schema_name = detect_schema(&tree, &text);
         let (definitions, references, instances) = build_indexes(&tree, &text);
+        let instance_indexes_by_id = instances
+            .iter()
+            .enumerate()
+            .filter_map(|(index, instance)| instance.id.map(|id| (id, index)))
+            .collect();
         Self {
             text,
             tree,
@@ -121,6 +127,7 @@ impl Document {
             definitions,
             references,
             instances,
+            instance_indexes_by_id,
         }
     }
 
@@ -132,6 +139,12 @@ impl Document {
         };
 
         tree.root_node().descendant_for_point_range(point, point)
+    }
+
+    pub fn instance_by_id(&self, id: u32) -> Option<&EntityInstanceInfo> {
+        self.instance_indexes_by_id
+            .get(&id)
+            .and_then(|index| self.instances.get(*index))
     }
 }
 
@@ -556,5 +569,15 @@ mod tests {
         let text = "#1=IFCWALL(#2);\n#3=IFCDOOR(#2);";
         let document = parse_document(text);
         assert_eq!(document.references[&2].len(), 2);
+    }
+
+    #[test]
+    fn instance_by_id_returns_matching_instance() {
+        let text = "#1=IFCWALL($);\n#2=IFCDOOR($);";
+        let document = parse_document(text);
+
+        let instance = document.instance_by_id(2).expect("instance should exist");
+
+        assert_eq!(instance.entity_name, "IFCDOOR");
     }
 }
