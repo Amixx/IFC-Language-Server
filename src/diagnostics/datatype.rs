@@ -463,7 +463,7 @@ mod tests {
     #[test]
     fn datatype_validator_reports_mismatched_attribute_type() {
         let doc = parse_document("#1=IFCWALL(123,.MOVABLE.);");
-        let diagnostics = collect(&doc, &test_schema());
+        let diagnostics = collect_with_schema_name(&doc, &test_schema(), None);
 
         assert_eq!(diagnostics.len(), 1);
         assert!(diagnostics[0].message.contains("GlobalId"));
@@ -473,7 +473,7 @@ mod tests {
     #[test]
     fn datatype_validator_accepts_valid_values() {
         let doc = parse_document("#1=IFCWALL('gid',.MOVABLE.);");
-        let diagnostics = collect(&doc, &test_schema());
+        let diagnostics = collect_with_schema_name(&doc, &test_schema(), None);
 
         assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
@@ -537,7 +537,7 @@ mod tests {
             "#,
         );
 
-        let diagnostics = collect(&document, &schema);
+        let diagnostics = collect_with_schema_name(&document, &schema, None);
 
         assert_eq!(diagnostics.len(), 1);
         assert!(diagnostics[0].message.contains("does not resolve"));
@@ -572,7 +572,7 @@ mod tests {
         );
 
         let doc = parse_document("#15=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);");
-        let diagnostics = collect(&doc, &schema);
+        let diagnostics = collect_with_schema_name(&doc, &schema, None);
 
         assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
@@ -580,7 +580,7 @@ mod tests {
     #[test]
     fn datatype_validator_reports_invalid_step_syntax() {
         let doc = parse_document(r#"#14=IFCUNITASSIGNMENT((#15,#16,#17, "test"));"#);
-        let diagnostics = collect(&doc, &test_schema());
+        let diagnostics = collect_with_schema_name(&doc, &test_schema(), None);
 
         assert!(
             diagnostics
@@ -616,7 +616,7 @@ mod tests {
         let doc = parse_document(
             "#1=IFCPROPERTYSINGLEVALUE('Name',$,IFCLABEL('Living Room'));\n#2=IFCPROPERTYSINGLEVALUE('Offset',$,IFCLENGTHMEASURE(2.6));",
         );
-        let diagnostics = collect(&doc, &schema);
+        let diagnostics = collect_with_schema_name(&doc, &schema, None);
 
         assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
