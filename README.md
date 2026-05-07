@@ -66,14 +66,6 @@ Build a release binary with:
 cargo build --release
 ```
 
-Run the server directly for debugging:
-
-```bash
-cargo run --release
-```
-
-The server communicates over `stdin`/`stdout` and is intended to be launched by an LSP client.
-
 ### Configuration
 
 The server accepts configuration through LSP `initializationOptions`.
@@ -112,13 +104,6 @@ Example `initializationOptions`:
 This project depends on the published [`tree-sitter-ifc`](https://crates.io/crates/tree-sitter-ifc) crate for IFC parsing.
 
 If you are developing the grammar itself, work in the [`tree-sitter-ifc`](https://github.com/NepomukWolf/tree-sitter-ifc) repository and publish a new crate version when needed. During local development, you can temporarily override the crates.io dependency with a `[patch.crates-io]` entry that points at a local checkout.
-
-### Formatting
-
-This project uses:
-
-- `rustfmt` for Rust via `cargo fmt`
-- Prettier for Markdown
 
 ## Documentation
 
