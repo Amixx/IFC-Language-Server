@@ -33,11 +33,13 @@ impl SchemaDocCollection {
         collection
     }
 
+    /// Test that the schema doc collection is empty by default.
     #[cfg(test)]
     pub fn empty() -> Self {
         Self::default()
     }
 
+    /// Test that the schema doc collection can be constructed from a list of schema docs.
     #[cfg(test)]
     pub fn from_docs(docs: impl IntoIterator<Item = (String, SchemaDoc)>) -> Self {
         Self {

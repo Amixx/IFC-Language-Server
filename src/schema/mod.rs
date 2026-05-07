@@ -21,10 +21,12 @@ pub use types::{
 };
 pub use version::IfcVersion;
 
+//*----- TESTS BEGIN HERE -----*
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    /// Fake schema for testing purposes.
     fn fixture_schema() -> &'static str {
         r#"
         SCHEMA DEMO;
@@ -55,6 +57,7 @@ mod tests {
         "#
     }
 
+    /// Test that the schema doc is built correctly from the fixture schema.
     #[test]
     fn load_express_builds_schema_doc_from_fixture() {
         let schema =
@@ -78,6 +81,8 @@ mod tests {
         assert_eq!(select.options.len(), 2);
     }
 
+    /// Test that the schema doc knows subtype compatibility.
+    /// E.g., `IFCWALL` is a subtype of `IFCROOT` and `IFCELEMENT`.
     #[test]
     fn schema_doc_knows_subtype_compatibility() {
         let schema =
@@ -88,6 +93,7 @@ mod tests {
         assert!(!schema.is_entity_compatible("IFCROOT", "IFCWALL"));
     }
 
+    /// Test that the schema doc preserves derived attribute overrides.
     #[test]
     fn load_express_preserves_derived_attribute_overrides() {
         let source = r#"
@@ -127,6 +133,9 @@ mod tests {
         assert!(dimensions.allows_omitted);
     }
 
+    /// Test that the schema doc sanitizes global algorithm blocks.
+    /// While algorithm blocks may be included in the schema, they are not supported.
+    /// Yet, these schemas should still be read and parsed successfully.
     #[test]
     fn sanitize_drops_global_algorithm_blocks() {
         let source = r#"
@@ -150,8 +159,8 @@ mod tests {
         assert!(schema.entity("IfcRoot").is_some());
     }
 
+    /// Test that the schema doc loads bundled official schemas successfully.
     #[test]
-    //    #[ignore = "requires network access to buildingSMART"]
     fn loads_bundled_official_schemas() {
         let collection = SchemaDocCollection::new();
 
