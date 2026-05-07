@@ -37,7 +37,7 @@ Prefer the simplest implementation that matches the documented current scope in 
 - New crates require explicit approval before being added.
   - Avoid adding crates unless they are clearly necessary.
   - Prefer the standard library or existing dependencies for small tasks.
-- Major architectural require approval.
+- Major architectural changes require approval.
 - Large refactors require approval.
 - No modifications to `./docs` without specific instructions by the user.
 - No deleting, resetting, or reverting unrelated work without approval.
