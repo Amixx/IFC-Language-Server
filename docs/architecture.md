@@ -255,23 +255,9 @@ samples/
   *.ifc
 ```
 
-## Testing Approach
-
-Tests currently live next to the implementation in the same Rust modules.
-
-Existing tests mainly cover:
-
-- document parsing and index building
-- schema-doc loading
-- EXPRESS schema loading and resolution
-- datatype diagnostics behavior
-- hover rendering behavior
-
-There is not yet dedicated test coverage for the definition and references modules, even though those features are implemented.
-
 ## Non-Goals For The Current Architecture
 
-The current project should continue to avoid:
+The current project should continue to avoid the following, unless explicitely requested by the user:
 
 - cross-file indexing
 - incremental parsing infrastructure

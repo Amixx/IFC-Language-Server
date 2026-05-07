@@ -23,10 +23,6 @@ For these officially supported versions:
 
 ## Features
 
-### IFC STEP P21 Syntax Highlighting
-
-The language server should support syntax highlighting for IFC STEP P21 files.
-
 ### Hover
 
 #### Entity Definition Hover
@@ -67,3 +63,17 @@ The LS should provide schema-aware diagnostics for things like:
 - Entity Schema Compliance (e.g., IFCALIGNMENT is not part of IFC2x3)
 
 Appropriate user-facing information (underlining, hover text) is part of the diagnostics.
+
+### Custom EXPRESS Schemas
+
+Next to the built-in support for the three major versions of IFC, the user should be able to add support for more schema versions via EXPRESS definition files. This functionality is exposed via the `initializationOptions`. Both forcing a specific schema (`overwriteExpSchemaWithLocal`) and adding to the existing list of schemas (`addLocalSchemaToSelection`) are supported. Examples Configuration:
+
+```json
+{
+  "overwriteExpSchemaWithLocal": "/Users/alice/dev/express/IFC4x2.exp",
+  "addLocalSchemaToSelection": [
+    "/Users/alice/dev/express/IFC4x1.exp",
+    "/Users/alice/dev/express/custom-schemas"
+  ]
+}
+```

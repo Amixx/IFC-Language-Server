@@ -14,16 +14,6 @@ Code in this repository should be:
 
 Prefer the simplest implementation that matches the documented current scope in `requirements.md`.
 
-## Rust Formatting
-
-All Rust code must be formatted with `rustfmt`.
-
-Before finishing a Rust change, run:
-
-```sh
-cargo fmt
-```
-
 ## Architectural Discipline
 
 - Keep changes aligned with the current `Backend` / `Document` / `SchemaDocCollection` split.
@@ -40,12 +30,18 @@ cargo fmt
 - Reuse existing helpers before adding new ones.
 - Add comments only when the intent is not obvious from the code itself.
 - Avoid dead code, placeholder branches, and speculative abstractions.
+- When creating a new module, add descriptive comments explaining its purpose.
 
-## Dependencies
+## Approval Boundaries
 
-- Avoid adding crates unless they are clearly necessary.
 - New crates require explicit approval before being added.
-- Prefer the standard library or existing dependencies for small tasks.
+  - Avoid adding crates unless they are clearly necessary.
+  - Prefer the standard library or existing dependencies for small tasks.
+- Major architectural changes require approval.
+- Large refactors require approval.
+- No modifications to `./docs` without specific instructions by the user.
+- No deleting, resetting, or reverting unrelated work without approval.
+- Ask the user when encountering ambiguous requirements, conflicting docs, or risky edits.
 
 ## Error Handling
 
@@ -59,11 +55,22 @@ cargo fmt
 - Prefer small unit tests close to the code they exercise.
 - Test behavior, not implementation noise.
 - When changing parsing, indexing, version detection, schema loading, or hover rendering, update tests in the same module.
-- Add targeted tests for definition and references behavior when changing those modules, since current coverage there is thin.
 - Use short IFC snippets in tests unless a repository sample file is clearly more useful.
+- Note: Builds require internet access due to the EXPRESS schema pulling at compile time in `build.rs`.
 
 ## Scope Discipline
 
 - Implement only what is required by the current issue or the documented current scope.
 - Do not silently broaden the project into diagnostics, workspace indexing, or additional LSP features.
 - If a design can be simpler, prefer the simpler version.
+
+## Verification Gate
+
+The following commands must pass for a change to be verified:
+
+```bash
+cargo fmt --check
+cargo test --locked
+```
+
+If the tests fail repeatedly when implementing a new feature, the run should be halted and the issues presented to the user.
