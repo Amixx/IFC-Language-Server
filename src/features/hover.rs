@@ -7,6 +7,7 @@ use tower_lsp::lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Posi
 
 use crate::document::{DefinitionInfo, Document};
 use crate::schema::{EntityAttributeDoc, EntityDoc, SchemaDocCollection};
+use crate::step::{ast, derived, derived::ResolvedDerivedValue};
 
 pub fn hover(
     document: &Document,
@@ -42,6 +43,29 @@ pub fn hover(
                 }),
                 range: Some(node_range(&node)),
             });
+        } else if node.kind() == "omitted_value" {
+            if let Some(schema_name) = selected_schema_name.or(document.schema_name.as_deref())
+                && let Some(schema) = schema_docs.get(schema_name)
+            {
+                let context = ast::omitted_value_context(node, &document.text)?;
+                return Some(Hover {
+                    contents: HoverContents::Markup(MarkupContent {
+                        kind: MarkupKind::Markdown,
+                        value: omitted_value_hover(
+                            document,
+                            schema,
+                            derived::resolve_omitted_value(
+                                document,
+                                schema,
+                                context.instance_id,
+                                &context.entity_name,
+                                context.parameter_index,
+                            )?,
+                        )?,
+                    }),
+                    range: Some(node_range(&node)),
+                });
+            }
         }
     }
 
@@ -100,6 +124,26 @@ fn render_reference_hover(document: &Document, definition: &DefinitionInfo) -> O
     let preview = extract_range_text(document, definition.entity_range)?;
 
     Some(format!("```ifc\n{}\n```", preview.trim()))
+}
+
+fn omitted_value_hover(
+    _document: &Document,
+    _schema: &crate::schema::SchemaDoc,
+    resolved: ResolvedDerivedValue,
+) -> Option<String> {
+    let mut text = match resolved.value {
+        Some(value) => format!("{}: {}", resolved.attribute_name, value),
+        None => format!("{}: derived value", resolved.attribute_name),
+    };
+    if let Some(preview) = resolved.preview {
+        text.push_str("\n\n");
+        text.push_str(&preview);
+    }
+    if let Some(note) = resolved.resolution_note {
+        text.push_str("\n\n");
+        text.push_str(&note);
+    }
+    Some(text)
 }
 
 fn extract_range_text(document: &Document, range: tower_lsp::lsp_types::Range) -> Option<&str> {
@@ -215,6 +259,64 @@ mod tests {
         SchemaDocCollection::from_docs([("IFC4".to_string(), schema)])
     }
 
+    fn schema_docs_with_derived_attributes() -> SchemaDocCollection {
+        let source = r#"
+        SCHEMA IFC4;
+          TYPE IfcUnitEnum = ENUMERATION OF (LENGTHUNIT, AREAUNIT, VOLUMEUNIT, PLANEANGLEUNIT);
+          END_TYPE;
+          TYPE IfcSIPrefix = ENUMERATION OF (MILLI);
+          END_TYPE;
+          TYPE IfcSIUnitName = ENUMERATION OF (METRE, SQUARE_METRE, CUBIC_METRE, RADIAN);
+          END_TYPE;
+          TYPE IfcGeometricProjectionEnum = ENUMERATION OF (MODEL_VIEW, PLAN_VIEW);
+          END_TYPE;
+          ENTITY IfcDimensionalExponents;
+          END_ENTITY;
+          ENTITY IfcAxis2Placement3D;
+          END_ENTITY;
+          ENTITY IfcDirection;
+          END_ENTITY;
+          ENTITY IfcNamedUnit;
+            Dimensions : IfcDimensionalExponents;
+            UnitType : IfcUnitEnum;
+          END_ENTITY;
+          ENTITY IfcSIUnit
+            SUBTYPE OF (IfcNamedUnit);
+            Prefix : OPTIONAL IfcSIPrefix;
+            Name : IfcSIUnitName;
+          DERIVE
+            SELF\IfcNamedUnit.Dimensions : IfcDimensionalExponents := ?;
+          END_ENTITY;
+          ENTITY IfcRepresentationContext;
+            ContextIdentifier : OPTIONAL STRING;
+            ContextType : OPTIONAL STRING;
+            CoordinateSpaceDimension : INTEGER;
+            Precision : OPTIONAL REAL;
+            WorldCoordinateSystem : IfcAxis2Placement3D;
+            TrueNorth : OPTIONAL IfcDirection;
+          END_ENTITY;
+          ENTITY IfcGeometricRepresentationContext
+            SUBTYPE OF (IfcRepresentationContext);
+          END_ENTITY;
+          ENTITY IfcGeometricRepresentationSubContext
+            SUBTYPE OF (IfcGeometricRepresentationContext);
+            ParentContext : IfcRepresentationContext;
+            TargetScale : OPTIONAL REAL;
+            TargetView : IfcGeometricProjectionEnum;
+            UserDefinedTargetView : OPTIONAL STRING;
+          DERIVE
+            SELF\IfcRepresentationContext.CoordinateSpaceDimension : INTEGER := ?;
+            SELF\IfcRepresentationContext.Precision : REAL := ?;
+            SELF\IfcRepresentationContext.WorldCoordinateSystem : IfcAxis2Placement3D := ?;
+            SELF\IfcRepresentationContext.TrueNorth : IfcDirection := ?;
+          END_ENTITY;
+        END_SCHEMA;
+        "#;
+        let schema = crate::schema::load_express(crate::schema::IfcVersion::Ifc4Add2Tc1, source)
+            .expect("fixture schema should parse");
+        SchemaDocCollection::from_docs([("IFC4".to_string(), schema)])
+    }
+
     #[test]
     fn hover_returns_schema_docs_for_entity_names_with_detected_version() {
         let text = "ISO-10303-21;HEADER;FILE_SCHEMA(('IFC4'));ENDSEC;DATA;#1=IFCWALL($);ENDSEC;END-ISO-10303-21;";
@@ -231,6 +333,22 @@ mod tests {
 
         assert!(value.contains("# IfcWall"));
         assert!(value.contains("Official documentation"));
+    }
+
+    #[test]
+    fn omitted_value_context_uses_ast_to_find_instance_and_parameter() {
+        let text = "#15=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);";
+        let document = parse_document(text);
+        let node = document
+            .node_at_position(position_at(text, "*"))
+            .expect("omitted value node should exist");
+
+        let context = crate::step::ast::omitted_value_context(node, &document.text)
+            .expect("context should resolve from AST");
+
+        assert_eq!(context.instance_id, 15);
+        assert_eq!(context.entity_name, "IFCSIUNIT");
+        assert_eq!(context.parameter_index, 0);
     }
 
     #[test]
@@ -265,6 +383,107 @@ mod tests {
     }
 
     #[test]
+    fn hover_returns_resolved_value_for_ifc_si_unit_omitted_dimensions() {
+        let text = "#15=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);";
+        let document = parse_document(text);
+
+        let hover = hover(
+            &document,
+            position_at(text, "*"),
+            &schema_docs_with_derived_attributes(),
+            Some("IFC4"),
+        )
+        .expect("hover should exist");
+        let value = hover_text(hover);
+
+        assert!(value.contains("Dimensions"));
+        assert!(value.contains("IfcDimensionalExponents(1, 0, 0, 0, 0, 0, 0)"));
+        assert!(value.contains("resolved from `Name`"));
+    }
+
+    #[test]
+    fn hover_returns_resolved_zero_dimensions_for_radian() {
+        let text = "#18=IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.);";
+        let document = parse_document(text);
+
+        let hover = hover(
+            &document,
+            position_at(text, "*"),
+            &schema_docs_with_derived_attributes(),
+            Some("IFC4"),
+        )
+        .expect("hover should exist");
+        let value = hover_text(hover);
+
+        assert!(value.contains("Dimensions"));
+        assert!(value.contains("IfcDimensionalExponents(0, 0, 0, 0, 0, 0, 0)"));
+    }
+
+    #[test]
+    fn hover_resolves_subcontext_value_from_parent_context() {
+        let text = "#7=IFCAXIS2PLACEMENT3D();\n#11=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,$,#7,$);\n#12=IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#11,$,.MODEL_VIEW.,$);";
+        let document = parse_document(text);
+
+        let hover = hover(
+            &document,
+            position_at_last(text, "*"),
+            &schema_docs_with_derived_attributes(),
+            Some("IFC4"),
+        )
+        .expect("hover should exist");
+        let value = hover_text(hover);
+
+        assert!(value.contains("TrueNorth"));
+        assert!(value.contains("TrueNorth: `$`"));
+        assert!(value.contains("resolved from `ParentContext`"));
+    }
+
+    #[test]
+    fn hover_resolves_subcontext_reference_from_parent_context() {
+        let text = "#7=IFCAXIS2PLACEMENT3D();\n#11=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,$,#7,$);\n#12=IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#11,$,.MODEL_VIEW.,$);";
+        let document = parse_document(text);
+        let first_star = text.match_indices('*').nth(2).expect("third star exists").0 as u32;
+        let prefix = &text[..first_star as usize];
+        let line = prefix.bytes().filter(|&b| b == b'\n').count() as u32;
+        let column = prefix
+            .rsplit_once('\n')
+            .map(|(_, tail)| tail.len() as u32)
+            .unwrap_or(first_star);
+
+        let hover = hover(
+            &document,
+            Position::new(line, column),
+            &schema_docs_with_derived_attributes(),
+            Some("IFC4"),
+        )
+        .expect("hover should exist");
+        let value = hover_text(hover);
+
+        assert!(value.contains("WorldCoordinateSystem"));
+        assert!(value.contains("`#7`"));
+        assert!(value.contains("#7=IFCAXIS2PLACEMENT3D();"));
+        assert!(value.contains("resolved from `ParentContext`"));
+    }
+
+    #[test]
+    fn hover_explains_unresolved_parent_context() {
+        let text = "#12=IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#99,$,.MODEL_VIEW.,$);";
+        let document = parse_document(text);
+
+        let hover = hover(
+            &document,
+            position_at(text, "*"),
+            &schema_docs_with_derived_attributes(),
+            Some("IFC4"),
+        )
+        .expect("hover should exist");
+        let value = hover_text(hover);
+
+        assert!(value.contains("CoordinateSpaceDimension"));
+        assert!(value.contains("derived value"));
+    }
+
+    #[test]
     fn hover_returns_none_without_a_syntax_tree() {
         let document = Document {
             text: "#1=IFCWALL($);".to_string(),
@@ -273,6 +492,7 @@ mod tests {
             definitions: HashMap::new(),
             references: HashMap::new(),
             instances: Vec::new(),
+            instance_indexes_by_id: HashMap::new(),
         };
 
         assert!(hover(&document, Position::new(0, 0), &empty_schema_docs(), None).is_none());
