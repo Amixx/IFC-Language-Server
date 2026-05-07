@@ -1,5 +1,7 @@
 //! LSP backend and document store.
-//! Receives protocol requests and forwards them to document and feature logic.
+//! This is the `tower-lsp` entry point: it owns the open-document map, the shared tree-sitter
+//! parser, and the in-memory schema docs used by hover and datatype diagnostics.
+//! Request handlers stay thin here and delegate document-specific work to the feature modules.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -10,15 +12,27 @@ use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer};
 use tree_sitter::Parser;
 
+use crate::config::{ServerConfig, expand_schema_candidates, parse_server_config};
+use crate::diagnostics::datatype;
 use crate::document::Document;
 use crate::features::{definition, hover, references};
-use crate::schema::SchemaDocs;
+use crate::schema::{
+    SchemaDocCollection, inspect_local_schema_name, load_local_schema, normalize_name,
+};
+
+#[derive(Debug, Default)]
+struct SchemaConfigState {
+    forced_schema_name: Option<String>,
+    additional_schema_paths: HashMap<String, std::path::PathBuf>,
+    pending_init_config: Option<ServerConfig>,
+}
 
 pub struct Backend {
     client: Client,
     documents: Arc<RwLock<HashMap<Url, Document>>>,
     parser: Arc<RwLock<Parser>>,
-    schema_docs: SchemaDocs,
+    schema_docs: Arc<RwLock<SchemaDocCollection>>,
+    schema_config: Arc<RwLock<SchemaConfigState>>,
 }
 
 impl Backend {
@@ -32,22 +46,181 @@ impl Backend {
             client,
             documents: Arc::new(RwLock::new(HashMap::new())),
             parser: Arc::new(RwLock::new(parser)),
-            schema_docs: SchemaDocs::new(),
+            schema_docs: Arc::new(RwLock::new(SchemaDocCollection::new())),
+            schema_config: Arc::new(RwLock::new(SchemaConfigState::default())),
         }
     }
 
-    async fn parse_document(&self, uri: &Url, text: String) {
-        let mut parser = self.parser.write().await;
-        let document = Document::parse(&mut parser, text);
-
+    async fn store_document(&self, document: Document, uri: &Url) {
         let mut documents = self.documents.write().await;
         documents.insert(uri.clone(), document);
+    }
+
+    async fn check_schema_support(&self, document: &Document) {
+        let forced_schema_name = self.schema_config.read().await.forced_schema_name.clone();
+
+        if let Some(forced_schema_name) = forced_schema_name.as_deref()
+            && let Some(document_schema_name) = document.schema_name.as_deref()
+        {
+            let normalized_document_schema_name = normalize_name(document_schema_name);
+            if normalized_document_schema_name != forced_schema_name {
+                self.client
+                    .show_message(
+                        MessageType::WARNING,
+                        format!(
+                            "This IFC file declares schema `{}`, but the server is configured to force schema `{}`. Diagnostics and hover information use the forced schema.",
+                            normalized_document_schema_name,
+                            forced_schema_name
+                        ),
+                    )
+                    .await;
+            }
+        }
+
+        if self.selected_schema_name(document).await.is_none() {
+            self.client
+                .show_message(
+                    MessageType::WARNING,
+                    "This IFC file uses an unknown or unsupported schema version. Schema-aware diagnostics and hover information may be incomplete.",
+                )
+                .await;
+        }
+    }
+
+    async fn parse_document(&self, uri: &Url, text: String) -> Document {
+        let mut parser = self.parser.write().await;
+        let document = Document::parse(&mut parser, text);
+        drop(parser);
+        let selected_schema_name = self.selected_schema_name(&document).await;
+        let diagnostics = if let Some(schema_name) = selected_schema_name.as_deref() {
+            let schema_docs = self.schema_docs.read().await;
+            schema_docs
+                .get(schema_name)
+                .map(|schema| datatype::collect(&document, schema))
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+
+        self.client
+            .publish_diagnostics(uri.clone(), diagnostics, None)
+            .await;
+        document
+    }
+
+    async fn selected_schema_name(&self, document: &Document) -> Option<String> {
+        let (forced_schema_name, additional_path) = {
+            let schema_config = self.schema_config.read().await;
+            let forced_schema_name = schema_config.forced_schema_name.clone();
+            let additional_path = document.schema_name.as_ref().and_then(|schema_name| {
+                schema_config
+                    .additional_schema_paths
+                    .get(&normalize_name(schema_name))
+                    .cloned()
+            });
+            (forced_schema_name, additional_path)
+        };
+
+        if let Some(schema_name) = forced_schema_name {
+            return Some(schema_name);
+        }
+
+        let schema_name = document.schema_name.as_ref()?;
+        let normalized = normalize_name(schema_name);
+
+        {
+            let schema_docs = self.schema_docs.read().await;
+            if schema_docs.get(&normalized).is_some() {
+                return Some(normalized);
+            }
+        }
+
+        let path = additional_path?;
+        match load_local_schema(&path) {
+            Ok((loaded_schema_name, schema)) => {
+                let normalized_loaded = normalize_name(&loaded_schema_name);
+                let mut schema_docs = self.schema_docs.write().await;
+                if schema_docs.get(&normalized_loaded).is_none() {
+                    schema_docs.insert(&loaded_schema_name, schema);
+                }
+                Some(normalized_loaded)
+            }
+            Err(error) => {
+                self.client
+                    .log_message(MessageType::WARNING, error.to_string())
+                    .await;
+                None
+            }
+        }
+    }
+
+    async fn apply_config(&self, config: ServerConfig) {
+        let mut schema_docs = SchemaDocCollection::new();
+        let mut next_state = SchemaConfigState::default();
+
+        if let Some(path) = config.overwrite_exp_schema_with_local.as_ref() {
+            match load_local_schema(path) {
+                Ok((schema_name, schema)) => {
+                    next_state.forced_schema_name = Some(normalize_name(&schema_name));
+                    schema_docs.insert(&schema_name, schema);
+                }
+                Err(error) => {
+                    self.client
+                        .log_message(MessageType::WARNING, error.to_string())
+                        .await;
+                }
+            }
+        }
+
+        for path in &config.add_local_schema_to_selection {
+            for candidate in expand_schema_candidates(path) {
+                match inspect_local_schema_name(&candidate) {
+                    Ok(schema_name) => {
+                        let normalized = normalize_name(&schema_name);
+                        if let Some(previous) = next_state
+                            .additional_schema_paths
+                            .insert(normalized.clone(), candidate.clone())
+                        {
+                            self.client
+                                .log_message(
+                                    MessageType::WARNING,
+                                    format!(
+                                        "Duplicate local schema `{}` configured at `{}` and `{}`; using `{}`",
+                                        normalized,
+                                        previous.display(),
+                                        candidate.display(),
+                                        candidate.display()
+                                    ),
+                                )
+                                .await;
+                        }
+                    }
+                    Err(error) => {
+                        self.client
+                            .log_message(MessageType::WARNING, error.to_string())
+                            .await;
+                    }
+                }
+            }
+        }
+
+        *self.schema_docs.write().await = schema_docs;
+        *self.schema_config.write().await = next_state;
     }
 }
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+    async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
+        let pending_init_config = params
+            .initialization_options
+            .as_ref()
+            .map(parse_server_config)
+            .unwrap_or_default();
+
+        let mut schema_config = self.schema_config.write().await;
+        schema_config.pending_init_config = Some(pending_init_config);
+
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
@@ -66,6 +239,20 @@ impl LanguageServer for Backend {
         self.client
             .log_message(MessageType::INFO, "IFC LSP server initialized!")
             .await;
+
+        let load_errors = self.schema_docs.read().await.load_errors().to_vec();
+        for error in load_errors {
+            self.client.log_message(MessageType::WARNING, error).await;
+        }
+
+        let pending_init_config = {
+            let mut schema_config = self.schema_config.write().await;
+            schema_config.pending_init_config.take()
+        };
+
+        if let Some(config) = pending_init_config {
+            self.apply_config(config).await;
+        }
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -80,19 +267,24 @@ impl LanguageServer for Backend {
             .log_message(MessageType::INFO, format!("Document opened: {}", uri))
             .await;
 
-        self.parse_document(&uri, text).await;
+        let document = self.parse_document(&uri, text).await;
+        self.check_schema_support(&document).await;
+        self.store_document(document, &uri).await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri;
         if let Some(change) = params.content_changes.into_iter().next() {
-            self.parse_document(&uri, change.text).await;
+            let document = self.parse_document(&uri, change.text).await;
+            self.check_schema_support(&document).await;
+            self.store_document(document, &uri).await;
         }
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         let uri = params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
+        let forced_schema_name = self.schema_config.read().await.forced_schema_name.clone();
 
         let documents = self.documents.read().await;
         let document = match documents.get(&uri) {
@@ -112,8 +304,14 @@ impl LanguageServer for Backend {
                 )
                 .await;
         }
+        let schema_docs = self.schema_docs.read().await;
 
-        Ok(hover::hover(document, position, &self.schema_docs))
+        Ok(hover::hover(
+            document,
+            position,
+            &schema_docs,
+            forced_schema_name.as_deref(),
+        ))
     }
 
     async fn goto_definition(

@@ -1,5 +1,7 @@
 //! Go-to-definition feature entry point.
-//! Resolves entity id references to local definitions.
+//! Resolves local `#id` references to their defining entity instances in the same document.
+//! Cross-file lookup and schema-level symbol navigation are intentionally not handled here.
+
 use crate::document::Document;
 use tower_lsp::lsp_types::{GotoDefinitionResponse, Location, Position, Url};
 

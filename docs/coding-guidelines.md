@@ -26,7 +26,7 @@ cargo fmt
 
 ## Architectural Discipline
 
-- Keep changes aligned with the current `Backend` / `Document` / `SchemaDocs` split.
+- Keep changes aligned with the current `Backend` / `Document` / `SchemaDocCollection` split.
 - Prefer feature logic that operates on `&Document` instead of pushing more logic into the LSP trait implementation.
 - Preserve the current single-document model unless the work explicitly requires widening scope.
 - Prefer full-document reparsing over incremental parsing complexity unless there is a demonstrated need.
@@ -61,13 +61,6 @@ cargo fmt
 - When changing parsing, indexing, version detection, schema loading, or hover rendering, update tests in the same module.
 - Add targeted tests for definition and references behavior when changing those modules, since current coverage there is thin.
 - Use short IFC snippets in tests unless a repository sample file is clearly more useful.
-
-## Schema Doc Assets
-
-- Treat `data/schema-docs/*.json` as generated artifacts.
-- When schema-doc structure or extraction logic changes, update the corresponding script in `scripts/` and regenerate the JSON instead of hand-editing generated output.
-- Keep generator scripts small and deterministic.
-- Avoid adding Python dependencies for the generator scripts without explicit approval.
 
 ## Scope Discipline
 

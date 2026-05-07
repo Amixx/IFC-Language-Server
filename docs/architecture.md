@@ -6,24 +6,26 @@
 
 This project currently stays small and focused.
 
-The implemented architecture is built around one open IFC document, one tree-sitter parse, and a small in-memory index that supports the currently shipped LSP features:
+The implemented architecture is built around one open IFC document, one tree-sitter parse, a small in-memory document index, and generated in-memory schema documentation that support the currently shipped LSP features:
 
 - hover
 - go-to-definition
 - find-references
+- schema-aware diagnostics
 
 ## Core Design
 
-The codebase currently revolves around three main runtime concepts:
+The codebase currently revolves around four main runtime concepts:
 
 - `Backend`
-  The `tower-lsp` entrypoint. It owns the open-document map, a shared `tree_sitter::Parser`, and bundled schema docs.
+  The `tower-lsp` entrypoint. It owns the open-document map, a shared `tree_sitter::Parser`, and the in-memory schema docs used for hover and diagnostics.
 - `Document`
-  The parsed state of one IFC file. It stores the source text, optional syntax tree, detected schema version, definitions, and references.
-- `SchemaDocs`
-  A synchronous in-memory lookup for bundled IFC entity documentation by schema version and entity name.
+  The parsed state of one IFC file. It stores the source text, optional syntax tree, detected schema version, definitions, references, and parsed entity-instance arguments.
+- `SchemaDocCollection` & `SchemaDoc`
+  A synchronous in-memory lookup for IFC entity & type documentation by schema version and entity name.
 
 Feature modules in `src/features/` stay thin and operate on `&Document`.
+Diagnostics operate on `&Document` plus `&SchemaDoc`/`SchemaDocCollection`.
 
 ## Data Flow
 
@@ -32,8 +34,10 @@ The current flow is:
 1. An editor opens a document or sends a full-text change.
 2. `Backend` reparses the full text with the shared tree-sitter parser.
 3. `Document::parse` detects the schema version and rebuilds the per-document indexes.
-4. The rebuilt `Document` replaces the previous entry in the backend's `HashMap<Url, Document>`.
-5. Hover, definition, and references handlers read directly from that stored `Document`.
+4. If the schema version is supported, the matching `SchemaDoc` is used to collect diagnostics & entity hover info.
+5. `Backend` publishes diagnostics to the LSP client.
+6. The rebuilt `Document` replaces the previous entry in the backend's `HashMap<Url, Document>`.
+7. Hover, definition, references, and diagnostics all read from that stored `Document`.
 
 There is no incremental parsing, background indexing, or cross-document state.
 
@@ -44,7 +48,7 @@ There is no incremental parsing, background indexing, or cross-document state.
 - `client: Client`
 - `documents: Arc<RwLock<HashMap<Url, Document>>>`
 - `parser: Arc<RwLock<Parser>>`
-- `schema_docs: SchemaDocs`
+- `schema_docs: SchemaDocCollection`
 
 The server currently advertises these capabilities:
 
@@ -53,7 +57,7 @@ The server currently advertises these capabilities:
 - `textDocument/definition`
 - `textDocument/references`
 
-Diagnostics are not published yet.
+Diagnostics are published via `textDocument/publishDiagnostics` on open and change.
 
 ## Document Model
 
@@ -66,11 +70,13 @@ pub struct Document {
     pub version: Option<IfcVersion>,
     pub definitions: HashMap<u32, DefinitionInfo>,
     pub references: HashMap<u32, Vec<Range>>,
+    pub instances: Vec<EntityInstanceInfo>,
 }
 
 pub struct DefinitionInfo {
     pub id_range: Range,
     pub entity_range: Range,
+    pub entity_name: String,
 }
 ```
 
@@ -83,16 +89,73 @@ Important details:
 - `version`
   Detected with a simple `FILE_SCHEMA` text scan. Unknown schemas remain `None`.
 - `definitions`
-  Maps numeric ids such as `123` to both the `instance_id` range and the full entity-instance range.
+  Maps numeric ids such as `123` to the `instance_id` range, full entity-instance range, and defining entity name.
 - `references`
   Maps numeric ids to all `reference` ranges in the same document.
+- `instances`
+  Stores parsed `entity_instance` values, including entity name, argument ranges, and structured parameter values used by diagnostics.
 
 The document index is built by traversing the syntax tree and recording:
 
 - `entity_instance` nodes for definitions
 - `reference` nodes for references
+- parameter values such as strings, numbers, references, enumerations, `$`, `*`, lists, and inline typed values
 
 Ids are stored as `u32`, not as raw `#123` strings.
+
+## Schema Documentation
+
+The `SchemaDoc` and `SchemaDocCollection` structs are defined as follows:
+
+```rust
+pub struct EntityAttributeDoc {
+    pub name: String,
+    pub type_name: String,
+    pub declared_in: String,
+    pub ty: TypeRef,
+    pub optional: bool,
+    pub allows_omitted: bool,
+}
+
+pub struct EntityDoc {
+    pub name: String,
+    pub attributes: Vec<EntityAttributeDoc>,
+    pub url: String,
+    pub all_supertypes: HashSet<String>,
+}
+
+pub enum TypeDoc {
+    Alias(AliasTypeDef),
+    Enumeration(EnumerationTypeDef),
+    Select(SelectTypeDef),
+}
+
+pub struct SchemaDoc {
+    pub entities: HashMap<String, EntityDoc>,
+    pub types: HashMap<String, TypeDoc>,
+}
+
+pub struct SchemaDocCollection {
+    pub docs: HashMap<IfcVersion, SchemaDoc>,
+}
+```
+
+A `SchemaDoc` contains information about:
+- Entities:
+  - attributes
+  - attribute types
+  - where attributes have been declared
+  - inheritance
+- Types:
+  - Alias Types (e.g., a wrapper around a primitive)
+  - Enumeration Types (e.g. one of a set of values)
+  - Select Types (can be one of many types)
+
+The `SchemaDoc` is the single-source of truth for all information about entities and types of an IfcVersion, with all relevant hover and diagnostics information sourced from it. A `SchemaDocCollection` is simply a collection of those docs by IfcVersion.
+
+The official EXPRESS definitions for the supported IfcVersions are fetched from buildingSMART at compile time by `build.rs`, written into Cargo's `OUT_DIR`, and embedded into the binary with `include_str!`. At runtime startup, the LS reads those bundled EXPRESS strings and parses them with the `espr` crate to build the in-memory `SchemaDocCollection`. `load_express` is the central conversion function from EXPRESS text to `SchemaDoc`; support for custom IFC EXPRESS definitions is also possible in the future.
+
+This keeps runtime startup and restart offline-safe for the officially supported schemas while still avoiding checked-in EXPRESS files in the repository. Fresh builds do require network access to fetch the official EXPRESS inputs. If parsing a bundled supported schema fails, that schema is omitted from the `SchemaDocCollection`, the backend logs a warning, and schema-aware hover and diagnostics are unavailable for that IfcVersion.
 
 ## tree-sitter Integration
 
@@ -113,7 +176,7 @@ The tree-sitter grammar remains the source of truth for IFC syntax recognition. 
 
 `src/features/hover.rs` currently supports:
 
-- entity-name hover for `entity_name` nodes when `Document::version` is known and bundled docs exist
+- entity-name hover for `entity_name` nodes when `Document::version` is known and a matching loaded `SchemaDoc` exists
 - reference hover for `reference` nodes by rendering the full defining entity instance as an IFC code block
 - a generic instructional hover for other node kinds
 
@@ -124,7 +187,7 @@ Entity hover currently renders:
 - a direct-attribute table
 - a link to the official documentation page
 
-Although the generated JSON assets include more data, the runtime `EntityDoc` currently consumes only:
+Although the `SchemaDoc` include more data, the current hover rendering consumes only:
 
 - `name`
 - `attributes`
@@ -148,39 +211,46 @@ It returns:
 - the definition location if present
 - every indexed reference location for the same id in the same document
 
-## Schema Documentation Assets
+### Diagnostics
 
-Schema documentation is bundled into the binary with `include_str!` from:
+`src/diagnostics/datatype.rs` currently validates IFC entity instance arguments against runtime schema documentation.
 
-- `data/schema-docs/ifc2x3_tc1_express_docs.json`
-- `data/schema-docs/ifc4_add2_tc1_express_docs.json`
-- `data/schema-docs/ifc4x3_add2_express_docs.json`
+The current diagnostics provider supports:
 
-These files are generated by the scripts in `scripts/` and loaded eagerly by `SchemaDocs::new()`.
+- wrong local reference target types
+- unresolved local references
+- primitive datatype mismatches
+- enumeration mismatches
+- argument-count mismatches
+- invalid `$` usage for required attributes
+- invalid `*` usage except where an inherited attribute is derived in a subtype
+- aggregate cardinality/type mismatches
+- `SELECT` branch validation
+- inline typed values such as `IFCLABEL('Name')`
 
-Hover requests do not fetch documentation over the network.
+The current provider does not yet evaluate general EXPRESS `WHERE` rules.
+
 
 ## Project Structure
 
 The current codebase is intentionally small:
 
 ```text
+build.rs
 src/
   main.rs
   backend.rs
+  diagnostics/
+    mod.rs
+    datatype.rs
   document.rs
-  schema.rs
+  schema/
+    *.rs
   features/
     mod.rs
     hover.rs
     definition.rs
     references.rs
-data/
-  schema-docs/
-scripts/
-  generate_ifc2x3_express_docs.py
-  generate_ifc4_express_docs.py
-  generate_ifc4x3_express_docs.py
 samples/
   *.ifc
 ```
@@ -193,6 +263,8 @@ Existing tests mainly cover:
 
 - document parsing and index building
 - schema-doc loading
+- EXPRESS schema loading and resolution
+- datatype diagnostics behavior
 - hover rendering behavior
 
 There is not yet dedicated test coverage for the definition and references modules, even though those features are implemented.
@@ -204,7 +276,6 @@ The current project should continue to avoid:
 - cross-file indexing
 - incremental parsing infrastructure
 - background worker systems
-- runtime schema downloads
 - large abstraction layers or service registries
 - premature support for unimplemented LSP features
 

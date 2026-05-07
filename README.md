@@ -9,6 +9,12 @@
 - Hover preview for entity references such as `#123`
 - Go-to-definition for local entity references
 - Find-references within the current document
+- Schema-aware diagnostics for:
+  - invalid local reference targets
+  - primitive datatype mismatches
+  - invalid enumeration values
+  - incorrect entity argument counts
+  - invalid `$` / `*` usage for attributes
 
 ## Supported IFC Schema Versions
 
@@ -22,7 +28,7 @@ Bundled entity documentation is currently included for:
 
 - Single-document navigation only
 - Full-document reparsing on open and change
-- No semantic diagnostics yet
+- Diagnostics currently focus on entity-instance argument validation, not full EXPRESS rule evaluation
 - No completion, rename, code actions, or formatting support
 - Syntax highlighting depends on editor grammar support such as `tree-sitter-ifc`; it is not provided by the LSP server itself
 
@@ -68,6 +74,39 @@ cargo run --release
 
 The server communicates over `stdin`/`stdout` and is intended to be launched by an LSP client.
 
+### Configuration
+
+The server accepts configuration through LSP `initializationOptions`.
+
+Supported options:
+
+- `overwriteExpSchemaWithLocal`
+  - A single path to a local `.exp` file.
+  - If set, the server always uses that schema for diagnostics and hover, regardless of the `FILE_SCHEMA(...)` declared in the IFC file.
+  - If the forced schema does not match the schema declared in the IFC file, the server shows a warning and continues with the forced schema.
+
+- `addLocalSchemaToSelection`
+  - A list of local paths.
+  - Each path may point to either:
+    - a single `.exp` file
+    - a directory containing `.exp` files
+  - These schemas are added to the server's schema selection pool.
+  - When an IFC file declares a schema name that is not bundled, the server checks the configured local schemas for an exact `SCHEMA ...;` name match and loads the matching schema on demand.
+
+Configuration changes currently require restarting the server.
+
+Example `initializationOptions`:
+
+```json
+{
+  "overwriteExpSchemaWithLocal": "/Users/alice/dev/express/IFC4x2.exp",
+  "addLocalSchemaToSelection": [
+    "/Users/alice/dev/express/IFC4x1.exp",
+    "/Users/alice/dev/express/custom-schemas"
+  ]
+}
+```
+
 ### Tests
 
 Run the test suite with:
@@ -93,6 +132,7 @@ This project uses:
 
 - [Architecture](./docs/architecture.md)
 - [Coding Guidelines](./docs/coding-guidelines.md)
+- [Diagnostics Capabilities](./docs/diagnostics-capabilities.md)
 - [Requirements](./docs/requirements.md)
 
 ## Contributing

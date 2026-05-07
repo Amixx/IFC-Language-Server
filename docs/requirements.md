@@ -4,7 +4,7 @@
 
 ## Scope
 
-### Supported IFC Schema Versions
+### Included Support for IFC Schema Versions:
 
 See [IFC Schema Specifications](https://technical.buildingsmart.org/standards/ifc/ifc-schema-specifications/):
 - IFC 2.3.0.1  
@@ -13,6 +13,13 @@ See [IFC Schema Specifications](https://technical.buildingsmart.org/standards/if
   https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/EXPRESS/IFC4.exp
 - IFC 4.3.2.0  
   https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/IFC4X3_ADD2.exp
+
+For these officially supported versions:
+
+- the repository should not store local EXPRESS files
+- the official EXPRESS definitions should be fetched at compile time
+- the fetched EXPRESS source should be embedded into the binary
+- language-server startup and restart should not require network access to load official schemas
 
 ## Features
 
@@ -51,14 +58,12 @@ The language server should implement find references functionality for IFC symbo
 
 For the current scope, this should be limited to a single document. Cross-file indexing is not required.
 
-### Semantic Checking
+### Schema Diagnostics
 
-When an IFC STEP P21 file violates IFC or STEP structural or semantic rules, the language server should report diagnostics for the affected source range.
+The LS should provide schema-aware diagnostics for things like:
 
-Examples include:
+- Datatype checking (e.g., a reference points to IFCOWNERHITORY, even though it should point to an IFCWALL)
+- Unsupported IfcVersions (e.g. display message to user)
+- Entity Schema Compliance (e.g., IFCALIGNMENT is not part of IFC2x3)
 
-- missing required STEP envelope sections such as `ISO-10303-21`, `HEADER`, `DATA`, or `END-ISO-10303-21`
-- invalid or inconsistent entity references
-- values that do not match the expected type or role for a referenced attribute
-
-Diagnostics should highlight the most relevant range in the document and distinguish errors from less severe issues where appropriate.
+Appropriate user-facing information (underlining, hover text) is part of the diagnostics.
