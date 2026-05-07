@@ -45,14 +45,7 @@ pub fn hover(
         }
     }
 
-    Some(Hover {
-        contents: HoverContents::Markup(MarkupContent {
-            kind: MarkupKind::Markdown,
-            value: "Hover over an IFC entity name (like `IFCWALL`) to see documentation."
-                .to_string(),
-        }),
-        range: None,
-    })
+    None
 }
 
 fn render_entity_hover(entity_doc: &EntityDoc) -> String {
@@ -241,23 +234,6 @@ mod tests {
     }
 
     #[test]
-    fn hover_returns_generic_message_for_non_entity_name_nodes() {
-        let text = "#1=IFCWALL($);";
-        let document = parse_document(text);
-
-        let hover = hover(
-            &document,
-            position_at(text, "#1"),
-            &empty_schema_docs(),
-            None,
-        )
-        .expect("hover exists");
-        let value = hover_text(hover);
-
-        assert!(value.contains("Hover over an IFC entity name"));
-    }
-
-    #[test]
     fn hover_returns_definition_preview_for_references() {
         let text = "#1=IFCWALL($);\n#2=IFCDOOR(#1);";
         let document = parse_document(text);
@@ -284,12 +260,8 @@ mod tests {
             position_at(text, "#1"),
             &empty_schema_docs(),
             None,
-        )
-        .expect("hover exists");
-        let value = hover_text(hover);
-
-        assert!(value.contains("Hover over an IFC entity name"));
-        assert!(!value.contains("Reference target"));
+        );
+        assert!(hover.is_none())
     }
 
     #[test]
