@@ -16,4 +16,5 @@ tree-sitter = "0.26"
 tree-sitter-ifc = "0.1.0"
 
 [build-dependencies]
+sha2 = "0.10"
 ureq = "3"

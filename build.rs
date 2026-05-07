@@ -1,24 +1,25 @@
-//! Build-time bundling of official IFC EXPRESS definitions.
-//! The three supported schemas are downloaded during compilation and written into `OUT_DIR` so the
-//! runtime can include them in the binary without storing EXPRESS files in the repository.
-
 use std::env;
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 
-const SCHEMAS: &[(&str, &str)] = &[
+use sha2::{Digest, Sha256};
+
+const SCHEMAS: &[(&str, &str, &str)] = &[
     (
         "ifc2x3_tc1.exp",
         "https://standards.buildingsmart.org/IFC/RELEASE/IFC2x3/TC1/EXPRESS/IFC2X3_TC1.exp",
+        "e18a1b2c3e29f5256904c83378ccad0850f52287a8d0122d149aba4a417fe5e5",
     ),
     (
         "ifc4_add2_tc1.exp",
         "https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/EXPRESS/IFC4.exp",
+        "a2704ba20a1b3d0b7d9b61d6fd37d0baa3b4996ba3e90d968a1d2ca2819d1046",
     ),
     (
         "ifc4x3_add2.exp",
         "https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/IFC4X3_ADD2.exp",
+        "f67c8762b13a099c28082061e6f16b9ef1284ceec34069792afc702725675860",
     ),
 ];
 
@@ -28,8 +29,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     let out_dir = PathBuf::from(env::var("OUT_DIR")?).join("express");
     fs::create_dir_all(&out_dir)?;
 
-    for (file_name, url) in SCHEMAS {
-        let source = ureq::get(*url).call()?.body_mut().read_to_string()?;
+    for (file_name, url, expected_sha256) in SCHEMAS {
+        let source = ureq::get(*url).call()?.body_mut().read_to_vec()?;
+        let actual_sha256 = format!("{:x}", Sha256::digest(&source));
+
+        if actual_sha256 != *expected_sha256 {
+            return Err(format!(
+                "checksum mismatch for {}: expected {}, got {}",
+                file_name, expected_sha256, actual_sha256
+            )
+            .into());
+        }
+
         fs::write(out_dir.join(file_name), source)?;
     }
 
