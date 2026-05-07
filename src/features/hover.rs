@@ -295,6 +295,7 @@ mod tests {
     /// This test breaks when markdown shape changes.
     #[test]
     fn render_entity_hover_renders_inherited_and_direct_attribute_tables() {
+        // Create fake EntityDoc with inherited and direct attributes
         let entity = EntityDoc {
             name: "IfcWall".to_string(),
             attributes: vec![
@@ -338,6 +339,7 @@ mod tests {
     /// Test that the markdown rendering for entity hover omits the inherited table when it is empty.
     #[test]
     fn render_entity_hover_omits_empty_inherited_table() {
+        // Create fake EntityDoc with empty inherited table
         let entity = EntityDoc {
             name: "IfcRoot".to_string(),
             attributes: vec![EntityAttributeDoc {
