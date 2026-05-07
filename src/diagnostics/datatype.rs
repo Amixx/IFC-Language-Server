@@ -393,6 +393,7 @@ fn node_range(node: &tree_sitter::Node<'_>) -> tower_lsp::lsp_types::Range {
     }
 }
 
+//*----- TESTS BEGIN HERE -----*
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -404,6 +405,7 @@ mod tests {
     use crate::document::Document;
     use crate::schema::{IfcVersion, load_express};
 
+    /// Helper function to parse a document and return the result.
     fn parse_document(text: &str) -> Document {
         let mut parser = Parser::new();
         parser
@@ -412,10 +414,12 @@ mod tests {
         Document::parse(&mut parser, text.to_string())
     }
 
+    /// Helper function to load a schema from a fixture source string.
     fn schema_from(source: &str) -> SchemaDoc {
         load_express(IfcVersion::Ifc4Add2Tc1, source).expect("fixture schema should parse")
     }
 
+    /// Helper function to create a test schema from a string.
     fn test_schema() -> SchemaDoc {
         schema_from(
             r#"
@@ -436,6 +440,7 @@ mod tests {
         )
     }
 
+    /// Test that the datatype validator reports mismatched attribute types.
     #[test]
     fn datatype_validator_reports_mismatched_attribute_type() {
         let doc = parse_document("#1=IFCWALL(123,.MOVABLE.);");
@@ -446,6 +451,7 @@ mod tests {
         assert!(diagnostics[0].message.contains("expected string"));
     }
 
+    /// Test that the datatype validator accepts valid values.
     #[test]
     fn datatype_validator_accepts_valid_values() {
         let doc = parse_document("#1=IFCWALL('gid',.MOVABLE.);");
@@ -454,8 +460,10 @@ mod tests {
         assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
 
+    /// Test that the datatype validator reports unresolved references.
     #[test]
     fn datatype_validator_reports_unresolved_reference() {
+        // `tree` is not necessary for this test, as the validator resolves references without it.
         let document = Document {
             text: "#1=IFCWALL('gid',.MOVABLE.);".to_string(),
             tree: None,
@@ -519,6 +527,8 @@ mod tests {
         assert!(diagnostics[0].message.contains("does not resolve"));
     }
 
+    /// Test that the datatype validator allows omitted (`*`) values for inherited
+    /// attributes that are marked as derived on the concrete entity.
     #[test]
     fn datatype_validator_allows_omitted_for_derived_inherited_attribute() {
         let schema = schema_from(
@@ -553,8 +563,10 @@ mod tests {
         assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
 
+    /// Test that the datatype validator reports invalid STEP syntax.
     #[test]
     fn datatype_validator_reports_invalid_step_syntax() {
+        // string literals in STEP use single quotes instead of double quotes.
         let doc = parse_document(r#"#14=IFCUNITASSIGNMENT((#15,#16,#17, "test"));"#);
         let diagnostics = collect(&doc, &test_schema());
 
@@ -566,6 +578,7 @@ mod tests {
         );
     }
 
+    /// Test that the datatype validator accepts inline typed values for selects.
     #[test]
     fn datatype_validator_accepts_inline_typed_values_for_selects() {
         let schema = schema_from(
