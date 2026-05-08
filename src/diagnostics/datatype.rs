@@ -5,17 +5,22 @@
 
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 
-use crate::document::{Document, ParameterValue};
+use crate::document::{Document, EntityInstanceInfo, ParameterValue};
 use crate::schema::{
     AggregateKind, AggregateTypeRef, BoundValue, EntityAttributeDoc, EntityDoc, NamedTypeKind,
     PrimitiveType, SchemaDoc, SelectTypeDef, TypeDoc, TypeRef,
 };
 
-pub fn collect(document: &Document, schema: &SchemaDoc) -> Vec<Diagnostic> {
+pub fn collect_with_schema_name(
+    document: &Document,
+    schema: &SchemaDoc,
+    schema_name: Option<&str>,
+) -> Vec<Diagnostic> {
     let mut diagnostics = collect_syntax_diagnostics(document);
 
     for instance in &document.instances {
         let Some(entity) = schema.entity(&instance.entity_name) else {
+            diagnostics.push(unknown_entity_diagnostic(instance, schema_name));
             continue;
         };
 
@@ -29,7 +34,7 @@ fn validate_instance(
     document: &Document,
     schema: &SchemaDoc,
     entity: &EntityDoc,
-    instance: &crate::document::EntityInstanceInfo,
+    instance: &EntityInstanceInfo,
     diagnostics: &mut Vec<Diagnostic>,
 ) {
     if instance.parameters.len() != entity.attributes.len() {
@@ -57,6 +62,25 @@ fn validate_instance(
                 ..Default::default()
             });
         }
+    }
+}
+
+fn unknown_entity_diagnostic(
+    instance: &EntityInstanceInfo,
+    schema_name: Option<&str>,
+) -> Diagnostic {
+    let schema_context = schema_name
+        .map(|name| format!(" in selected schema `{}`", name))
+        .unwrap_or_else(|| " in the selected schema".to_string());
+
+    Diagnostic {
+        range: instance.entity_name_range,
+        severity: Some(DiagnosticSeverity::ERROR),
+        message: format!(
+            "Unknown IFC entity `{}`{}",
+            instance.entity_name, schema_context
+        ),
+        ..Default::default()
     }
 }
 
@@ -439,7 +463,7 @@ mod tests {
     #[test]
     fn datatype_validator_reports_mismatched_attribute_type() {
         let doc = parse_document("#1=IFCWALL(123,.MOVABLE.);");
-        let diagnostics = collect(&doc, &test_schema());
+        let diagnostics = collect_with_schema_name(&doc, &test_schema(), None);
 
         assert_eq!(diagnostics.len(), 1);
         assert!(diagnostics[0].message.contains("GlobalId"));
@@ -449,7 +473,7 @@ mod tests {
     #[test]
     fn datatype_validator_accepts_valid_values() {
         let doc = parse_document("#1=IFCWALL('gid',.MOVABLE.);");
-        let diagnostics = collect(&doc, &test_schema());
+        let diagnostics = collect_with_schema_name(&doc, &test_schema(), None);
 
         assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
@@ -514,7 +538,7 @@ mod tests {
             "#,
         );
 
-        let diagnostics = collect(&document, &schema);
+        let diagnostics = collect_with_schema_name(&document, &schema, None);
 
         assert_eq!(diagnostics.len(), 1);
         assert!(diagnostics[0].message.contains("does not resolve"));
@@ -549,7 +573,7 @@ mod tests {
         );
 
         let doc = parse_document("#15=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);");
-        let diagnostics = collect(&doc, &schema);
+        let diagnostics = collect_with_schema_name(&doc, &schema, None);
 
         assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
@@ -557,7 +581,7 @@ mod tests {
     #[test]
     fn datatype_validator_reports_invalid_step_syntax() {
         let doc = parse_document(r#"#14=IFCUNITASSIGNMENT((#15,#16,#17, "test"));"#);
-        let diagnostics = collect(&doc, &test_schema());
+        let diagnostics = collect_with_schema_name(&doc, &test_schema(), None);
 
         assert!(
             diagnostics
@@ -593,7 +617,7 @@ mod tests {
         let doc = parse_document(
             "#1=IFCPROPERTYSINGLEVALUE('Name',$,IFCLABEL('Living Room'));\n#2=IFCPROPERTYSINGLEVALUE('Offset',$,IFCLENGTHMEASURE(2.6));",
         );
-        let diagnostics = collect(&doc, &schema);
+        let diagnostics = collect_with_schema_name(&doc, &schema, None);
 
         assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
