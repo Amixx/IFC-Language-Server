@@ -505,6 +505,7 @@ mod tests {
                     },
                 ],
             }],
+            instance_indexes_by_id: HashMap::from([(1, 0)]),
         };
 
         let schema = schema_from(
