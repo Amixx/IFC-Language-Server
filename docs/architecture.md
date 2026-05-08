@@ -217,6 +217,7 @@ It returns:
 
 The current diagnostics provider supports:
 
+- schema non-compliant entity names
 - wrong local reference target types
 - unresolved local references
 - primitive datatype mismatches
