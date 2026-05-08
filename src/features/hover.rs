@@ -266,6 +266,7 @@ mod tests {
         SchemaDocCollection::from_docs([("IFC4".to_string(), schema)])
     }
 
+    /// Test schema docs include derived attributes for entities.
     fn schema_docs_with_derived_attributes() -> SchemaDocCollection {
         let source = r#"
         SCHEMA IFC4;
@@ -362,22 +363,6 @@ mod tests {
     }
 
     #[test]
-    fn omitted_value_context_uses_ast_to_find_instance_and_parameter() {
-        let text = "#15=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);";
-        let document = parse_document(text);
-        let node = document
-            .node_at_position(position_at(text, "*"))
-            .expect("omitted value node should exist");
-
-        let context = crate::step::ast::omitted_value_context(node, &document.text)
-            .expect("context should resolve from AST");
-
-        assert_eq!(context.instance_id, 15);
-        assert_eq!(context.entity_name, "IFCSIUNIT");
-        assert_eq!(context.parameter_index, 0);
-    }
-
-    #[test]
     fn hover_returns_definition_preview_for_references() {
         let text = "#1=IFCWALL($);\n#2=IFCDOOR(#1);";
         let document = parse_document(text);
@@ -409,210 +394,110 @@ mod tests {
         assert!(hover.is_none());
     }
 
+    /// Test that hover returns the resolved value for an IFC SI unit with omitted dimensions.
+    #[test]
+    fn hover_returns_resolved_value_for_ifc_si_unit_omitted_dimensions() {
+        let text = "#15=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);";
+        let document = parse_document(text);
+
+        let hover = hover(
+            &document,
+            position_at(text, "*"),
+            &schema_docs_with_derived_attributes(),
+            Some("IFC4"),
+        )
+        .expect("hover should exist");
+        let value = hover_text(hover);
+
+        assert!(value.contains("Dimensions"));
+        assert!(value.contains("IfcDimensionalExponents(1, 0, 0, 0, 0, 0, 0)"));
+        assert!(value.contains("resolved from `Name`"));
+    }
+
+    #[test]
+    fn hover_returns_resolved_zero_dimensions_for_radian() {
+        let text = "#18=IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.);";
+        let document = parse_document(text);
+
+        let hover = hover(
+            &document,
+            position_at(text, "*"),
+            &schema_docs_with_derived_attributes(),
+            Some("IFC4"),
+        )
+        .expect("hover should exist");
+        let value = hover_text(hover);
+
+        assert!(value.contains("Dimensions"));
+        assert!(value.contains("IfcDimensionalExponents(0, 0, 0, 0, 0, 0, 0)"));
+    }
+
+    #[test]
+    fn hover_resolves_subcontext_value_from_parent_context() {
+        let text = "#7=IFCAXIS2PLACEMENT3D();\n#11=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,$,#7,$);\n#12=IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#11,$,.MODEL_VIEW.,$);";
+        let document = parse_document(text);
+
+        let hover = hover(
+            &document,
+            position_at_last(text, "*"),
+            &schema_docs_with_derived_attributes(),
+            Some("IFC4"),
+        )
+        .expect("hover should exist");
+        let value = hover_text(hover);
+
+        assert!(value.contains("TrueNorth"));
+        assert!(value.contains("TrueNorth: `$`"));
+        assert!(value.contains("resolved from `ParentContext`"));
+    }
+
+    #[test]
+    fn hover_resolves_subcontext_reference_from_parent_context() {
+        let text = "#7=IFCAXIS2PLACEMENT3D();\n#11=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,$,#7,$);\n#12=IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#11,$,.MODEL_VIEW.,$);";
+        let document = parse_document(text);
+        let first_star = text.match_indices('*').nth(2).expect("third star exists").0 as u32;
+        let prefix = &text[..first_star as usize];
+        let line = prefix.bytes().filter(|&b| b == b'\n').count() as u32;
+        let column = prefix
+            .rsplit_once('\n')
+            .map(|(_, tail)| tail.len() as u32)
+            .unwrap_or(first_star);
+
+        let hover = hover(
+            &document,
+            Position::new(line, column),
+            &schema_docs_with_derived_attributes(),
+            Some("IFC4"),
+        )
+        .expect("hover should exist");
+        let value = hover_text(hover);
+
+        assert!(value.contains("WorldCoordinateSystem"));
+        assert!(value.contains("`#7`"));
+        assert!(value.contains("#7=IFCAXIS2PLACEMENT3D();"));
+        assert!(value.contains("resolved from `ParentContext`"));
+    }
+
+    #[test]
+    fn hover_explains_unresolved_parent_context() {
+        let text = "#12=IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#99,$,.MODEL_VIEW.,$);";
+        let document = parse_document(text);
+
+        let hover = hover(
+            &document,
+            position_at(text, "*"),
+            &schema_docs_with_derived_attributes(),
+            Some("IFC4"),
+        )
+        .expect("hover should exist");
+        let value = hover_text(hover);
+
+        assert!(value.contains("CoordinateSpaceDimension"));
+        assert!(value.contains("derived value"));
+    }
+
     /// Test that hover returns none when there is no syntax tree.
     /// This tests important defensive behavior, since `tree` is defined as `Option<Tree>`, which can be `None`.
-    #[test]
-    fn hover_returns_resolved_value_for_ifc_si_unit_omitted_dimensions() {
-        let text = "#15=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);";
-        let document = parse_document(text);
-
-        let hover = hover(
-            &document,
-            position_at(text, "*"),
-            &schema_docs_with_derived_attributes(),
-            Some("IFC4"),
-        )
-        .expect("hover should exist");
-        let value = hover_text(hover);
-
-        assert!(value.contains("Dimensions"));
-        assert!(value.contains("IfcDimensionalExponents(1, 0, 0, 0, 0, 0, 0)"));
-        assert!(value.contains("resolved from `Name`"));
-    }
-
-    #[test]
-    fn hover_returns_resolved_zero_dimensions_for_radian() {
-        let text = "#18=IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.);";
-        let document = parse_document(text);
-
-        let hover = hover(
-            &document,
-            position_at(text, "*"),
-            &schema_docs_with_derived_attributes(),
-            Some("IFC4"),
-        )
-        .expect("hover should exist");
-        let value = hover_text(hover);
-
-        assert!(value.contains("Dimensions"));
-        assert!(value.contains("IfcDimensionalExponents(0, 0, 0, 0, 0, 0, 0)"));
-    }
-
-    #[test]
-    fn hover_resolves_subcontext_value_from_parent_context() {
-        let text = "#7=IFCAXIS2PLACEMENT3D();\n#11=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,$,#7,$);\n#12=IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#11,$,.MODEL_VIEW.,$);";
-        let document = parse_document(text);
-
-        let hover = hover(
-            &document,
-            position_at_last(text, "*"),
-            &schema_docs_with_derived_attributes(),
-            Some("IFC4"),
-        )
-        .expect("hover should exist");
-        let value = hover_text(hover);
-
-        assert!(value.contains("TrueNorth"));
-        assert!(value.contains("TrueNorth: `$`"));
-        assert!(value.contains("resolved from `ParentContext`"));
-    }
-
-    #[test]
-    fn hover_resolves_subcontext_reference_from_parent_context() {
-        let text = "#7=IFCAXIS2PLACEMENT3D();\n#11=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,$,#7,$);\n#12=IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#11,$,.MODEL_VIEW.,$);";
-        let document = parse_document(text);
-        let first_star = text.match_indices('*').nth(2).expect("third star exists").0 as u32;
-        let prefix = &text[..first_star as usize];
-        let line = prefix.bytes().filter(|&b| b == b'\n').count() as u32;
-        let column = prefix
-            .rsplit_once('\n')
-            .map(|(_, tail)| tail.len() as u32)
-            .unwrap_or(first_star);
-
-        let hover = hover(
-            &document,
-            Position::new(line, column),
-            &schema_docs_with_derived_attributes(),
-            Some("IFC4"),
-        )
-        .expect("hover should exist");
-        let value = hover_text(hover);
-
-        assert!(value.contains("WorldCoordinateSystem"));
-        assert!(value.contains("`#7`"));
-        assert!(value.contains("#7=IFCAXIS2PLACEMENT3D();"));
-        assert!(value.contains("resolved from `ParentContext`"));
-    }
-
-    #[test]
-    fn hover_explains_unresolved_parent_context() {
-        let text = "#12=IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#99,$,.MODEL_VIEW.,$);";
-        let document = parse_document(text);
-
-        let hover = hover(
-            &document,
-            position_at(text, "*"),
-            &schema_docs_with_derived_attributes(),
-            Some("IFC4"),
-        )
-        .expect("hover should exist");
-        let value = hover_text(hover);
-
-        assert!(value.contains("CoordinateSpaceDimension"));
-        assert!(value.contains("derived value"));
-    }
-
-    #[test]
-    fn hover_returns_resolved_value_for_ifc_si_unit_omitted_dimensions() {
-        let text = "#15=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);";
-        let document = parse_document(text);
-
-        let hover = hover(
-            &document,
-            position_at(text, "*"),
-            &schema_docs_with_derived_attributes(),
-            Some("IFC4"),
-        )
-        .expect("hover should exist");
-        let value = hover_text(hover);
-
-        assert!(value.contains("Dimensions"));
-        assert!(value.contains("IfcDimensionalExponents(1, 0, 0, 0, 0, 0, 0)"));
-        assert!(value.contains("resolved from `Name`"));
-    }
-
-    #[test]
-    fn hover_returns_resolved_zero_dimensions_for_radian() {
-        let text = "#18=IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.);";
-        let document = parse_document(text);
-
-        let hover = hover(
-            &document,
-            position_at(text, "*"),
-            &schema_docs_with_derived_attributes(),
-            Some("IFC4"),
-        )
-        .expect("hover should exist");
-        let value = hover_text(hover);
-
-        assert!(value.contains("Dimensions"));
-        assert!(value.contains("IfcDimensionalExponents(0, 0, 0, 0, 0, 0, 0)"));
-    }
-
-    #[test]
-    fn hover_resolves_subcontext_value_from_parent_context() {
-        let text = "#7=IFCAXIS2PLACEMENT3D();\n#11=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,$,#7,$);\n#12=IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#11,$,.MODEL_VIEW.,$);";
-        let document = parse_document(text);
-
-        let hover = hover(
-            &document,
-            position_at_last(text, "*"),
-            &schema_docs_with_derived_attributes(),
-            Some("IFC4"),
-        )
-        .expect("hover should exist");
-        let value = hover_text(hover);
-
-        assert!(value.contains("TrueNorth"));
-        assert!(value.contains("TrueNorth: `$`"));
-        assert!(value.contains("resolved from `ParentContext`"));
-    }
-
-    #[test]
-    fn hover_resolves_subcontext_reference_from_parent_context() {
-        let text = "#7=IFCAXIS2PLACEMENT3D();\n#11=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,$,#7,$);\n#12=IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#11,$,.MODEL_VIEW.,$);";
-        let document = parse_document(text);
-        let first_star = text.match_indices('*').nth(2).expect("third star exists").0 as u32;
-        let prefix = &text[..first_star as usize];
-        let line = prefix.bytes().filter(|&b| b == b'\n').count() as u32;
-        let column = prefix
-            .rsplit_once('\n')
-            .map(|(_, tail)| tail.len() as u32)
-            .unwrap_or(first_star);
-
-        let hover = hover(
-            &document,
-            Position::new(line, column),
-            &schema_docs_with_derived_attributes(),
-            Some("IFC4"),
-        )
-        .expect("hover should exist");
-        let value = hover_text(hover);
-
-        assert!(value.contains("WorldCoordinateSystem"));
-        assert!(value.contains("`#7`"));
-        assert!(value.contains("#7=IFCAXIS2PLACEMENT3D();"));
-        assert!(value.contains("resolved from `ParentContext`"));
-    }
-
-    #[test]
-    fn hover_explains_unresolved_parent_context() {
-        let text = "#12=IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#99,$,.MODEL_VIEW.,$);";
-        let document = parse_document(text);
-
-        let hover = hover(
-            &document,
-            position_at(text, "*"),
-            &schema_docs_with_derived_attributes(),
-            Some("IFC4"),
-        )
-        .expect("hover should exist");
-        let value = hover_text(hover);
-
-        assert!(value.contains("CoordinateSpaceDimension"));
-        assert!(value.contains("derived value"));
-    }
-
     #[test]
     fn hover_returns_none_without_a_syntax_tree() {
         let document = Document {
