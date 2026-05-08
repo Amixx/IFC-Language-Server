@@ -452,10 +452,13 @@ fn node_range(node: &Node<'_>) -> Range {
     }
 }
 
+//*----- TESTS BEGIN HERE -----*
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    /// Helper Function
+    /// Parses the given text and returns a [`Document`] with the text and initial state set.
     fn parse_document(text: &str) -> Document {
         let mut parser = Parser::new();
         parser
@@ -465,11 +468,14 @@ mod tests {
         Document::parse(&mut parser, text.to_string())
     }
 
+    /// Helper Function
+    /// Returns the position of the first occurrence of `needle` in `text`.
     fn position_at(text: &str, needle: &str) -> Position {
         let offset = text.find(needle).expect("needle should exist") as u32;
         Position::new(0, offset)
     }
 
+    /// Tests that [`Document::parse`] keeps the text and initial state set.
     #[test]
     fn parse_keeps_text_and_initial_state() {
         let text = "#1=IFCWALL($);";
@@ -480,14 +486,7 @@ mod tests {
         // definitions and references are now populated, not empty
     }
 
-    #[test]
-    fn parse_detects_schema_name_from_header() {
-        let text = "ISO-10303-21;HEADER;FILE_SCHEMA(('IFC4X3_ADD2'));ENDSEC;DATA;#1=IFCWALL($);ENDSEC;END-ISO-10303-21;";
-        let document = parse_document(text);
-
-        assert_eq!(document.schema_name.as_deref(), Some("IFC4X3_ADD2"));
-    }
-
+    /// Tests that [`Document::parse`] detects the schema name from the header.
     #[test]
     fn parse_detects_custom_schema_name_from_header() {
         let text = "ISO-10303-21;HEADER;FILE_SCHEMA(('IFC4X3_LOCAL_TEST'));ENDSEC;DATA;#1=IFCWALL($);ENDSEC;END-ISO-10303-21;";
@@ -496,6 +495,7 @@ mod tests {
         assert_eq!(document.schema_name.as_deref(), Some("IFC4X3_LOCAL_TEST"));
     }
 
+    /// Tests that [`Document::node_at_position`] finds the entity name.
     #[test]
     fn node_at_position_finds_entity_name() {
         let text = "#1=IFCWALL($);";
@@ -512,6 +512,7 @@ mod tests {
         );
     }
 
+    /// Tests that [`Document::node_at_position`] finds the reference.
     #[test]
     fn node_at_position_finds_reference() {
         let text = "#1=IFCWALL(#2);";
@@ -525,12 +526,14 @@ mod tests {
         assert_eq!(node.utf8_text(document.text.as_bytes()).ok(), Some("#2"));
     }
 
+    /// Tests that [`Document::parse`] indexes the entity definition.
     #[test]
     fn parse_indexes_entity_definition() {
         let text = "#1=IFCWALL($);";
         let document = parse_document(text);
         assert!(document.definitions.contains_key(&1));
         assert!(document.references.is_empty());
+        // "#1" starts at column 0, row 0 and ends at column 2, row 0
         assert_eq!(
             document.definitions[&1].id_range,
             Range {
@@ -538,6 +541,7 @@ mod tests {
                 end: Position::new(0, 2),
             }
         );
+        // "IFCWALL" starts at column 2, row 0 and ends at column 8, row 0
         assert_eq!(
             document.definitions[&1].entity_range,
             Range {
@@ -547,6 +551,7 @@ mod tests {
         );
     }
 
+    /// Tests that [`Document::parse`] indexes multiple definitions.
     #[test]
     fn parse_indexes_multiple_definitions() {
         let text = "#1=IFCWALL($);\n#2=IFCDOOR($);";
@@ -556,6 +561,7 @@ mod tests {
         assert_eq!(document.definitions.len(), 2);
     }
 
+    /// Tests that [`Document::parse`] indexes references.
     #[test]
     fn parse_indexes_references() {
         let text = "#1=IFCWALL(#2);";
@@ -564,6 +570,7 @@ mod tests {
         assert_eq!(document.references[&2].len(), 1);
     }
 
+    /// Tests that [`Document::parse`] indexes multiple references to the same ID.
     #[test]
     fn parse_indexes_multiple_references_to_same_id() {
         let text = "#1=IFCWALL(#2);\n#3=IFCDOOR(#2);";

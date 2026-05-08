@@ -195,6 +195,7 @@ fn format_attribute_type(type_name: &str) -> String {
     format!("`{}`", escape_table_cell(type_name).replace('`', "\\`"))
 }
 
+//*----- TESTS BEGIN HERE -----*
 #[cfg(test)]
 mod tests {
     use std::collections::{HashMap, HashSet};
@@ -202,6 +203,7 @@ mod tests {
     use super::*;
     use crate::schema::EntityAttributeDoc;
 
+    /// Helper function to parse a document and return the result.
     fn parse_document(text: &str) -> Document {
         let mut parser = tree_sitter::Parser::new();
         parser
@@ -211,11 +213,14 @@ mod tests {
         Document::parse(&mut parser, text.to_string())
     }
 
+    /// Helper function to find the position of a substring in a document.
     fn position_at(text: &str, needle: &str) -> Position {
         let offset = text.find(needle).expect("needle should exist") as u32;
         Position::new(0, offset)
     }
 
+    /// Helper function to find the last occurence of a substring in a document.
+    /// This is helpful since "#1" can appear multiple times in different contexts (e.g., as a definition vs as a reference)
     fn position_at_last(text: &str, needle: &str) -> Position {
         let offset = text.rfind(needle).expect("needle should exist") as u32;
         let prefix = &text[..offset as usize];
@@ -227,6 +232,7 @@ mod tests {
         Position::new(line, column)
     }
 
+    /// Helper function to extract the hover text from a hover response.
     fn hover_text(hover: Hover) -> String {
         match hover.contents {
             HoverContents::Markup(markup) => markup.value,
@@ -238,6 +244,7 @@ mod tests {
         SchemaDocCollection::empty()
     }
 
+    /// Helper function to create a schema document collection with a wall entity.
     fn schema_docs_with_wall() -> SchemaDocCollection {
         let source = r#"
         SCHEMA IFC4;
@@ -259,6 +266,7 @@ mod tests {
         SchemaDocCollection::from_docs([("IFC4".to_string(), schema)])
     }
 
+    /// Test schema docs include derived attributes for entities.
     fn schema_docs_with_derived_attributes() -> SchemaDocCollection {
         let source = r#"
         SCHEMA IFC4;
@@ -317,6 +325,8 @@ mod tests {
         SchemaDocCollection::from_docs([("IFC4".to_string(), schema)])
     }
 
+    /// Test that hover returns schema docs for entity names with detected version in the text.
+    /// Partial hover text assertion since this should only test the schema docs are returned, not the exact text.
     #[test]
     fn hover_returns_schema_docs_for_entity_names_with_detected_version() {
         let text = "ISO-10303-21;HEADER;FILE_SCHEMA(('IFC4'));ENDSEC;DATA;#1=IFCWALL($);ENDSEC;END-ISO-10303-21;";
@@ -335,6 +345,7 @@ mod tests {
         assert!(value.contains("Official documentation"));
     }
 
+    /// Test that hover returns definition preview for references to definitions.
     #[test]
     fn omitted_value_context_uses_ast_to_find_instance_and_parameter() {
         let text = "#15=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);";
@@ -368,6 +379,7 @@ mod tests {
         assert!(value.contains("#1=IFCWALL($);"));
     }
 
+    /// Test that hover does not return definition preview for definition IDs (as opposed to reference IDs).
     #[test]
     fn hover_does_not_return_definition_preview_for_definition_ids() {
         let text = "#1=IFCWALL($);";
@@ -379,9 +391,10 @@ mod tests {
             &empty_schema_docs(),
             None,
         );
-        assert!(hover.is_none())
+        assert!(hover.is_none());
     }
 
+    /// Test that hover returns the resolved value for an IFC SI unit with omitted dimensions.
     #[test]
     fn hover_returns_resolved_value_for_ifc_si_unit_omitted_dimensions() {
         let text = "#15=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);";
@@ -483,6 +496,8 @@ mod tests {
         assert!(value.contains("derived value"));
     }
 
+    /// Test that hover returns none when there is no syntax tree.
+    /// This tests important defensive behavior, since `tree` is defined as `Option<Tree>`, which can be `None`.
     #[test]
     fn hover_returns_none_without_a_syntax_tree() {
         let document = Document {
@@ -498,8 +513,11 @@ mod tests {
         assert!(hover(&document, Position::new(0, 0), &empty_schema_docs(), None).is_none());
     }
 
+    /// Test that the markdown rendering for entity hover includes inherited and direct attribute tables.
+    /// This test breaks when markdown shape changes.
     #[test]
     fn render_entity_hover_renders_inherited_and_direct_attribute_tables() {
+        // Create fake EntityDoc with inherited and direct attributes
         let entity = EntityDoc {
             name: "IfcWall".to_string(),
             attributes: vec![
@@ -540,8 +558,10 @@ mod tests {
         assert!(markdown.contains("[Official documentation](https://example.invalid/IfcWall.htm)"));
     }
 
+    /// Test that the markdown rendering for entity hover omits the inherited table when it is empty.
     #[test]
     fn render_entity_hover_omits_empty_inherited_table() {
+        // Create fake EntityDoc with empty inherited table
         let entity = EntityDoc {
             name: "IfcRoot".to_string(),
             attributes: vec![EntityAttributeDoc {
