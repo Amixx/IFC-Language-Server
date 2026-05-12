@@ -4,6 +4,10 @@
 
 use std::fmt;
 
+include!(concat!(env!("OUT_DIR"), "/ifc2x3_entity_doc_links.rs"));
+
+const IFC2X3_DOC_BASE_URL: &str = "https://standards.buildingsmart.org/IFC/RELEASE/IFC2x3/TC1/HTML";
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum IfcVersion {
     Ifc2x3Tc1,
@@ -35,9 +39,7 @@ impl IfcVersion {
 
     pub(crate) fn documentation_url(self, entity_name: &str) -> String {
         match self {
-            Self::Ifc2x3Tc1 => {
-                "https://standards.buildingsmart.org/IFC/RELEASE/IFC2x3/TC1/HTML/alphabeticalorder_entities.htm".to_string()
-            }
+            Self::Ifc2x3Tc1 => ifc2x3_documentation_url(entity_name),
             Self::Ifc4Add2Tc1 => format!(
                 "https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/HTML/link/{}.htm",
                 entity_name.to_ascii_lowercase()
@@ -50,8 +52,40 @@ impl IfcVersion {
     }
 }
 
+fn ifc2x3_documentation_url(entity_name: &str) -> String {
+    let normalized_entity_name = entity_name.to_ascii_uppercase();
+    let href = IFC2X3_ENTITY_DOC_LINKS
+        .iter()
+        .find_map(|(name, href)| (*name == normalized_entity_name.as_str()).then_some(*href))
+        .unwrap_or("alphabeticalorder_entities.htm");
+
+    format!("{IFC2X3_DOC_BASE_URL}/{href}")
+}
+
 impl fmt::Display for IfcVersion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.schema_name())
+    }
+}
+
+//*----- TESTS BEGIN HERE -----*
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ifc2x3_documentation_url_uses_entity_page_from_index() {
+        assert_eq!(
+            IfcVersion::Ifc2x3Tc1.documentation_url("IfcWall"),
+            "https://standards.buildingsmart.org/IFC/RELEASE/IFC2x3/TC1/HTML/ifcsharedbldgelements/lexical/ifcwall.htm"
+        );
+        assert_eq!(
+            IfcVersion::Ifc2x3Tc1.documentation_url("IfcProject"),
+            "https://standards.buildingsmart.org/IFC/RELEASE/IFC2x3/TC1/HTML/ifckernel/lexical/ifcproject.htm"
+        );
+        assert_eq!(
+            IfcVersion::Ifc2x3Tc1.documentation_url("IfcTextureVertex"),
+            "https://standards.buildingsmart.org/IFC/RELEASE/IFC2x3/TC1/HTML/ifcpresentationdefinitionresource/lexical/ifctexturevertex.htm"
+        );
     }
 }
