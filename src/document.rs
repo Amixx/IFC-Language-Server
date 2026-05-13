@@ -125,24 +125,9 @@ impl Document {
 
     #[cfg(test)]
     pub fn parse(parser: &mut Parser, text: String) -> Self {
-        let ParseState {
-            tree,
-            schema_name,
-            definitions,
-            references,
-            instances,
-            instance_indexes_by_id,
-        } = parse_state(parser, &text);
-
-        Self {
-            text,
-            tree,
-            schema_name,
-            definitions,
-            references,
-            instances,
-            instance_indexes_by_id,
-        }
+        let mut document = Self::new_unloaded(text);
+        document.reload_parse_state(parser);
+        document
     }
 
     pub fn unload_parse_state(&mut self) {
@@ -155,21 +140,19 @@ impl Document {
     }
 
     pub fn reload_parse_state(&mut self, parser: &mut Parser) {
-        let ParseState {
-            tree,
-            schema_name,
-            definitions,
-            references,
-            instances,
-            instance_indexes_by_id,
-        } = parse_state(parser, &self.text);
+        self.tree = parser.parse(&self.text, None);
+        self.schema_name = detect_schema(&self.tree, &self.text);
+        let (definitions, references, instances) = build_indexes(&self.tree, &self.text);
 
-        self.tree = tree;
-        self.schema_name = schema_name;
         self.definitions = definitions;
         self.references = references;
         self.instances = instances;
-        self.instance_indexes_by_id = instance_indexes_by_id;
+        self.instance_indexes_by_id = self
+            .instances
+            .iter()
+            .enumerate()
+            .filter_map(|(index, instance)| instance.id.map(|id| (id, index)))
+            .collect();
     }
 
     pub fn is_parse_state_loaded(&self) -> bool {
@@ -190,35 +173,6 @@ impl Document {
         self.instance_indexes_by_id
             .get(&id)
             .and_then(|index| self.instances.get(*index))
-    }
-}
-
-struct ParseState {
-    tree: Option<Tree>,
-    schema_name: Option<String>,
-    definitions: HashMap<u32, DefinitionInfo>,
-    references: HashMap<u32, Vec<Range>>,
-    instances: Vec<EntityInstanceInfo>,
-    instance_indexes_by_id: HashMap<u32, usize>,
-}
-
-fn parse_state(parser: &mut Parser, text: &str) -> ParseState {
-    let tree = parser.parse(text, None);
-    let schema_name = detect_schema(&tree, text);
-    let (definitions, references, instances) = build_indexes(&tree, text);
-    let instance_indexes_by_id = instances
-        .iter()
-        .enumerate()
-        .filter_map(|(index, instance)| instance.id.map(|id| (id, index)))
-        .collect();
-
-    ParseState {
-        tree,
-        schema_name,
-        definitions,
-        references,
-        instances,
-        instance_indexes_by_id,
     }
 }
 
