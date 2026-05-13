@@ -133,10 +133,10 @@ impl Document {
     pub fn unload_parse_state(&mut self) {
         self.tree = None;
         self.schema_name = None;
-        self.definitions.clear();
-        self.references.clear();
-        self.instances.clear();
-        self.instance_indexes_by_id.clear();
+        self.definitions = HashMap::new();
+        self.references = HashMap::new();
+        self.instances = Vec::new();
+        self.instance_indexes_by_id = HashMap::new();
     }
 
     pub fn reload_parse_state(&mut self, parser: &mut Parser) {

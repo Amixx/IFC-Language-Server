@@ -10,7 +10,6 @@ use tokio::sync::RwLock;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer};
-use tree_sitter::Parser;
 
 use crate::config::{ServerConfig, expand_schema_candidates, parse_server_config};
 use crate::diagnostics::datatype;
@@ -30,22 +29,15 @@ struct SchemaConfigState {
 pub struct Backend {
     client: Client,
     documents: Arc<RwLock<HashMap<Url, Document>>>,
-    parser: Arc<RwLock<Parser>>,
     schema_docs: Arc<RwLock<SchemaDocCollection>>,
     schema_config: Arc<RwLock<SchemaConfigState>>,
 }
 
 impl Backend {
     pub fn new(client: Client) -> Self {
-        let mut parser = Parser::new();
-        parser
-            .set_language(&tree_sitter_ifc::LANGUAGE.into())
-            .expect("Error loading IFC parser");
-
         Self {
             client,
             documents: Arc::new(RwLock::new(HashMap::new())),
-            parser: Arc::new(RwLock::new(parser)),
             schema_docs: Arc::new(RwLock::new(SchemaDocCollection::new())),
             schema_config: Arc::new(RwLock::new(SchemaConfigState::default())),
         }
@@ -118,7 +110,7 @@ impl Backend {
         document.text = text;
 
         {
-            let mut parser = self.parser.write().await;
+            let mut parser = new_parser();
             document.reload_parse_state(&mut parser);
         }
 
@@ -142,7 +134,7 @@ impl Backend {
         }
 
         {
-            let mut parser = self.parser.write().await;
+            let mut parser = new_parser();
             documents.get_mut(uri)?.reload_parse_state(&mut parser);
         }
 
@@ -259,6 +251,14 @@ impl Backend {
         *self.schema_docs.write().await = schema_docs;
         *self.schema_config.write().await = next_state;
     }
+}
+
+fn new_parser() -> tree_sitter::Parser {
+    let mut parser = tree_sitter::Parser::new();
+    parser
+        .set_language(&tree_sitter_ifc::LANGUAGE.into())
+        .expect("Error loading IFC parser");
+    parser
 }
 
 #[tower_lsp::async_trait]
