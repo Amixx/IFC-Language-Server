@@ -99,20 +99,25 @@ impl Backend {
         let mut documents = self.documents.write().await;
         for (document_uri, document) in documents.iter_mut() {
             if document_uri != uri {
+                log_document_memory("before unload", document_uri, document);
                 document.unload_parse_state();
+                log_document_memory("after unload", document_uri, document);
             }
         }
 
         let document = documents
             .entry(uri.clone())
             .or_insert_with(|| Document::new_unloaded(String::new()));
+        log_document_memory("before active text reload", uri, document);
         document.unload_parse_state();
         document.text = text;
+        log_document_memory("after active text replace", uri, document);
 
         {
             let mut parser = new_parser();
             document.reload_parse_state(&mut parser);
         }
+        log_document_memory("after active reload", uri, document);
 
         self.check_schema_support(document).await;
         self.collect_diagnostics(document).await
@@ -129,13 +134,21 @@ impl Backend {
 
         for (document_uri, document) in documents.iter_mut() {
             if document_uri != uri {
+                log_document_memory("before unload", document_uri, document);
                 document.unload_parse_state();
+                log_document_memory("after unload", document_uri, document);
             }
         }
 
         {
             let mut parser = new_parser();
+            if let Some(document) = documents.get(uri) {
+                log_document_memory("before request reload", uri, document);
+            }
             documents.get_mut(uri)?.reload_parse_state(&mut parser);
+        }
+        if let Some(document) = documents.get(uri) {
+            log_document_memory("after request reload", uri, document);
         }
 
         let diagnostics = {
@@ -261,6 +274,15 @@ fn new_parser() -> tree_sitter::Parser {
     parser
 }
 
+fn log_document_memory(event: &str, uri: &Url, document: &Document) {
+    eprintln!(
+        "[ifc-lsp memory] {} uri={} {}",
+        event,
+        uri,
+        document.debug_memory_shape()
+    );
+}
+
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
@@ -335,7 +357,15 @@ impl LanguageServer for Backend {
         let uri = params.text_document.uri;
 
         let mut documents = self.documents.write().await;
+        if let Some(document) = documents.get(&uri) {
+            log_document_memory("before close remove", &uri, document);
+        }
         documents.remove(&uri);
+        eprintln!(
+            "[ifc-lsp memory] after close remove uri={} open_documents={}",
+            uri,
+            documents.len()
+        );
         drop(documents);
 
         self.client.publish_diagnostics(uri, Vec::new(), None).await;
