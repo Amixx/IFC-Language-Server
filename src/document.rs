@@ -111,15 +111,29 @@ impl ParameterValue {
 }
 
 impl Document {
+    pub fn new_unloaded(text: String) -> Self {
+        Self {
+            text,
+            tree: None,
+            schema_name: None,
+            definitions: HashMap::new(),
+            references: HashMap::new(),
+            instances: Vec::new(),
+            instance_indexes_by_id: HashMap::new(),
+        }
+    }
+
+    #[cfg(test)]
     pub fn parse(parser: &mut Parser, text: String) -> Self {
-        let tree = parser.parse(&text, None);
-        let schema_name = detect_schema(&tree, &text);
-        let (definitions, references, instances) = build_indexes(&tree, &text);
-        let instance_indexes_by_id = instances
-            .iter()
-            .enumerate()
-            .filter_map(|(index, instance)| instance.id.map(|id| (id, index)))
-            .collect();
+        let ParseState {
+            tree,
+            schema_name,
+            definitions,
+            references,
+            instances,
+            instance_indexes_by_id,
+        } = parse_state(parser, &text);
+
         Self {
             text,
             tree,
@@ -129,6 +143,37 @@ impl Document {
             instances,
             instance_indexes_by_id,
         }
+    }
+
+    pub fn unload_parse_state(&mut self) {
+        self.tree = None;
+        self.schema_name = None;
+        self.definitions.clear();
+        self.references.clear();
+        self.instances.clear();
+        self.instance_indexes_by_id.clear();
+    }
+
+    pub fn reload_parse_state(&mut self, parser: &mut Parser) {
+        let ParseState {
+            tree,
+            schema_name,
+            definitions,
+            references,
+            instances,
+            instance_indexes_by_id,
+        } = parse_state(parser, &self.text);
+
+        self.tree = tree;
+        self.schema_name = schema_name;
+        self.definitions = definitions;
+        self.references = references;
+        self.instances = instances;
+        self.instance_indexes_by_id = instance_indexes_by_id;
+    }
+
+    pub fn is_parse_state_loaded(&self) -> bool {
+        self.tree.is_some()
     }
 
     pub fn node_at_position(&self, position: Position) -> Option<Node<'_>> {
@@ -145,6 +190,35 @@ impl Document {
         self.instance_indexes_by_id
             .get(&id)
             .and_then(|index| self.instances.get(*index))
+    }
+}
+
+struct ParseState {
+    tree: Option<Tree>,
+    schema_name: Option<String>,
+    definitions: HashMap<u32, DefinitionInfo>,
+    references: HashMap<u32, Vec<Range>>,
+    instances: Vec<EntityInstanceInfo>,
+    instance_indexes_by_id: HashMap<u32, usize>,
+}
+
+fn parse_state(parser: &mut Parser, text: &str) -> ParseState {
+    let tree = parser.parse(text, None);
+    let schema_name = detect_schema(&tree, text);
+    let (definitions, references, instances) = build_indexes(&tree, text);
+    let instance_indexes_by_id = instances
+        .iter()
+        .enumerate()
+        .filter_map(|(index, instance)| instance.id.map(|id| (id, index)))
+        .collect();
+
+    ParseState {
+        tree,
+        schema_name,
+        definitions,
+        references,
+        instances,
+        instance_indexes_by_id,
     }
 }
 
@@ -586,5 +660,47 @@ mod tests {
         let instance = document.instance_by_id(2).expect("instance should exist");
 
         assert_eq!(instance.entity_name, "IFCDOOR");
+    }
+
+    #[test]
+    fn unload_parse_state_preserves_text_and_clears_derived_state() {
+        let text = "#1=IFCWALL(#2);";
+        let mut document = parse_document(text);
+
+        document.unload_parse_state();
+
+        assert_eq!(document.text, text);
+        assert!(!document.is_parse_state_loaded());
+        assert_eq!(document.schema_name, None);
+        assert!(document.definitions.is_empty());
+        assert!(document.references.is_empty());
+        assert!(document.instances.is_empty());
+        assert!(document.instance_indexes_by_id.is_empty());
+    }
+
+    #[test]
+    fn reload_parse_state_rebuilds_derived_state_from_existing_text() {
+        let text = "#1=IFCWALL(#2);\n#2=IFCDOOR($);";
+        let mut document = parse_document(text);
+        document.unload_parse_state();
+
+        let mut parser = Parser::new();
+        parser
+            .set_language(&tree_sitter_ifc::LANGUAGE.into())
+            .expect("Error loading IFC parser");
+        document.reload_parse_state(&mut parser);
+
+        assert_eq!(document.text, text);
+        assert!(document.is_parse_state_loaded());
+        assert!(document.definitions.contains_key(&1));
+        assert!(document.definitions.contains_key(&2));
+        assert_eq!(document.references[&2].len(), 1);
+        assert_eq!(
+            document
+                .instance_by_id(2)
+                .expect("instance should be indexed")
+                .entity_name,
+            "IFCDOOR"
+        );
     }
 }

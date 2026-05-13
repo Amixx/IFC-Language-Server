@@ -51,11 +51,6 @@ impl Backend {
         }
     }
 
-    async fn store_document(&self, document: Document, uri: &Url) {
-        let mut documents = self.documents.write().await;
-        documents.insert(uri.clone(), document);
-    }
-
     async fn check_schema_support(&self, document: &Document) {
         let forced_schema_name = self.schema_config.read().await.forced_schema_name.clone();
 
@@ -87,12 +82,9 @@ impl Backend {
         }
     }
 
-    async fn parse_document(&self, uri: &Url, text: String) -> Document {
-        let mut parser = self.parser.write().await;
-        let document = Document::parse(&mut parser, text);
-        drop(parser);
+    async fn collect_diagnostics(&self, document: &Document) -> Vec<Diagnostic> {
         let selected_schema_name = self.selected_schema_name(&document).await;
-        let diagnostics = if let Some(schema_name) = selected_schema_name.as_deref() {
+        if let Some(schema_name) = selected_schema_name.as_deref() {
             let schema_docs = self.schema_docs.read().await;
             schema_docs
                 .get(schema_name)
@@ -102,12 +94,70 @@ impl Backend {
                 .unwrap_or_default()
         } else {
             Vec::new()
-        };
+        }
+    }
 
+    async fn publish_document_diagnostics(&self, uri: &Url, diagnostics: Vec<Diagnostic>) {
         self.client
             .publish_diagnostics(uri.clone(), diagnostics, None)
             .await;
-        document
+    }
+
+    async fn load_text_as_active_document(&self, uri: &Url, text: String) -> Vec<Diagnostic> {
+        let mut documents = self.documents.write().await;
+        for (document_uri, document) in documents.iter_mut() {
+            if document_uri != uri {
+                document.unload_parse_state();
+            }
+        }
+
+        let document = documents
+            .entry(uri.clone())
+            .or_insert_with(|| Document::new_unloaded(String::new()));
+        document.unload_parse_state();
+        document.text = text;
+
+        {
+            let mut parser = self.parser.write().await;
+            document.reload_parse_state(&mut parser);
+        }
+
+        self.check_schema_support(document).await;
+        self.collect_diagnostics(document).await
+    }
+
+    async fn ensure_document_loaded(
+        &self,
+        documents: &mut HashMap<Url, Document>,
+        uri: &Url,
+    ) -> Option<Option<Vec<Diagnostic>>> {
+        if documents.get(uri)?.is_parse_state_loaded() {
+            return Some(None);
+        }
+
+        for (document_uri, document) in documents.iter_mut() {
+            if document_uri != uri {
+                document.unload_parse_state();
+            }
+        }
+
+        {
+            let mut parser = self.parser.write().await;
+            documents.get_mut(uri)?.reload_parse_state(&mut parser);
+        }
+
+        let diagnostics = {
+            let document = documents.get(uri)?;
+            self.collect_diagnostics(document).await
+        };
+
+        Some(Some(diagnostics))
+    }
+
+    async fn request_time_diagnostics(&self, diagnostics: Option<Vec<Diagnostic>>, uri: &Url) {
+        if let Some(diagnostics) = diagnostics {
+            self.publish_document_diagnostics(uri, diagnostics).await;
+        }
     }
 
     async fn selected_schema_name(&self, document: &Document) -> Option<String> {
@@ -269,18 +319,26 @@ impl LanguageServer for Backend {
             .log_message(MessageType::INFO, format!("Document opened: {}", uri))
             .await;
 
-        let document = self.parse_document(&uri, text).await;
-        self.check_schema_support(&document).await;
-        self.store_document(document, &uri).await;
+        let diagnostics = self.load_text_as_active_document(&uri, text).await;
+        self.publish_document_diagnostics(&uri, diagnostics).await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri;
         if let Some(change) = params.content_changes.into_iter().next() {
-            let document = self.parse_document(&uri, change.text).await;
-            self.check_schema_support(&document).await;
-            self.store_document(document, &uri).await;
+            let diagnostics = self.load_text_as_active_document(&uri, change.text).await;
+            self.publish_document_diagnostics(&uri, diagnostics).await;
         }
+    }
+
+    async fn did_close(&self, params: DidCloseTextDocumentParams) {
+        let uri = params.text_document.uri;
+
+        let mut documents = self.documents.write().await;
+        documents.remove(&uri);
+        drop(documents);
+
+        self.client.publish_diagnostics(uri, Vec::new(), None).await;
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
@@ -288,32 +346,40 @@ impl LanguageServer for Backend {
         let position = params.text_document_position_params.position;
         let forced_schema_name = self.schema_config.read().await.forced_schema_name.clone();
 
-        let documents = self.documents.read().await;
+        let mut documents = self.documents.write().await;
+        let diagnostics = match self.ensure_document_loaded(&mut documents, &uri).await {
+            Some(diagnostics) => diagnostics,
+            None => return Ok(None),
+        };
         let document = match documents.get(&uri) {
             Some(document) => document,
             None => return Ok(None),
         };
 
-        if let Some(node) = document.node_at_position(position) {
-            self.client
-                .log_message(
-                    MessageType::INFO,
-                    format!(
-                        "Node at cursor: kind={}, text={}",
-                        node.kind(),
-                        node.utf8_text(document.text.as_bytes()).unwrap_or("?")
-                    ),
-                )
-                .await;
-        }
+        let node_message = document.node_at_position(position).map(|node| {
+            format!(
+                "Node at cursor: kind={}, text={}",
+                node.kind(),
+                node.utf8_text(document.text.as_bytes()).unwrap_or("?")
+            )
+        });
         let schema_docs = self.schema_docs.read().await;
 
-        Ok(hover::hover(
+        let result = hover::hover(
             document,
             position,
             &schema_docs,
             forced_schema_name.as_deref(),
-        ))
+        );
+        drop(schema_docs);
+        drop(documents);
+
+        if let Some(message) = node_message {
+            self.client.log_message(MessageType::INFO, message).await;
+        }
+        self.request_time_diagnostics(diagnostics, &uri).await;
+
+        Ok(result)
     }
 
     async fn goto_definition(
@@ -323,25 +389,43 @@ impl LanguageServer for Backend {
         let uri = params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
 
-        let documents = self.documents.read().await;
+        let mut documents = self.documents.write().await;
+        let diagnostics = match self.ensure_document_loaded(&mut documents, &uri).await {
+            Some(diagnostics) => diagnostics,
+            None => return Ok(None),
+        };
         let document = match documents.get(&uri) {
             Some(document) => document,
             None => return Ok(None),
         };
 
-        Ok(definition::goto_definition(&uri, document, position))
+        let result = definition::goto_definition(&uri, document, position);
+        drop(documents);
+
+        self.request_time_diagnostics(diagnostics, &uri).await;
+
+        Ok(result)
     }
 
     async fn references(&self, params: ReferenceParams) -> Result<Option<Vec<Location>>> {
         let uri = params.text_document_position.text_document.uri;
         let position = params.text_document_position.position;
 
-        let documents = self.documents.read().await;
+        let mut documents = self.documents.write().await;
+        let diagnostics = match self.ensure_document_loaded(&mut documents, &uri).await {
+            Some(diagnostics) => diagnostics,
+            None => return Ok(None),
+        };
         let document = match documents.get(&uri) {
             Some(document) => document,
             None => return Ok(None),
         };
 
-        Ok(references::find_references(&uri, document, position))
+        let result = references::find_references(&uri, document, position);
+        drop(documents);
+
+        self.request_time_diagnostics(diagnostics, &uri).await;
+
+        Ok(result)
     }
 }
