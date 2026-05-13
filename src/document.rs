@@ -159,23 +159,6 @@ impl Document {
         self.tree.is_some()
     }
 
-    pub fn debug_memory_shape(&self) -> String {
-        format!(
-            "text len={} cap={} tree={} definitions len={} cap={} references len={} cap={} instances len={} cap={} instance_indexes len={} cap={}",
-            self.text.len(),
-            self.text.capacity(),
-            self.tree.is_some(),
-            self.definitions.len(),
-            self.definitions.capacity(),
-            self.references.len(),
-            self.references.capacity(),
-            self.instances.len(),
-            self.instances.capacity(),
-            self.instance_indexes_by_id.len(),
-            self.instance_indexes_by_id.capacity(),
-        )
-    }
-
     pub fn node_at_position(&self, position: Position) -> Option<Node<'_>> {
         let tree = self.tree.as_ref()?;
         let point = Point {

@@ -4,7 +4,6 @@
 //! Request handlers stay thin here and delegate document-specific work to the feature modules.
 
 use std::collections::HashMap;
-use std::process::Command;
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
@@ -100,25 +99,20 @@ impl Backend {
         let mut documents = self.documents.write().await;
         for (document_uri, document) in documents.iter_mut() {
             if document_uri != uri {
-                log_document_memory("before unload", document_uri, document);
                 document.unload_parse_state();
-                log_document_memory("after unload", document_uri, document);
             }
         }
 
         let document = documents
             .entry(uri.clone())
             .or_insert_with(|| Document::new_unloaded(String::new()));
-        log_document_memory("before active text reload", uri, document);
         document.unload_parse_state();
         document.text = text;
-        log_document_memory("after active text replace", uri, document);
 
         {
             let mut parser = new_parser();
             document.reload_parse_state(&mut parser);
         }
-        log_document_memory("after active reload", uri, document);
 
         self.check_schema_support(document).await;
         self.collect_diagnostics(document).await
@@ -135,21 +129,13 @@ impl Backend {
 
         for (document_uri, document) in documents.iter_mut() {
             if document_uri != uri {
-                log_document_memory("before unload", document_uri, document);
                 document.unload_parse_state();
-                log_document_memory("after unload", document_uri, document);
             }
         }
 
         {
             let mut parser = new_parser();
-            if let Some(document) = documents.get(uri) {
-                log_document_memory("before request reload", uri, document);
-            }
             documents.get_mut(uri)?.reload_parse_state(&mut parser);
-        }
-        if let Some(document) = documents.get(uri) {
-            log_document_memory("after request reload", uri, document);
         }
 
         let diagnostics = {
@@ -275,35 +261,6 @@ fn new_parser() -> tree_sitter::Parser {
     parser
 }
 
-fn log_document_memory(event: &str, uri: &Url, document: &Document) {
-    eprintln!(
-        "[ifc-lsp memory] {} uri={} rss_kib={} {}",
-        event,
-        uri,
-        process_rss_kib()
-            .map(|rss| rss.to_string())
-            .unwrap_or_else(|| "unknown".to_string()),
-        document.debug_memory_shape()
-    );
-}
-
-fn process_rss_kib() -> Option<u64> {
-    let output = Command::new("ps")
-        .args(["-o", "rss=", "-p", &std::process::id().to_string()])
-        .output()
-        .ok()?;
-
-    if !output.status.success() {
-        return None;
-    }
-
-    String::from_utf8(output.stdout)
-        .ok()?
-        .trim()
-        .parse::<u64>()
-        .ok()
-}
-
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
@@ -378,15 +335,7 @@ impl LanguageServer for Backend {
         let uri = params.text_document.uri;
 
         let mut documents = self.documents.write().await;
-        if let Some(document) = documents.get(&uri) {
-            log_document_memory("before close remove", &uri, document);
-        }
         documents.remove(&uri);
-        eprintln!(
-            "[ifc-lsp memory] after close remove uri={} open_documents={}",
-            uri,
-            documents.len()
-        );
         drop(documents);
 
         self.client.publish_diagnostics(uri, Vec::new(), None).await;
