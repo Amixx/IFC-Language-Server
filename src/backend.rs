@@ -4,6 +4,7 @@
 //! Request handlers stay thin here and delegate document-specific work to the feature modules.
 
 use std::collections::HashMap;
+use std::process::Command;
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
@@ -276,11 +277,31 @@ fn new_parser() -> tree_sitter::Parser {
 
 fn log_document_memory(event: &str, uri: &Url, document: &Document) {
     eprintln!(
-        "[ifc-lsp memory] {} uri={} {}",
+        "[ifc-lsp memory] {} uri={} rss_kib={} {}",
         event,
         uri,
+        process_rss_kib()
+            .map(|rss| rss.to_string())
+            .unwrap_or_else(|| "unknown".to_string()),
         document.debug_memory_shape()
     );
+}
+
+fn process_rss_kib() -> Option<u64> {
+    let output = Command::new("ps")
+        .args(["-o", "rss=", "-p", &std::process::id().to_string()])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    String::from_utf8(output.stdout)
+        .ok()?
+        .trim()
+        .parse::<u64>()
+        .ok()
 }
 
 #[tower_lsp::async_trait]
