@@ -6,19 +6,25 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use serde::Deserialize;
 use tokio::sync::RwLock;
-use tower_lsp::jsonrpc::Result;
+use tower_lsp::jsonrpc::{Error as JsonRpcError, Result};
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer};
 use tree_sitter::Parser;
 
 use crate::config::{ServerConfig, expand_schema_candidates, parse_server_config};
 use crate::diagnostics::datatype;
-use crate::document::{Document, DocumentParseMode};
+use crate::document::{Document, DocumentParseMetrics, DocumentParseMode};
 use crate::features::{definition, hover, references};
 use crate::schema::{
     SchemaDocCollection, inspect_local_schema_name, load_local_schema, normalize_name,
 };
+
+#[derive(Debug, Deserialize)]
+pub struct DiskDocumentParams {
+    pub uri: Url,
+}
 
 #[derive(Debug, Default)]
 struct SchemaConfigState {
@@ -34,6 +40,8 @@ pub struct Backend {
     schema_docs: Arc<RwLock<SchemaDocCollection>>,
     schema_config: Arc<RwLock<SchemaConfigState>>,
 }
+
+const LARGE_FILE_DIAGNOSTICS_CAP_BYTES: usize = 50 * 1024 * 1024;
 
 impl Backend {
     pub fn new(client: Client) -> Self {
@@ -87,28 +95,95 @@ impl Backend {
         }
     }
 
-    async fn parse_document(&self, uri: &Url, text: String) -> Document {
+    async fn parse_document(
+        &self,
+        text: String,
+        mode: DocumentParseMode,
+    ) -> (Document, DocumentParseMetrics) {
         let mut parser = self.parser.write().await;
-        let (document, _metrics) =
-            Document::parse_with_metrics(&mut parser, text, DocumentParseMode::Full);
+        let result = Document::parse_with_metrics(&mut parser, text, mode);
         drop(parser);
-        let selected_schema_name = self.selected_schema_name(&document).await;
-        let diagnostics = if let Some(schema_name) = selected_schema_name.as_deref() {
-            let schema_docs = self.schema_docs.read().await;
-            schema_docs
-                .get(schema_name)
-                .map(|schema| {
-                    datatype::collect_with_schema_name(&document, schema, Some(schema_name))
-                })
-                .unwrap_or_default()
-        } else {
-            Vec::new()
-        };
+        result
+    }
+
+    async fn parse_document_with_diagnostics(&self, uri: &Url, text: String) -> Document {
+        // Buffer parses happen on every keystroke. Skip detailed parse-metrics
+        // logging here and emit only a one-line summary, and only for files
+        // large enough that the cost is interesting. Disk-loaded documents
+        // (`open_from_disk`) still get the full metrics log because they are
+        // the path where parse cost actually matters.
+        const SLOW_PARSE_LOG_THRESHOLD_BYTES: usize = 1024 * 1024;
+
+        let started = std::time::Instant::now();
+        let (document, metrics) = self.parse_document(text, DocumentParseMode::Full).await;
+
+        let diagnostics_started = std::time::Instant::now();
+        let diagnostics = self.collect_diagnostics(&document).await;
+        let diagnostics_ms = diagnostics_started.elapsed().as_millis();
 
         self.client
             .publish_diagnostics(uri.clone(), diagnostics, None)
             .await;
+
+        if metrics.source_bytes >= SLOW_PARSE_LOG_THRESHOLD_BYTES {
+            self.client
+                .log_message(
+                    MessageType::INFO,
+                    format!(
+                        "Document parsed: {} ({} bytes, total {}ms = parse {}ms + diagnostics {}ms)",
+                        uri,
+                        metrics.source_bytes,
+                        started.elapsed().as_millis(),
+                        metrics.total_parse_ms(),
+                        diagnostics_ms
+                    ),
+                )
+                .await;
+        }
         document
+    }
+
+    async fn log_parse_metrics(&self, label: &str, uri: &Url, metrics: &DocumentParseMetrics) {
+        self.client
+            .log_message(
+                MessageType::INFO,
+                format!(
+                    "{}: {} (mode={}, {} bytes, total {}ms = tree {}ms + schema {}ms + indexes {}ms; definitions={}, reference_groups={}, reference_ranges={}, instances={}, parameter_values={})",
+                    label,
+                    uri,
+                    metrics.mode.as_str(),
+                    metrics.source_bytes,
+                    metrics.total_parse_ms(),
+                    metrics.tree_parse_ms,
+                    metrics.schema_detect_ms,
+                    metrics.index_build_ms,
+                    metrics.definitions,
+                    metrics.reference_groups,
+                    metrics.reference_ranges,
+                    metrics.instances,
+                    metrics.parameter_values
+                ),
+            )
+            .await;
+    }
+
+    async fn collect_diagnostics(&self, document: &Document) -> Vec<Diagnostic> {
+        if document.parse_mode != DocumentParseMode::Full {
+            return Vec::new();
+        }
+
+        let selected_schema_name = self.selected_schema_name(document).await;
+        if let Some(schema_name) = selected_schema_name.as_deref() {
+            let schema_docs = self.schema_docs.read().await;
+            schema_docs
+                .get(schema_name)
+                .map(|schema| {
+                    datatype::collect_with_schema_name(document, schema, Some(schema_name))
+                })
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        }
     }
 
     async fn selected_schema_name(&self, document: &Document) -> Option<String> {
@@ -210,6 +285,77 @@ impl Backend {
         *self.schema_docs.write().await = schema_docs;
         *self.schema_config.write().await = next_state;
     }
+
+    pub async fn open_from_disk(&self, params: DiskDocumentParams) -> Result<()> {
+        let uri = params.uri;
+        let path = uri.to_file_path().map_err(|_| {
+            JsonRpcError::invalid_params(format!("uri is not a local file path: {}", uri))
+        })?;
+
+        let started = std::time::Instant::now();
+
+        let read_started = std::time::Instant::now();
+        let text = tokio::fs::read_to_string(&path).await.map_err(|e| {
+            let mut err = JsonRpcError::internal_error();
+            err.message = format!("failed to read {}: {}", path.display(), e).into();
+            err
+        })?;
+        let read_ms = read_started.elapsed().as_millis();
+        let bytes = text.len();
+        let mode = if bytes > LARGE_FILE_DIAGNOSTICS_CAP_BYTES {
+            DocumentParseMode::NavigationOnly
+        } else {
+            DocumentParseMode::Full
+        };
+
+        let (document, metrics) = self.parse_document(text, mode).await;
+        self.log_parse_metrics("Disk document parse", &uri, &metrics)
+            .await;
+
+        let schema_started = std::time::Instant::now();
+        self.check_schema_support(&document).await;
+        let schema_support_ms = schema_started.elapsed().as_millis();
+
+        let store_started = std::time::Instant::now();
+        self.store_document(document, &uri).await;
+        let store_ms = store_started.elapsed().as_millis();
+
+        let total_ms = started.elapsed().as_millis();
+        self.client
+            .log_message(
+                MessageType::INFO,
+                format!(
+                    "Document opened from disk: {} ({} bytes, total {}ms = read {}ms + parse {}ms + schema-check {}ms + store {}ms)",
+                    uri,
+                    bytes,
+                    total_ms,
+                    read_ms,
+                    metrics.total_parse_ms(),
+                    schema_support_ms,
+                    store_ms
+                ),
+            )
+            .await;
+        Ok(())
+    }
+
+    pub async fn close_from_disk(&self, params: DiskDocumentParams) -> Result<()> {
+        let uri = params.uri;
+        {
+            let mut documents = self.documents.write().await;
+            documents.remove(&uri);
+        }
+        self.client
+            .publish_diagnostics(uri.clone(), Vec::new(), None)
+            .await;
+        self.client
+            .log_message(
+                MessageType::INFO,
+                format!("Document closed from disk: {}", uri),
+            )
+            .await;
+        Ok(())
+    }
 }
 
 #[tower_lsp::async_trait]
@@ -232,6 +378,9 @@ impl LanguageServer for Backend {
                 )),
                 definition_provider: Some(OneOf::Left(true)),
                 references_provider: Some(OneOf::Left(true)),
+                experimental: Some(serde_json::json!({
+                    "ifcLargeFileFeatures": true,
+                })),
                 ..Default::default()
             },
             ..Default::default()
@@ -270,7 +419,7 @@ impl LanguageServer for Backend {
             .log_message(MessageType::INFO, format!("Document opened: {}", uri))
             .await;
 
-        let document = self.parse_document(&uri, text).await;
+        let document = self.parse_document_with_diagnostics(&uri, text).await;
         self.check_schema_support(&document).await;
         self.store_document(document, &uri).await;
     }
@@ -278,7 +427,9 @@ impl LanguageServer for Backend {
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri;
         if let Some(change) = params.content_changes.into_iter().next() {
-            let document = self.parse_document(&uri, change.text).await;
+            let document = self
+                .parse_document_with_diagnostics(&uri, change.text)
+                .await;
             self.check_schema_support(&document).await;
             self.store_document(document, &uri).await;
         }
