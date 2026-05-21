@@ -14,7 +14,7 @@ use tree_sitter::Parser;
 
 use crate::config::{ServerConfig, expand_schema_candidates, parse_server_config};
 use crate::diagnostics::datatype;
-use crate::document::Document;
+use crate::document::{Document, DocumentParseMode};
 use crate::features::{definition, hover, references};
 use crate::schema::{
     SchemaDocCollection, inspect_local_schema_name, load_local_schema, normalize_name,
@@ -89,7 +89,8 @@ impl Backend {
 
     async fn parse_document(&self, uri: &Url, text: String) -> Document {
         let mut parser = self.parser.write().await;
-        let document = Document::parse(&mut parser, text);
+        let (document, _metrics) =
+            Document::parse_with_metrics(&mut parser, text, DocumentParseMode::Full);
         drop(parser);
         let selected_schema_name = self.selected_schema_name(&document).await;
         let diagnostics = if let Some(schema_name) = selected_schema_name.as_deref() {

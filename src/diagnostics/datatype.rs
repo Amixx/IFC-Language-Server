@@ -3,7 +3,8 @@
 //! reports arity, reference, primitive, aggregate, enumeration, and select-type mismatches.
 //! General EXPRESS `WHERE` rules are intentionally out of scope for the current implementation.
 
-use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
+use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Range};
+use tree_sitter::Node;
 
 use crate::document::{Document, EntityInstanceInfo, ParameterValue};
 use crate::schema::{
@@ -298,14 +299,43 @@ fn validate_entity_reference(
         ));
     };
 
-    if schema.is_entity_compatible(&definition.entity_name, expected_entity) {
+    let entity_name = definition
+        .entity_name
+        .as_deref()
+        .map(str::to_string)
+        .or_else(|| lazy_definition_entity_name(document, definition.entity_range));
+    let Some(entity_name) = entity_name.as_deref() else {
+        return Some(format!(
+            "reference `#{}` does not have entity type information",
+            id
+        ));
+    };
+
+    if schema.is_entity_compatible(entity_name, expected_entity) {
         None
     } else {
         Some(format!(
             "expected reference to `{}` but `#{}` points to `{}`",
-            expected_entity, id, definition.entity_name
+            expected_entity, id, entity_name
         ))
     }
+}
+
+fn lazy_definition_entity_name(document: &Document, range: Range) -> Option<String> {
+    let mut node = document.node_at_position(range.start)?;
+    while node.kind() != "entity_instance" {
+        node = node.parent()?;
+    }
+
+    entity_name_child(node, &document.text)
+}
+
+fn entity_name_child(node: Node<'_>, text: &str) -> Option<String> {
+    let mut cursor = node.walk();
+    node.children(&mut cursor)
+        .find(|child| child.kind() == "entity_name")
+        .and_then(|child| child.utf8_text(text.as_bytes()).ok())
+        .map(str::to_ascii_uppercase)
 }
 
 fn validate_primitive(value: &ParameterValue, primitive: &PrimitiveType) -> Option<String> {
@@ -492,6 +522,7 @@ mod tests {
             text: "#1=IFCWALL('gid',.MOVABLE.);".to_string(),
             tree: None,
             schema_name: None,
+            parse_mode: crate::document::DocumentParseMode::Full,
             definitions: HashMap::new(),
             references: HashMap::new(),
             instances: vec![crate::document::EntityInstanceInfo {
