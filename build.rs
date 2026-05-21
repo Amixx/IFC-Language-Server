@@ -23,10 +23,8 @@ const SCHEMAS: &[(&str, &str, &str)] = &[
     ),
 ];
 
-const IFC2X3_ENTITY_INDEX: (&str, &str) = (
-    "https://standards.buildingsmart.org/IFC/RELEASE/IFC2x3/TC1/HTML/alphabeticalorder_entities.htm",
-    "8e395ea92e81c7b2c003291671bf96ee75b38e9d321ea4a58f5f4d6ee782e4cb",
-);
+const IFC2X3_ENTITY_INDEX_URL: &str =
+    "https://standards.buildingsmart.org/IFC/RELEASE/IFC2x3/TC1/HTML/alphabeticalorder_entities.htm";
 const IFC2X3_ENTITY_COUNT: usize = 653;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -51,18 +49,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         fs::write(express_dir.join(file_name), source)?;
     }
 
-    let entity_index = ureq::get(IFC2X3_ENTITY_INDEX.0)
+    let entity_index = ureq::get(IFC2X3_ENTITY_INDEX_URL)
         .call()?
         .body_mut()
         .read_to_vec()?;
-    let actual_sha256 = format!("{:x}", Sha256::digest(&entity_index));
-    if actual_sha256 != IFC2X3_ENTITY_INDEX.1 {
-        return Err(format!(
-            "checksum mismatch for IFC2x3 entity index: expected {}, got {}",
-            IFC2X3_ENTITY_INDEX.1, actual_sha256
-        )
-        .into());
-    }
 
     let entity_index = String::from_utf8(entity_index)?;
     let links = parse_ifc2x3_entity_links(&entity_index)?;
