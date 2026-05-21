@@ -21,6 +21,7 @@ async fn main() {
     let (service, socket) = LspService::build(Backend::new)
         .custom_method("ifc/openFromDisk", Backend::open_from_disk)
         .custom_method("ifc/closeFromDisk", Backend::close_from_disk)
+        .custom_method("ifc/diagnostics", Backend::diagnostics)
         .finish();
 
     Server::new(stdin, stdout, socket).serve(service).await;

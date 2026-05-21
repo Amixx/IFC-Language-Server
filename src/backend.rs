@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::Deserialize;
+use serde_json::Value;
 use tokio::sync::RwLock;
 use tower_lsp::jsonrpc::{Error as JsonRpcError, Result};
 use tower_lsp::lsp_types::*;
@@ -356,6 +357,40 @@ impl Backend {
             .await;
         Ok(())
     }
+
+    pub async fn diagnostics(&self, params: Value) -> Result<Vec<Diagnostic>> {
+        let uri = diagnostics_uri_from_value(&params)?;
+        let documents = self.documents.read().await;
+        let document = match documents.get(&uri) {
+            Some(document) => document,
+            None => return Ok(Vec::new()),
+        };
+
+        Ok(self.collect_diagnostics(document).await)
+    }
+}
+
+// `ifc/diagnostics` is invoked from the VS Code extension's pull-diagnostics
+// path. We've seen the client send the URI in several shapes depending on how
+// the request was wired (raw string, `{ uri }` object, single-item array), so
+// the parser accepts all three rather than failing the request and losing the
+// diagnostics refresh.
+fn diagnostics_uri_from_value(value: &Value) -> Result<Url> {
+    match value {
+        Value::String(uri) => Url::parse(uri)
+            .map_err(|error| JsonRpcError::invalid_params(format!("invalid URI: {error}"))),
+        Value::Object(object) => object
+            .get("uri")
+            .ok_or_else(|| JsonRpcError::invalid_params("missing diagnostics URI"))
+            .and_then(diagnostics_uri_from_value),
+        Value::Array(items) => items
+            .first()
+            .ok_or_else(|| JsonRpcError::invalid_params("missing diagnostics URI"))
+            .and_then(diagnostics_uri_from_value),
+        _ => Err(JsonRpcError::invalid_params(
+            "diagnostics URI must be a string, { uri }, or single-item array",
+        )),
+    }
 }
 
 #[tower_lsp::async_trait]
@@ -495,5 +530,64 @@ impl LanguageServer for Backend {
         };
 
         Ok(references::find_references(&uri, document, position))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const URI: &str = "file:///example.ifc";
+
+    #[test]
+    fn diagnostics_uri_accepts_bare_string() {
+        let value = Value::String(URI.into());
+        let uri = diagnostics_uri_from_value(&value).expect("parse string");
+        assert_eq!(uri.as_str(), URI);
+    }
+
+    #[test]
+    fn diagnostics_uri_accepts_object_with_uri_field() {
+        let value = serde_json::json!({ "uri": URI });
+        let uri = diagnostics_uri_from_value(&value).expect("parse object");
+        assert_eq!(uri.as_str(), URI);
+    }
+
+    #[test]
+    fn diagnostics_uri_accepts_single_item_array() {
+        let value = serde_json::json!([URI]);
+        let uri = diagnostics_uri_from_value(&value).expect("parse array");
+        assert_eq!(uri.as_str(), URI);
+    }
+
+    #[test]
+    fn diagnostics_uri_accepts_array_of_object() {
+        let value = serde_json::json!([{ "uri": URI }]);
+        let uri = diagnostics_uri_from_value(&value).expect("parse array of object");
+        assert_eq!(uri.as_str(), URI);
+    }
+
+    #[test]
+    fn diagnostics_uri_rejects_empty_array() {
+        let value = serde_json::json!([]);
+        assert!(diagnostics_uri_from_value(&value).is_err());
+    }
+
+    #[test]
+    fn diagnostics_uri_rejects_object_without_uri() {
+        let value = serde_json::json!({ "other": URI });
+        assert!(diagnostics_uri_from_value(&value).is_err());
+    }
+
+    #[test]
+    fn diagnostics_uri_rejects_non_url_string() {
+        let value = Value::String("not a url".into());
+        assert!(diagnostics_uri_from_value(&value).is_err());
+    }
+
+    #[test]
+    fn diagnostics_uri_rejects_unsupported_type() {
+        let value = serde_json::json!(42);
+        assert!(diagnostics_uri_from_value(&value).is_err());
     }
 }
