@@ -27,6 +27,12 @@ pub struct DiskDocumentParams {
     pub uri: Url,
 }
 
+#[derive(Debug)]
+pub struct VisibleDiagnosticsParams {
+    pub uri: Url,
+    pub ranges: Vec<Range>,
+}
+
 #[derive(Debug, Default)]
 struct SchemaConfigState {
     forced_schema_name: Option<String>,
@@ -368,6 +374,141 @@ impl Backend {
 
         Ok(self.collect_diagnostics(document).await)
     }
+
+    pub async fn visible_diagnostics(&self, params: Value) -> Result<Vec<Diagnostic>> {
+        const CONTEXT_LINES: u32 = 20;
+        const MAX_LINES_PER_RANGE: u32 = 500;
+
+        let params = visible_diagnostics_params_from_value(&params)?;
+        let documents = self.documents.read().await;
+        let source_document = match documents.get(&params.uri) {
+            Some(document) => document,
+            None => return Ok(Vec::new()),
+        };
+
+        let selected_schema_name = self.selected_schema_name(source_document).await;
+        let Some(schema_name) = selected_schema_name.as_deref() else {
+            return Ok(Vec::new());
+        };
+        let schema_docs = self.schema_docs.read().await;
+        let Some(schema) = schema_docs.get(schema_name) else {
+            return Ok(Vec::new());
+        };
+
+        let line_offsets = LineOffsets::from_text(&source_document.text);
+
+        let mut diagnostics = Vec::new();
+        for range in params.ranges {
+            let Some(slice) = visible_diagnostic_slice(
+                &source_document.text,
+                &line_offsets,
+                range,
+                CONTEXT_LINES,
+                MAX_LINES_PER_RANGE,
+            ) else {
+                continue;
+            };
+            let (slice_document, _metrics) = self
+                .parse_document(slice.text, DocumentParseMode::Full)
+                .await;
+            diagnostics.extend(
+                datatype::collect_visible_with_schema_name(
+                    &slice_document,
+                    source_document,
+                    schema,
+                    Some(schema_name),
+                )
+                .into_iter()
+                .map(|mut diagnostic| {
+                    shift_diagnostic_lines(&mut diagnostic, slice.start_line);
+                    diagnostic
+                }),
+            );
+        }
+        Ok(diagnostics)
+    }
+}
+
+struct VisibleDiagnosticSlice {
+    text: String,
+    start_line: u32,
+}
+
+/// Byte offsets of each line start in the source text, plus a terminator equal
+/// to `text.len()`. `line_offsets[i]` gives the byte index where line `i`
+/// begins, so a `[start_line, end_line]` line range maps to the byte slice
+/// `text[line_offsets[start_line]..line_offsets[end_line + 1]]`.
+///
+/// Building this once per `visible_diagnostics` call avoids re-scanning the
+/// whole document for every visible range when multiple editors view the same
+/// file.
+struct LineOffsets {
+    offsets: Vec<usize>,
+}
+
+impl LineOffsets {
+    fn from_text(text: &str) -> Self {
+        let mut offsets = Vec::with_capacity(text.len() / 64 + 1);
+        offsets.push(0);
+        for (index, byte) in text.bytes().enumerate() {
+            if byte == b'\n' {
+                offsets.push(index + 1);
+            }
+        }
+        if *offsets.last().expect("offsets always contains zero") != text.len() {
+            offsets.push(text.len());
+        }
+        Self { offsets }
+    }
+
+    fn line_count(&self) -> u32 {
+        // The last entry is the terminator (text length); subtract it.
+        (self.offsets.len().saturating_sub(1)) as u32
+    }
+
+    fn slice_bytes<'a>(&self, text: &'a str, start_line: u32, end_line: u32) -> Option<&'a str> {
+        let start = *self.offsets.get(start_line as usize)?;
+        let end_index = (end_line as usize + 1).min(self.offsets.len() - 1);
+        let end = self.offsets[end_index];
+        if start >= end {
+            return None;
+        }
+        Some(&text[start..end])
+    }
+}
+
+fn visible_diagnostic_slice(
+    text: &str,
+    line_offsets: &LineOffsets,
+    range: Range,
+    context_lines: u32,
+    max_lines_per_range: u32,
+) -> Option<VisibleDiagnosticSlice> {
+    let line_count = line_offsets.line_count();
+    if line_count == 0 {
+        return None;
+    }
+    let last_line = line_count.saturating_sub(1);
+
+    let visible_start = range.start.line.saturating_sub(context_lines).min(last_line);
+    let visible_end = range
+        .end
+        .line
+        .saturating_add(context_lines)
+        .min(visible_start.saturating_add(max_lines_per_range))
+        .min(last_line);
+
+    let slice = line_offsets.slice_bytes(text, visible_start, visible_end)?;
+
+    Some(VisibleDiagnosticSlice {
+        text: slice.to_string(),
+        start_line: visible_start,
+    })
+}
+
+fn shift_diagnostic_lines(diagnostic: &mut Diagnostic, line_offset: u32) {
+    diagnostic.range.start.line = diagnostic.range.start.line.saturating_add(line_offset);
+    diagnostic.range.end.line = diagnostic.range.end.line.saturating_add(line_offset);
 }
 
 // `ifc/diagnostics` is invoked from the VS Code extension's pull-diagnostics
@@ -391,6 +532,67 @@ fn diagnostics_uri_from_value(value: &Value) -> Result<Url> {
             "diagnostics URI must be a string, { uri }, or single-item array",
         )),
     }
+}
+
+fn visible_diagnostics_params_from_value(value: &Value) -> Result<VisibleDiagnosticsParams> {
+    match value {
+        Value::Array(items) => items
+            .first()
+            .ok_or_else(|| JsonRpcError::invalid_params("missing visible diagnostics params"))
+            .and_then(visible_diagnostics_params_from_value),
+        Value::Object(object) => {
+            let uri = object
+                .get("uri")
+                .ok_or_else(|| JsonRpcError::invalid_params("missing visible diagnostics URI"))
+                .and_then(url_from_value)?;
+            let ranges = object
+                .get("ranges")
+                .ok_or_else(|| JsonRpcError::invalid_params("missing visible diagnostics ranges"))
+                .and_then(ranges_from_value)?;
+            Ok(VisibleDiagnosticsParams { uri, ranges })
+        }
+        _ => Err(JsonRpcError::invalid_params(
+            "visible diagnostics params must be { uri, ranges } or a single-item array",
+        )),
+    }
+}
+
+// The URI inside a custom-method payload must always be a plain string. If the
+// extension forgets `.toString()` on a `vscode.Uri`, its `toJSON()` serializes
+// as `{scheme, path, ...}` and corrupts the wire format — see
+// https://github.com/microsoft/vscode/issues/121198. We reject that shape
+// rather than absorb it so regressions surface at the call site.
+fn url_from_value(value: &Value) -> Result<Url> {
+    match value {
+        Value::String(uri) => Url::parse(uri)
+            .map_err(|error| JsonRpcError::invalid_params(format!("invalid URI: {error}"))),
+        Value::Object(_) => Err(JsonRpcError::invalid_params(
+            "URI must be a string; received a JSON object (likely a raw `vscode.Uri` \
+             that was not stringified before sending — call `.toString()` on the \
+             client side)",
+        )),
+        _ => Err(JsonRpcError::invalid_params(
+            "URI must be a string",
+        )),
+    }
+}
+
+fn ranges_from_value(value: &Value) -> Result<Vec<Range>> {
+    let Value::Array(items) = value else {
+        return Err(JsonRpcError::invalid_params(
+            "visible diagnostics ranges must be an array",
+        ));
+    };
+
+    items
+        .iter()
+        .cloned()
+        .map(|item| {
+            serde_json::from_value::<Range>(item).map_err(|error| {
+                JsonRpcError::invalid_params(format!("invalid visible diagnostics range: {error}"))
+            })
+        })
+        .collect()
 }
 
 #[tower_lsp::async_trait]
@@ -589,5 +791,119 @@ mod tests {
     fn diagnostics_uri_rejects_unsupported_type() {
         let value = serde_json::json!(42);
         assert!(diagnostics_uri_from_value(&value).is_err());
+    }
+
+    #[test]
+    fn url_from_value_accepts_plain_string() {
+        let value = Value::String(URI.into());
+        let uri = url_from_value(&value).expect("parse string");
+        assert_eq!(uri.as_str(), URI);
+    }
+
+    #[test]
+    fn url_from_value_rejects_vscode_uri_tojson_form() {
+        let value = serde_json::json!({
+            "$mid": 1,
+            "scheme": "file",
+            "path": "/example.ifc"
+        });
+        let err = url_from_value(&value).expect_err("must reject map form");
+        assert!(
+            err.message.contains("vscode.Uri") || err.message.contains("toString"),
+            "error should hint at the client-side fix: {}",
+            err.message
+        );
+    }
+
+    #[test]
+    fn visible_diagnostics_params_round_trip_named_object() {
+        let value = serde_json::json!({
+            "uri": "file:///example.ifc",
+            "ranges": [
+                {
+                    "start": { "line": 10, "character": 0 },
+                    "end": { "line": 12, "character": 3 }
+                }
+            ]
+        });
+        let params = visible_diagnostics_params_from_value(&value).expect("parse params");
+        assert_eq!(params.uri.scheme(), "file");
+        assert_eq!(params.ranges.len(), 1);
+        assert_eq!(params.ranges[0].start.line, 10);
+    }
+
+    #[test]
+    fn visible_diagnostics_params_reject_vscode_uri_object() {
+        let value = serde_json::json!({
+            "uri": {
+                "$mid": 1,
+                "scheme": "file",
+                "path": "/example.ifc"
+            },
+            "ranges": []
+        });
+        assert!(visible_diagnostics_params_from_value(&value).is_err());
+    }
+
+    #[test]
+    fn line_offsets_indexes_each_line_start() {
+        let text = "a\nbb\nccc\n";
+        let offsets = LineOffsets::from_text(text);
+        // line_count counts content lines (between starts); trailing terminator
+        // is the byte length of the text.
+        assert_eq!(offsets.line_count(), 3);
+        assert_eq!(offsets.slice_bytes(text, 0, 0), Some("a\n"));
+        assert_eq!(offsets.slice_bytes(text, 1, 1), Some("bb\n"));
+        assert_eq!(offsets.slice_bytes(text, 0, 2), Some("a\nbb\nccc\n"));
+    }
+
+    #[test]
+    fn line_offsets_handles_text_without_trailing_newline() {
+        let text = "a\nbb";
+        let offsets = LineOffsets::from_text(text);
+        assert_eq!(offsets.line_count(), 2);
+        assert_eq!(offsets.slice_bytes(text, 0, 1), Some("a\nbb"));
+    }
+
+    #[test]
+    fn visible_diagnostic_slice_extracts_window_with_context() {
+        let text = "L0\nL1\nL2\nL3\nL4\nL5\n";
+        let offsets = LineOffsets::from_text(text);
+        let range = Range {
+            start: Position {
+                line: 2,
+                character: 0,
+            },
+            end: Position {
+                line: 3,
+                character: 0,
+            },
+        };
+        let slice = visible_diagnostic_slice(text, &offsets, range, 1, 100)
+            .expect("slice produces a window");
+        assert_eq!(slice.start_line, 1);
+        assert_eq!(slice.text, "L1\nL2\nL3\nL4\n");
+    }
+
+    #[test]
+    fn visible_diagnostic_slice_caps_window_to_max_lines() {
+        let text = "a\n".repeat(50);
+        let offsets = LineOffsets::from_text(&text);
+        let range = Range {
+            start: Position {
+                line: 5,
+                character: 0,
+            },
+            end: Position {
+                line: 45,
+                character: 0,
+            },
+        };
+        let slice = visible_diagnostic_slice(&text, &offsets, range, 0, 10)
+            .expect("slice produces a window");
+        // `max_lines_per_range` clamps the visible end relative to the start.
+        assert_eq!(slice.start_line, 5);
+        // Slice should cover lines 5..=15 inclusive (11 lines = max + 1).
+        assert_eq!(slice.text.lines().count(), 11);
     }
 }
