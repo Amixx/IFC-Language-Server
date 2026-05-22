@@ -3,7 +3,7 @@
 //! parser, and the in-memory schema docs used by hover and datatype diagnostics.
 //! Request handlers stay thin here and delegate document-specific work to the feature modules.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
@@ -13,7 +13,7 @@ use tower_lsp::{Client, LanguageServer};
 
 use crate::config::{ServerConfig, expand_schema_candidates, parse_server_config};
 use crate::diagnostics::datatype;
-use crate::document::Document;
+use crate::document::{DEFAULT_AST_FILE_SIZE_LIMIT_BYTES, Document};
 use crate::features::{definition, hover, references};
 use crate::schema::{
     SchemaDocCollection, inspect_local_schema_name, load_local_schema, normalize_name,
@@ -31,6 +31,7 @@ pub struct Backend {
     documents: Arc<RwLock<HashMap<Url, Document>>>,
     schema_docs: Arc<RwLock<SchemaDocCollection>>,
     schema_config: Arc<RwLock<SchemaConfigState>>,
+    ast_skip_warning_shown: Arc<RwLock<HashSet<Url>>>,
 }
 
 impl Backend {
@@ -40,7 +41,31 @@ impl Backend {
             documents: Arc::new(RwLock::new(HashMap::new())),
             schema_docs: Arc::new(RwLock::new(SchemaDocCollection::new())),
             schema_config: Arc::new(RwLock::new(SchemaConfigState::default())),
+            ast_skip_warning_shown: Arc::new(RwLock::new(HashSet::new())),
         }
+    }
+
+    async fn check_ast_support(&self, uri: &Url, text_len: usize) -> bool {
+        let mut shown = self.ast_skip_warning_shown.write().await;
+        if text_len <= DEFAULT_AST_FILE_SIZE_LIMIT_BYTES {
+            shown.remove(uri);
+            return false;
+        }
+
+        if shown.insert(uri.clone()) {
+            self.client
+                .show_message(
+                    MessageType::WARNING,
+                    format!(
+                        "This IFC file is larger than the AST parsing limit ({} MB).\nNavigation and basic hover remain available, but schema diagnostics and derived-value hover are disabled.",
+                        DEFAULT_AST_FILE_SIZE_LIMIT_BYTES / 1024 / 1024
+                    ),
+                )
+                .await;
+            return true;
+        }
+
+        false
     }
 
     async fn check_schema_support(&self, document: &Document) {
@@ -100,6 +125,10 @@ impl Backend {
     }
 
     async fn load_text_as_active_document(&self, uri: &Url, text: String) -> Vec<Diagnostic> {
+        if self.check_ast_support(uri, text.len()).await {
+            tokio::task::yield_now().await;
+        }
+
         let mut documents = self.documents.write().await;
         for (document_uri, document) in documents.iter_mut() {
             if document_uri != uri {
@@ -342,6 +371,7 @@ impl LanguageServer for Backend {
         documents.remove(&uri);
         drop(documents);
 
+        self.ast_skip_warning_shown.write().await.remove(&uri);
         self.client.publish_diagnostics(uri, Vec::new(), None).await;
     }
 
