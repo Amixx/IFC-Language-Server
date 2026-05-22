@@ -19,18 +19,30 @@ use crate::schema::{
     SchemaDocCollection, inspect_local_schema_name, load_local_schema, normalize_name,
 };
 
-#[derive(Debug, Default)]
-struct SchemaConfigState {
+#[derive(Debug)]
+struct ConfigState {
     forced_schema_name: Option<String>,
     additional_schema_paths: HashMap<String, std::path::PathBuf>,
     pending_init_config: Option<ServerConfig>,
+    ast_file_size_limit_bytes: usize,
+}
+
+impl Default for ConfigState {
+    fn default() -> Self {
+        Self {
+            forced_schema_name: None,
+            additional_schema_paths: HashMap::new(),
+            pending_init_config: None,
+            ast_file_size_limit_bytes: DEFAULT_AST_FILE_SIZE_LIMIT_BYTES,
+        }
+    }
 }
 
 pub struct Backend {
     client: Client,
     documents: Arc<RwLock<HashMap<Url, Document>>>,
     schema_docs: Arc<RwLock<SchemaDocCollection>>,
-    schema_config: Arc<RwLock<SchemaConfigState>>,
+    config: Arc<RwLock<ConfigState>>,
     ast_skip_warning_shown: Arc<RwLock<HashSet<Url>>>,
 }
 
@@ -40,14 +52,18 @@ impl Backend {
             client,
             documents: Arc::new(RwLock::new(HashMap::new())),
             schema_docs: Arc::new(RwLock::new(SchemaDocCollection::new())),
-            schema_config: Arc::new(RwLock::new(SchemaConfigState::default())),
+            config: Arc::new(RwLock::new(ConfigState::default())),
             ast_skip_warning_shown: Arc::new(RwLock::new(HashSet::new())),
         }
     }
 
-    async fn check_ast_support(&self, uri: &Url, text_len: usize) -> bool {
+    async fn ast_file_size_limit_bytes(&self) -> usize {
+        self.config.read().await.ast_file_size_limit_bytes
+    }
+
+    async fn check_ast_support(&self, uri: &Url, text_len: usize, limit_bytes: usize) -> bool {
         let mut shown = self.ast_skip_warning_shown.write().await;
-        if text_len <= DEFAULT_AST_FILE_SIZE_LIMIT_BYTES {
+        if text_len <= limit_bytes {
             shown.remove(uri);
             return false;
         }
@@ -58,7 +74,7 @@ impl Backend {
                     MessageType::WARNING,
                     format!(
                         "This IFC file is larger than the AST parsing limit ({} MB).\nNavigation and basic hover remain available, but schema diagnostics and derived-value hover are disabled.",
-                        DEFAULT_AST_FILE_SIZE_LIMIT_BYTES / 1024 / 1024
+                        limit_bytes / 1024 / 1024
                     ),
                 )
                 .await;
@@ -69,7 +85,7 @@ impl Backend {
     }
 
     async fn check_schema_support(&self, document: &Document) {
-        let forced_schema_name = self.schema_config.read().await.forced_schema_name.clone();
+        let forced_schema_name = self.config.read().await.forced_schema_name.clone();
 
         if let Some(forced_schema_name) = forced_schema_name.as_deref()
             && let Some(document_schema_name) = document.schema_name.as_deref()
@@ -125,7 +141,11 @@ impl Backend {
     }
 
     async fn load_text_as_active_document(&self, uri: &Url, text: String) -> Vec<Diagnostic> {
-        if self.check_ast_support(uri, text.len()).await {
+        let ast_file_size_limit_bytes = self.ast_file_size_limit_bytes().await;
+        if self
+            .check_ast_support(uri, text.len(), ast_file_size_limit_bytes)
+            .await
+        {
             tokio::task::yield_now().await;
         }
 
@@ -144,7 +164,7 @@ impl Backend {
 
         {
             let mut parser = new_parser();
-            document.reload_parse_state(&mut parser);
+            document.reload_parse_state(&mut parser, ast_file_size_limit_bytes);
         }
 
         self.check_schema_support(document).await;
@@ -168,7 +188,9 @@ impl Backend {
 
         {
             let mut parser = new_parser();
-            documents.get_mut(uri)?.reload_parse_state(&mut parser);
+            documents
+                .get_mut(uri)?
+                .reload_parse_state(&mut parser, self.ast_file_size_limit_bytes().await);
         }
 
         let diagnostics = {
@@ -187,10 +209,10 @@ impl Backend {
 
     async fn selected_schema_name(&self, document: &Document) -> Option<String> {
         let (forced_schema_name, additional_path) = {
-            let schema_config = self.schema_config.read().await;
-            let forced_schema_name = schema_config.forced_schema_name.clone();
+            let config = self.config.read().await;
+            let forced_schema_name = config.forced_schema_name.clone();
             let additional_path = document.schema_name.as_ref().and_then(|schema_name| {
-                schema_config
+                config
                     .additional_schema_paths
                     .get(&normalize_name(schema_name))
                     .cloned()
@@ -233,7 +255,10 @@ impl Backend {
 
     async fn apply_config(&self, config: ServerConfig) {
         let mut schema_docs = SchemaDocCollection::new();
-        let mut next_state = SchemaConfigState::default();
+        let mut next_state = ConfigState {
+            ast_file_size_limit_bytes: config.ast_file_size_limit_bytes,
+            ..ConfigState::default()
+        };
 
         if let Some(path) = config.overwrite_exp_schema_with_local.as_ref() {
             match load_local_schema(path) {
@@ -282,7 +307,7 @@ impl Backend {
         }
 
         *self.schema_docs.write().await = schema_docs;
-        *self.schema_config.write().await = next_state;
+        *self.config.write().await = next_state;
     }
 }
 
@@ -303,8 +328,8 @@ impl LanguageServer for Backend {
             .map(parse_server_config)
             .unwrap_or_default();
 
-        let mut schema_config = self.schema_config.write().await;
-        schema_config.pending_init_config = Some(pending_init_config);
+        let mut config = self.config.write().await;
+        config.pending_init_config = Some(pending_init_config);
 
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
@@ -331,8 +356,8 @@ impl LanguageServer for Backend {
         }
 
         let pending_init_config = {
-            let mut schema_config = self.schema_config.write().await;
-            schema_config.pending_init_config.take()
+            let mut config = self.config.write().await;
+            config.pending_init_config.take()
         };
 
         if let Some(config) = pending_init_config {
@@ -378,7 +403,7 @@ impl LanguageServer for Backend {
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         let uri = params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
-        let forced_schema_name = self.schema_config.read().await.forced_schema_name.clone();
+        let forced_schema_name = self.config.read().await.forced_schema_name.clone();
 
         let mut documents = self.documents.write().await;
         let diagnostics = match self.ensure_document_loaded(&mut documents, &uri).await {

@@ -151,11 +151,11 @@ impl Document {
         self.instance_indexes_by_id = HashMap::new();
     }
 
-    pub fn reload_parse_state(&mut self, parser: &mut Parser) {
+    pub fn reload_parse_state(&mut self, parser: &mut Parser, ast_file_size_limit_bytes: usize) {
         self.reload_text_index();
         self.unload_parse_state();
 
-        if self.text.len() > DEFAULT_AST_FILE_SIZE_LIMIT_BYTES {
+        if self.text.len() > ast_file_size_limit_bytes {
             self.ast_skipped = true;
             return;
         }
@@ -173,7 +173,7 @@ impl Document {
     #[cfg(test)]
     pub fn parse(parser: &mut Parser, text: String) -> Self {
         let mut document = Self::new_unloaded(text);
-        document.reload_parse_state(parser);
+        document.reload_parse_state(parser, DEFAULT_AST_FILE_SIZE_LIMIT_BYTES);
         document
     }
 
@@ -738,7 +738,7 @@ mod tests {
         parser
             .set_language(&tree_sitter_ifc::LANGUAGE.into())
             .expect("Error loading IFC parser");
-        document.reload_parse_state(&mut parser);
+        document.reload_parse_state(&mut parser, DEFAULT_AST_FILE_SIZE_LIMIT_BYTES);
 
         assert_eq!(document.text, text);
         assert!(document.is_parse_state_loaded());
