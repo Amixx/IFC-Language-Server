@@ -10,19 +10,13 @@ pub fn goto_definition(
     document: &Document,
     position: Position,
 ) -> Option<GotoDefinitionResponse> {
-    let node = document.node_at_position(position)?;
-
-    let id = if node.kind() == "reference" {
-        let text = node.utf8_text(document.text.as_bytes()).ok()?;
-        text.trim_start_matches('#').parse::<u32>().ok()?
-    } else {
+    let (id, offset) = document.id_token_at_position(position)?;
+    if document.definitions.get(&id) == Some(&offset) {
         return None;
-    };
-
-    let definition = document.definitions.get(&id)?;
+    }
 
     Some(GotoDefinitionResponse::Scalar(Location {
         uri: uri.clone(),
-        range: definition.id_range,
+        range: document.definition_range(id)?,
     }))
 }

@@ -12,30 +12,17 @@ pub fn find_references(
     document: &Document,
     position: Position,
 ) -> Option<Vec<Location>> {
-    let node = document.node_at_position(position)?;
-
-    let id_node = match node.kind() {
-        "instance_id" | "reference" => node,
-        _ => return None,
-    };
-
-    let text = id_node.utf8_text(document.text.as_bytes()).ok()?;
-    let id = text.trim_start_matches('#').parse::<u32>().ok()?;
+    let (id, _) = document.id_token_at_position(position)?;
 
     let mut locations = Vec::new();
 
-    if let Some(definition) = document.definitions.get(&id) {
-        locations.push(Location {
-            uri: uri.clone(),
-            range: definition.id_range,
-        });
-    }
-
-    if let Some(refs) = document.references.get(&id) {
-        locations.extend(refs.iter().map(|r| Location {
-            uri: uri.clone(),
-            range: *r,
-        }));
+    if let Some(offsets) = document.references.get(&id) {
+        for offset in offsets {
+            locations.push(Location {
+                uri: uri.clone(),
+                range: document.id_range_at_offset(*offset)?,
+            });
+        }
     }
 
     if locations.is_empty() {

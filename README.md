@@ -85,6 +85,11 @@ Supported options:
   - These schemas are added to the server's schema selection pool.
   - When an IFC file declares a schema name that is not bundled, the server checks the configured local schemas for an exact `SCHEMA ...;` name match and loads the matching schema on demand.
 
+- `astFileSizeLimitMb`
+  - Maximum file size in MiB for AST-backed features.
+  - Defaults to `70`.
+  - Files above this limit keep basic hover/navigation available, but skip schema diagnostics and derived-value hover.
+
 Configuration changes currently require restarting the server.
 
 Example `initializationOptions`:
@@ -92,6 +97,7 @@ Example `initializationOptions`:
 ```json
 {
   "overwriteExpSchemaWithLocal": "/Users/alice/dev/express/IFC4x2.exp",
+  "astFileSizeLimitMb": 128,
   "addLocalSchemaToSelection": [
     "/Users/alice/dev/express/IFC4x1.exp",
     "/Users/alice/dev/express/custom-schemas"

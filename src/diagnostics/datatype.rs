@@ -291,19 +291,19 @@ fn validate_entity_reference(
         ));
     };
 
-    let Some(definition) = document.definitions.get(id) else {
+    let Some(instance) = document.instance_by_id(*id) else {
         return Some(format!(
             "reference `#{}` does not resolve to a local entity",
             id
         ));
     };
 
-    if schema.is_entity_compatible(&definition.entity_name, expected_entity) {
+    if schema.is_entity_compatible(&instance.entity_name, expected_entity) {
         None
     } else {
         Some(format!(
             "expected reference to `{}` but `#{}` points to `{}`",
-            expected_entity, id, definition.entity_name
+            expected_entity, id, instance.entity_name
         ))
     }
 }
@@ -487,50 +487,43 @@ mod tests {
     /// Test that the datatype validator reports unresolved references.
     #[test]
     fn datatype_validator_reports_unresolved_reference() {
-        // `tree` is not necessary for this test, as the validator resolves references without it.
-        let document = Document {
-            text: "#1=IFCWALL('gid',.MOVABLE.);".to_string(),
-            tree: None,
-            schema_name: None,
-            definitions: HashMap::new(),
-            references: HashMap::new(),
-            instances: vec![crate::document::EntityInstanceInfo {
-                id: Some(1),
-                id_range: Some(Range {
-                    start: Position::new(0, 0),
-                    end: Position::new(0, 2),
-                }),
-                entity_name: "IFCWALL".to_string(),
-                entity_name_range: Range {
-                    start: Position::new(0, 3),
-                    end: Position::new(0, 10),
-                },
-                entity_range: Range {
-                    start: Position::new(0, 0),
-                    end: Position::new(0, 27),
-                },
-                parameter_list_range: Some(Range {
-                    start: Position::new(0, 10),
-                    end: Position::new(0, 27),
-                }),
-                parameters: vec![
-                    ParameterValue::String {
-                        range: Range {
-                            start: Position::new(0, 11),
-                            end: Position::new(0, 16),
-                        },
+        let mut document = Document::new_unloaded("#1=IFCWALL('gid',.MOVABLE.);".to_string());
+        document.instances = vec![crate::document::EntityInstanceInfo {
+            id: Some(1),
+            id_range: Some(Range {
+                start: Position::new(0, 0),
+                end: Position::new(0, 2),
+            }),
+            entity_name: "IFCWALL".to_string(),
+            entity_name_range: Range {
+                start: Position::new(0, 3),
+                end: Position::new(0, 10),
+            },
+            entity_range: Range {
+                start: Position::new(0, 0),
+                end: Position::new(0, 27),
+            },
+            parameter_list_range: Some(Range {
+                start: Position::new(0, 10),
+                end: Position::new(0, 27),
+            }),
+            parameters: vec![
+                ParameterValue::String {
+                    range: Range {
+                        start: Position::new(0, 11),
+                        end: Position::new(0, 16),
                     },
-                    ParameterValue::Reference {
-                        id: 2,
-                        range: Range {
-                            start: Position::new(0, 17),
-                            end: Position::new(0, 19),
-                        },
+                },
+                ParameterValue::Reference {
+                    id: 2,
+                    range: Range {
+                        start: Position::new(0, 17),
+                        end: Position::new(0, 19),
                     },
-                ],
-            }],
-            instance_indexes_by_id: HashMap::from([(1, 0)]),
-        };
+                },
+            ],
+        }];
+        document.instance_indexes_by_id = HashMap::from([(1, 0)]);
 
         let schema = schema_from(
             r#"

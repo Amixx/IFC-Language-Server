@@ -1,29 +1,27 @@
 //! Parsed in-memory representation of one IFC document.
-//! This module turns full IFC source text into a tree-sitter parse plus the small indexes the
-//! language server needs for hover, definition, references, and schema-aware diagnostics.
-//! It also stores structured parameter values so diagnostics can validate attribute arguments.
+//! This module owns the source text, cheap text indexes for navigation, and optional tree-sitter
+//! state for schema-aware diagnostics and derived-value hover.
 
 use std::collections::HashMap;
 
 use tower_lsp::lsp_types::{Position, Range};
 use tree_sitter::{Node, Parser, Point, Tree, TreeCursor};
 
+use crate::document_index::{TextIndex, scan_text};
+
+pub const DEFAULT_AST_FILE_SIZE_LIMIT_BYTES: usize = 70 * 1024 * 1024;
+
 #[derive(Debug)]
 pub struct Document {
     pub text: String,
     pub tree: Option<Tree>,
+    pub ast_skipped: bool,
     pub schema_name: Option<String>,
-    pub definitions: HashMap<u32, DefinitionInfo>,
-    pub references: HashMap<u32, Vec<Range>>,
+    pub line_offsets: Vec<usize>,
+    pub definitions: HashMap<u32, usize>,
+    pub references: HashMap<u32, Vec<usize>>,
     pub instances: Vec<EntityInstanceInfo>,
     pub(crate) instance_indexes_by_id: HashMap<u32, usize>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct DefinitionInfo {
-    pub id_range: Range,
-    pub entity_range: Range,
-    pub entity_name: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -36,12 +34,6 @@ pub struct EntityInstanceInfo {
     pub parameter_list_range: Option<Range>,
     pub parameters: Vec<ParameterValue>,
 }
-
-type DocumentIndexes = (
-    HashMap<u32, DefinitionInfo>,
-    HashMap<u32, Vec<Range>>,
-    Vec<EntityInstanceInfo>,
-);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ParameterValue {
@@ -112,41 +104,64 @@ impl ParameterValue {
 
 impl Document {
     pub fn new_unloaded(text: String) -> Self {
+        let TextIndex {
+            line_offsets,
+            definitions,
+            references,
+            schema_name,
+        } = scan_text(&text);
+
         Self {
             text,
             tree: None,
+            ast_skipped: false,
             schema_name: None,
-            definitions: HashMap::new(),
-            references: HashMap::new(),
+            line_offsets,
+            definitions,
+            references,
             instances: Vec::new(),
             instance_indexes_by_id: HashMap::new(),
         }
+        .with_schema_name(schema_name)
     }
 
-    #[cfg(test)]
-    pub fn parse(parser: &mut Parser, text: String) -> Self {
-        let mut document = Self::new_unloaded(text);
-        document.reload_parse_state(parser);
-        document
+    fn with_schema_name(mut self, schema_name: Option<String>) -> Self {
+        self.schema_name = schema_name;
+        self
+    }
+
+    pub fn reload_text_index(&mut self) {
+        let TextIndex {
+            line_offsets,
+            definitions,
+            references,
+            schema_name,
+        } = scan_text(&self.text);
+
+        self.line_offsets = line_offsets;
+        self.definitions = definitions;
+        self.references = references;
+        self.schema_name = schema_name;
     }
 
     pub fn unload_parse_state(&mut self) {
         self.tree = None;
-        self.schema_name = None;
-        self.definitions = HashMap::new();
-        self.references = HashMap::new();
+        self.ast_skipped = false;
         self.instances = Vec::new();
         self.instance_indexes_by_id = HashMap::new();
     }
 
-    pub fn reload_parse_state(&mut self, parser: &mut Parser) {
-        self.tree = parser.parse(&self.text, None);
-        self.schema_name = detect_schema(&self.tree, &self.text);
-        let (definitions, references, instances) = build_indexes(&self.tree, &self.text);
+    pub fn reload_parse_state(&mut self, parser: &mut Parser, ast_file_size_limit_bytes: usize) {
+        self.reload_text_index();
+        self.unload_parse_state();
 
-        self.definitions = definitions;
-        self.references = references;
-        self.instances = instances;
+        if self.text.len() > ast_file_size_limit_bytes {
+            self.ast_skipped = true;
+            return;
+        }
+
+        self.tree = parser.parse(&self.text, None);
+        self.instances = build_instances(&self.tree, &self.text);
         self.instance_indexes_by_id = self
             .instances
             .iter()
@@ -155,7 +170,18 @@ impl Document {
             .collect();
     }
 
+    #[cfg(test)]
+    pub fn parse(parser: &mut Parser, text: String) -> Self {
+        let mut document = Self::new_unloaded(text);
+        document.reload_parse_state(parser, DEFAULT_AST_FILE_SIZE_LIMIT_BYTES);
+        document
+    }
+
     pub fn is_parse_state_loaded(&self) -> bool {
+        self.tree.is_some() || self.ast_skipped
+    }
+
+    pub fn has_ast(&self) -> bool {
         self.tree.is_some()
     }
 
@@ -174,139 +200,244 @@ impl Document {
             .get(&id)
             .and_then(|index| self.instances.get(*index))
     }
-}
 
-fn detect_schema(tree: &Option<Tree>, text: &str) -> Option<String> {
-    extract_file_schema_name(tree, text)
-}
+    pub fn position_to_offset(&self, position: Position) -> Option<usize> {
+        let line_start = *self.line_offsets.get(position.line as usize)?;
+        let line_end = self.line_end_offset(position.line as usize)?;
+        let line = self.text.get(line_start..line_end)?;
+        let mut utf16_units = 0u32;
 
-fn extract_file_schema_name(tree: &Option<Tree>, text: &str) -> Option<String> {
-    let tree = tree.as_ref()?;
-    let mut cursor = tree.root_node().walk();
-
-    find_file_schema_name(&mut cursor, text)
-}
-
-fn find_file_schema_name(cursor: &mut TreeCursor, text: &str) -> Option<String> {
-    loop {
-        let node = cursor.node();
-
-        if node.kind() == "header_entry"
-            && let Some(schema_name) = parse_file_schema_entry(node, text)
-        {
-            return Some(schema_name);
+        if position.character == 0 {
+            return Some(line_start);
         }
 
-        if cursor.goto_first_child() {
-            if let Some(schema_name) = find_file_schema_name(cursor, text) {
-                cursor.goto_parent();
-                return Some(schema_name);
+        for (byte_offset, character) in line.char_indices() {
+            if utf16_units == position.character {
+                return Some(line_start + byte_offset);
             }
-            cursor.goto_parent();
+            utf16_units += character.len_utf16() as u32;
         }
 
-        if !cursor.goto_next_sibling() {
-            break;
+        (utf16_units == position.character).then_some(line_end)
+    }
+
+    pub fn offset_to_position(&self, offset: usize) -> Option<Position> {
+        if offset > self.text.len() || !self.text.is_char_boundary(offset) {
+            return None;
+        }
+
+        let line_index = match self.line_offsets.binary_search(&offset) {
+            Ok(line) => line,
+            Err(next_line) => next_line.checked_sub(1)?,
+        };
+        let line_start = self.line_offsets[line_index];
+        let line_text = self.text.get(line_start..offset)?;
+        let character = line_text
+            .chars()
+            .map(|character| character.len_utf16() as u32)
+            .sum();
+
+        Some(Position::new(line_index as u32, character))
+    }
+
+    pub fn range_for_offsets(&self, start: usize, end: usize) -> Option<Range> {
+        Some(Range {
+            start: self.offset_to_position(start)?,
+            end: self.offset_to_position(end)?,
+        })
+    }
+
+    pub fn id_range_at_offset(&self, offset: usize) -> Option<Range> {
+        let (start, end, _) = self.id_token_at_offset(offset)?;
+        self.range_for_offsets(start, end)
+    }
+
+    pub fn definition_range(&self, id: u32) -> Option<Range> {
+        self.id_range_at_offset(*self.definitions.get(&id)?)
+    }
+
+    pub fn id_token_at_position(&self, position: Position) -> Option<(u32, usize)> {
+        let offset = self.position_to_offset(position)?;
+        let (start, _, id) = self.id_token_at_offset(offset)?;
+        self.references.get(&id)?.contains(&start).then_some(())?;
+        Some((id, start))
+    }
+
+    pub fn entity_name_at_position(&self, position: Position) -> Option<(String, Range)> {
+        let offset = self.position_to_offset(position)?;
+        let (start, end) = self.identifier_at_offset(offset)?;
+        if !self.is_definition_entity_name(start) {
+            return None;
+        }
+        let text = self.text.get(start..end)?;
+        Some((
+            text.to_ascii_uppercase(),
+            self.range_for_offsets(start, end)?,
+        ))
+    }
+
+    pub fn entity_instance_text_at_definition(&self, id: u32) -> Option<&str> {
+        let definition_offset = *self.definitions.get(&id)?;
+        let bytes = self.text.as_bytes();
+        let mut start = definition_offset;
+        while start > 0 && bytes[start - 1] != b';' {
+            start -= 1;
+        }
+        while start < definition_offset && bytes[start].is_ascii_whitespace() {
+            start += 1;
+        }
+
+        let mut end = definition_offset;
+        while end < bytes.len() && bytes[end] != b';' {
+            end += 1;
+        }
+        if end < bytes.len() {
+            end += 1;
+        }
+
+        self.text.get(start..end)
+    }
+
+    fn line_end_offset(&self, line_index: usize) -> Option<usize> {
+        let line_start = *self.line_offsets.get(line_index)?;
+        let next_line_start = self
+            .line_offsets
+            .get(line_index + 1)
+            .copied()
+            .unwrap_or(self.text.len());
+        if next_line_start > line_start
+            && self
+                .text
+                .as_bytes()
+                .get(next_line_start - 1)
+                .is_some_and(|byte| *byte == b'\n')
+        {
+            Some(next_line_start - 1)
+        } else {
+            Some(next_line_start)
         }
     }
 
-    None
+    fn id_token_at_offset(&self, offset: usize) -> Option<(usize, usize, u32)> {
+        let bytes = self.text.as_bytes();
+        if bytes.is_empty() {
+            return None;
+        }
+
+        let candidate =
+            if offset < bytes.len() && (bytes[offset] == b'#' || bytes[offset].is_ascii_digit()) {
+                offset
+            } else if offset > 0 && bytes[offset - 1].is_ascii_digit() {
+                offset - 1
+            } else {
+                return None;
+            };
+
+        let mut start = candidate;
+        while start > 0 && bytes[start - 1].is_ascii_digit() {
+            start -= 1;
+        }
+        if bytes.get(start) != Some(&b'#') {
+            start = start.checked_sub(1)?;
+            if bytes.get(start) != Some(&b'#') {
+                return None;
+            }
+        }
+
+        let mut end = start + 1;
+        let mut id = 0u32;
+        let mut has_digit = false;
+        while let Some(byte) = bytes.get(end).copied()
+            && byte.is_ascii_digit()
+        {
+            has_digit = true;
+            id = id.checked_mul(10)?.checked_add((byte - b'0') as u32)?;
+            end += 1;
+        }
+
+        (has_digit && offset <= end).then_some((start, end, id))
+    }
+
+    fn identifier_at_offset(&self, offset: usize) -> Option<(usize, usize)> {
+        let bytes = self.text.as_bytes();
+        if bytes.is_empty() {
+            return None;
+        }
+
+        let candidate = if offset < bytes.len() && is_identifier_part(bytes[offset]) {
+            offset
+        } else if offset > 0 && is_identifier_part(bytes[offset - 1]) {
+            offset - 1
+        } else {
+            return None;
+        };
+
+        let mut start = candidate;
+        while start > 0 && is_identifier_part(bytes[start - 1]) {
+            start -= 1;
+        }
+        let mut end = candidate + 1;
+        while end < bytes.len() && is_identifier_part(bytes[end]) {
+            end += 1;
+        }
+
+        Some((start, end))
+    }
+
+    fn is_definition_entity_name(&self, identifier_start: usize) -> bool {
+        let bytes = self.text.as_bytes();
+        let mut offset = identifier_start;
+
+        while offset > 0 && bytes[offset - 1].is_ascii_whitespace() {
+            offset -= 1;
+        }
+        if offset == 0 || bytes[offset - 1] != b'=' {
+            return false;
+        }
+        offset -= 1;
+
+        while offset > 0 && bytes[offset - 1].is_ascii_whitespace() {
+            offset -= 1;
+        }
+        let digit_end = offset;
+        while offset > 0 && bytes[offset - 1].is_ascii_digit() {
+            offset -= 1;
+        }
+
+        digit_end > offset && offset > 0 && bytes[offset - 1] == b'#'
+    }
 }
 
-fn parse_file_schema_entry(node: Node<'_>, text: &str) -> Option<String> {
-    let mut cursor = node.walk();
-    let mut entry_name = None;
-    let mut parameter_list = None;
-
-    for child in node.children(&mut cursor) {
-        match child.kind() {
-            "entity_name" => entry_name = child.utf8_text(text.as_bytes()).ok(),
-            "parameter_list" => parameter_list = Some(child),
-            _ => {}
-        }
-    }
-
-    if entry_name? != "FILE_SCHEMA" {
-        return None;
-    }
-
-    let parameter_list = parameter_list?;
-    extract_first_string(parameter_list, text).map(|value| value.to_ascii_uppercase())
+fn is_identifier_part(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || byte == b'_'
 }
 
-fn extract_first_string(node: Node<'_>, text: &str) -> Option<String> {
-    if node.kind() == "string" {
-        let raw = node.utf8_text(text.as_bytes()).ok()?;
-        return Some(raw.trim_matches('\'').to_string());
-    }
-
-    let mut cursor = node.walk();
-    for child in node.children(&mut cursor) {
-        if let Some(value) = extract_first_string(child, text) {
-            return Some(value);
-        }
-    }
-
-    None
-}
-
-fn build_indexes(tree: &Option<Tree>, text: &str) -> DocumentIndexes {
-    let mut definitions = HashMap::new();
-    let mut references = HashMap::new();
+fn build_instances(tree: &Option<Tree>, text: &str) -> Vec<EntityInstanceInfo> {
     let mut instances = Vec::new();
 
     let tree = match tree {
         Some(t) => t,
-        None => return (definitions, references, instances),
+        None => return instances,
     };
 
     let mut cursor = tree.root_node().walk();
-    traverse(
-        &mut cursor,
-        text,
-        &mut definitions,
-        &mut references,
-        &mut instances,
-    );
+    traverse(&mut cursor, text, &mut instances);
 
-    (definitions, references, instances)
+    instances
 }
 
-fn traverse(
-    cursor: &mut TreeCursor,
-    text: &str,
-    definitions: &mut HashMap<u32, DefinitionInfo>,
-    references: &mut HashMap<u32, Vec<Range>>,
-    instances: &mut Vec<EntityInstanceInfo>,
-) {
+fn traverse(cursor: &mut TreeCursor, text: &str, instances: &mut Vec<EntityInstanceInfo>) {
     loop {
         let node = cursor.node();
 
         if node.kind() == "entity_instance" {
             if let Some(instance) = parse_entity_instance(node, text) {
-                if let Some(id) = instance.id {
-                    definitions.insert(
-                        id,
-                        DefinitionInfo {
-                            id_range: instance
-                                .id_range
-                                .expect("definition ids should have a range"),
-                            entity_range: instance.entity_range,
-                            entity_name: instance.entity_name.clone(),
-                        },
-                    );
-                }
                 instances.push(instance);
             }
-        } else if node.kind() == "reference"
-            && let Ok(ref_text) = node.utf8_text(text.as_bytes())
-            && let Ok(id) = ref_text.trim_start_matches('#').parse::<u32>()
-        {
-            references.entry(id).or_default().push(node_range(&node));
         }
 
         if cursor.goto_first_child() {
-            traverse(cursor, text, definitions, references, instances);
+            traverse(cursor, text, instances);
             cursor.goto_parent();
         }
 
@@ -485,8 +616,6 @@ fn node_range(node: &Node<'_>) -> Range {
 mod tests {
     use super::*;
 
-    /// Helper Function
-    /// Parses the given text and returns a [`Document`] with the text and initial state set.
     fn parse_document(text: &str) -> Document {
         let mut parser = Parser::new();
         parser
@@ -496,34 +625,34 @@ mod tests {
         Document::parse(&mut parser, text.to_string())
     }
 
-    /// Helper Function
-    /// Returns the position of the first occurrence of `needle` in `text`.
     fn position_at(text: &str, needle: &str) -> Position {
-        let offset = text.find(needle).expect("needle should exist") as u32;
-        Position::new(0, offset)
+        let offset = text.find(needle).expect("needle should exist");
+        let document = Document::new_unloaded(text.to_string());
+        document
+            .offset_to_position(offset)
+            .expect("needle offset should convert to a position")
     }
 
-    /// Tests that [`Document::parse`] keeps the text and initial state set.
     #[test]
-    fn parse_keeps_text_and_initial_state() {
+    fn parse_builds_text_index_and_ast_state() {
         let text = "#1=IFCWALL($);";
         let document = parse_document(text);
+
         assert_eq!(document.text, text);
         assert!(document.tree.is_some());
         assert_eq!(document.schema_name, None);
-        // definitions and references are now populated, not empty
+        assert_eq!(document.definitions.get(&1), Some(&0));
+        assert_eq!(document.references.get(&1), Some(&vec![0]));
     }
 
-    /// Tests that [`Document::parse`] detects the schema name from the header.
     #[test]
-    fn parse_detects_custom_schema_name_from_header() {
+    fn parse_detects_schema_name_from_text_index() {
         let text = "ISO-10303-21;HEADER;FILE_SCHEMA(('IFC4X3_LOCAL_TEST'));ENDSEC;DATA;#1=IFCWALL($);ENDSEC;END-ISO-10303-21;";
         let document = parse_document(text);
 
         assert_eq!(document.schema_name.as_deref(), Some("IFC4X3_LOCAL_TEST"));
     }
 
-    /// Tests that [`Document::node_at_position`] finds the entity name.
     #[test]
     fn node_at_position_finds_entity_name() {
         let text = "#1=IFCWALL($);";
@@ -540,7 +669,6 @@ mod tests {
         );
     }
 
-    /// Tests that [`Document::node_at_position`] finds the reference.
     #[test]
     fn node_at_position_finds_reference() {
         let text = "#1=IFCWALL(#2);";
@@ -554,56 +682,24 @@ mod tests {
         assert_eq!(node.utf8_text(document.text.as_bytes()).ok(), Some("#2"));
     }
 
-    /// Tests that [`Document::parse`] indexes the entity definition.
     #[test]
-    fn parse_indexes_entity_definition() {
-        let text = "#1=IFCWALL($);";
+    fn text_index_records_definition_and_reference_occurrences() {
+        let text = "#1=IFCWALL(#2);\n#2=IFCDOOR(#1);";
         let document = parse_document(text);
-        assert!(document.definitions.contains_key(&1));
-        assert!(document.references.is_empty());
-        // "#1" starts at column 0, row 0 and ends at column 2, row 0
-        assert_eq!(
-            document.definitions[&1].id_range,
-            Range {
-                start: Position::new(0, 0),
-                end: Position::new(0, 2),
-            }
-        );
-        // "IFCWALL" starts at column 2, row 0 and ends at column 8, row 0
-        assert_eq!(
-            document.definitions[&1].entity_range,
-            Range {
-                start: Position::new(0, 0),
-                end: Position::new(0, text.len() as u32),
-            }
-        );
+
+        assert_eq!(document.definitions.get(&1), Some(&0));
+        assert_eq!(document.definitions.get(&2), Some(&16));
+        assert_eq!(document.references.get(&1), Some(&vec![0, 27]));
+        assert_eq!(document.references.get(&2), Some(&vec![11, 16]));
     }
 
-    /// Tests that [`Document::parse`] indexes multiple definitions.
     #[test]
-    fn parse_indexes_multiple_definitions() {
-        let text = "#1=IFCWALL($);\n#2=IFCDOOR($);";
-        let document = parse_document(text);
-        assert!(document.definitions.contains_key(&1));
-        assert!(document.definitions.contains_key(&2));
-        assert_eq!(document.definitions.len(), 2);
-    }
+    fn position_conversion_uses_utf16_columns() {
+        let document = Document::new_unloaded("a😀b\n#1=IFCWALL($);".to_string());
 
-    /// Tests that [`Document::parse`] indexes references.
-    #[test]
-    fn parse_indexes_references() {
-        let text = "#1=IFCWALL(#2);";
-        let document = parse_document(text);
-        assert!(document.references.contains_key(&2));
-        assert_eq!(document.references[&2].len(), 1);
-    }
-
-    /// Tests that [`Document::parse`] indexes multiple references to the same ID.
-    #[test]
-    fn parse_indexes_multiple_references_to_same_id() {
-        let text = "#1=IFCWALL(#2);\n#3=IFCDOOR(#2);";
-        let document = parse_document(text);
-        assert_eq!(document.references[&2].len(), 2);
+        assert_eq!(document.position_to_offset(Position::new(0, 3)), Some(5));
+        assert_eq!(document.offset_to_position(5), Some(Position::new(0, 3)));
+        assert_eq!(document.position_to_offset(Position::new(1, 0)), Some(7));
     }
 
     #[test]
@@ -617,7 +713,7 @@ mod tests {
     }
 
     #[test]
-    fn unload_parse_state_preserves_text_and_clears_derived_state() {
+    fn unload_parse_state_preserves_text_index_and_clears_ast_state() {
         let text = "#1=IFCWALL(#2);";
         let mut document = parse_document(text);
 
@@ -626,8 +722,8 @@ mod tests {
         assert_eq!(document.text, text);
         assert!(!document.is_parse_state_loaded());
         assert_eq!(document.schema_name, None);
-        assert!(document.definitions.is_empty());
-        assert!(document.references.is_empty());
+        assert_eq!(document.definitions.get(&1), Some(&0));
+        assert_eq!(document.references.get(&2), Some(&vec![11]));
         assert!(document.instances.is_empty());
         assert!(document.instance_indexes_by_id.is_empty());
     }
@@ -642,13 +738,13 @@ mod tests {
         parser
             .set_language(&tree_sitter_ifc::LANGUAGE.into())
             .expect("Error loading IFC parser");
-        document.reload_parse_state(&mut parser);
+        document.reload_parse_state(&mut parser, DEFAULT_AST_FILE_SIZE_LIMIT_BYTES);
 
         assert_eq!(document.text, text);
         assert!(document.is_parse_state_loaded());
         assert!(document.definitions.contains_key(&1));
         assert!(document.definitions.contains_key(&2));
-        assert_eq!(document.references[&2].len(), 1);
+        assert_eq!(document.references[&2], vec![11, 16]);
         assert_eq!(
             document
                 .instance_by_id(2)

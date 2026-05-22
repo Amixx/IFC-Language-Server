@@ -1,11 +1,11 @@
 //! Hover feature logic.
-//! Resolves the syntax node under the cursor and renders either schema-backed entity information
-//! or local reference previews from the current document.
+//! Resolves text tokens under the cursor and renders schema-backed entity information or local
+//! reference previews from the current document. Derived `*` hovers still use tree-sitter context.
 //! Hover stays synchronous by reading only the in-memory document and schema collections.
 
 use tower_lsp::lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position};
 
-use crate::document::{DefinitionInfo, Document};
+use crate::document::Document;
 use crate::schema::{EntityAttributeDoc, EntityDoc, SchemaDocCollection};
 use crate::step::{ast, derived, derived::ResolvedDerivedValue};
 
@@ -15,35 +15,33 @@ pub fn hover(
     schema_docs: &SchemaDocCollection,
     selected_schema_name: Option<&str>,
 ) -> Option<Hover> {
-    document.tree.as_ref()?;
+    if let Some((id, offset)) = document.id_token_at_position(position)
+        && document.definitions.get(&id) != Some(&offset)
+    {
+        return Some(Hover {
+            contents: HoverContents::Markup(MarkupContent {
+                kind: MarkupKind::Markdown,
+                value: render_reference_hover(document, id)?,
+            }),
+            range: Some(document.id_range_at_offset(offset)?),
+        });
+    }
+
+    if let Some((entity_text, range)) = document.entity_name_at_position(position)
+        && let Some(schema_name) = selected_schema_name.or(document.schema_name.as_deref())
+        && let Some(entity_doc) = schema_docs.get_entity_doc(schema_name, &entity_text)
+    {
+        return Some(Hover {
+            contents: HoverContents::Markup(MarkupContent {
+                kind: MarkupKind::Markdown,
+                value: render_entity_hover(entity_doc),
+            }),
+            range: Some(range),
+        });
+    }
 
     if let Some(node) = document.node_at_position(position) {
-        if node.kind() == "entity_name" {
-            let entity_text = node.utf8_text(document.text.as_bytes()).ok()?;
-            if let Some(schema_name) = selected_schema_name.or(document.schema_name.as_deref())
-                && let Some(entity_doc) = schema_docs.get_entity_doc(schema_name, entity_text)
-            {
-                return Some(Hover {
-                    contents: HoverContents::Markup(MarkupContent {
-                        kind: MarkupKind::Markdown,
-                        value: render_entity_hover(entity_doc),
-                    }),
-                    range: None,
-                });
-            }
-        } else if node.kind() == "reference" {
-            let reference_text = node.utf8_text(document.text.as_bytes()).ok()?;
-            let id = reference_text.trim_start_matches('#').parse::<u32>().ok()?;
-            let definition = document.definitions.get(&id)?;
-
-            return Some(Hover {
-                contents: HoverContents::Markup(MarkupContent {
-                    kind: MarkupKind::Markdown,
-                    value: render_reference_hover(document, definition)?,
-                }),
-                range: Some(node_range(&node)),
-            });
-        } else if node.kind() == "omitted_value" {
+        if node.kind() == "omitted_value" {
             if let Some(schema_name) = selected_schema_name.or(document.schema_name.as_deref())
                 && let Some(schema) = schema_docs.get(schema_name)
             {
@@ -120,8 +118,8 @@ fn render_attribute_table(attributes: &[&EntityAttributeDoc], start_index: usize
     markdown
 }
 
-fn render_reference_hover(document: &Document, definition: &DefinitionInfo) -> Option<String> {
-    let preview = extract_range_text(document, definition.entity_range)?;
+fn render_reference_hover(document: &Document, id: u32) -> Option<String> {
+    let preview = document.entity_instance_text_at_definition(id)?;
 
     Some(format!("```ifc\n{}\n```", preview.trim()))
 }
@@ -144,30 +142,6 @@ fn omitted_value_hover(
         text.push_str(&note);
     }
     Some(text)
-}
-
-fn extract_range_text(document: &Document, range: tower_lsp::lsp_types::Range) -> Option<&str> {
-    let start = offset_at_position(&document.text, range.start)?;
-    let end = offset_at_position(&document.text, range.end)?;
-    document.text.get(start..end)
-}
-
-fn offset_at_position(text: &str, position: Position) -> Option<usize> {
-    let mut offset = 0usize;
-    let mut lines = text.split('\n');
-
-    for _ in 0..position.line {
-        let line = lines.next()?;
-        offset += line.len() + 1;
-    }
-
-    let line = lines.next()?;
-    let character = position.character as usize;
-    if character > line.len() {
-        return None;
-    }
-
-    Some(offset + character)
 }
 
 fn node_range(node: &tree_sitter::Node<'_>) -> tower_lsp::lsp_types::Range {
@@ -198,7 +172,7 @@ fn format_attribute_type(type_name: &str) -> String {
 //*----- TESTS BEGIN HERE -----*
 #[cfg(test)]
 mod tests {
-    use std::collections::{HashMap, HashSet};
+    use std::collections::HashSet;
 
     use super::*;
     use crate::schema::EntityAttributeDoc;
@@ -330,7 +304,7 @@ mod tests {
     #[test]
     fn hover_returns_schema_docs_for_entity_names_with_detected_version() {
         let text = "ISO-10303-21;HEADER;FILE_SCHEMA(('IFC4'));ENDSEC;DATA;#1=IFCWALL($);ENDSEC;END-ISO-10303-21;";
-        let document = parse_document(text);
+        let document = Document::new_unloaded(text.to_string());
 
         let hover = hover(
             &document,
@@ -365,7 +339,7 @@ mod tests {
     #[test]
     fn hover_returns_definition_preview_for_references() {
         let text = "#1=IFCWALL($);\n#2=IFCDOOR(#1);";
-        let document = parse_document(text);
+        let document = Document::new_unloaded(text.to_string());
 
         let hover = hover(
             &document,
@@ -496,19 +470,9 @@ mod tests {
         assert!(value.contains("derived value"));
     }
 
-    /// Test that hover returns none when there is no syntax tree.
-    /// This tests important defensive behavior, since `tree` is defined as `Option<Tree>`, which can be `None`.
     #[test]
-    fn hover_returns_none_without_a_syntax_tree() {
-        let document = Document {
-            text: "#1=IFCWALL($);".to_string(),
-            tree: None,
-            schema_name: None,
-            definitions: HashMap::new(),
-            references: HashMap::new(),
-            instances: Vec::new(),
-            instance_indexes_by_id: HashMap::new(),
-        };
+    fn hover_returns_none_for_definition_id_without_a_syntax_tree() {
+        let document = Document::new_unloaded("#1=IFCWALL($);".to_string());
 
         assert!(hover(&document, Position::new(0, 0), &empty_schema_docs(), None).is_none());
     }
