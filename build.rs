@@ -23,8 +23,7 @@ const SCHEMAS: &[(&str, &str, &str)] = &[
     ),
 ];
 
-const IFC2X3_ENTITY_INDEX_URL: &str =
-    "https://standards.buildingsmart.org/IFC/RELEASE/IFC2x3/TC1/HTML/alphabeticalorder_entities.htm";
+const IFC2X3_ENTITY_INDEX_URL: &str = "https://standards.buildingsmart.org/IFC/RELEASE/IFC2x3/TC1/HTML/alphabeticalorder_entities.htm";
 const IFC2X3_ENTITY_COUNT: usize = 653;
 
 fn main() -> Result<(), Box<dyn Error>> {

@@ -117,16 +117,13 @@ fn render_parameter_resolution(
     value: &ParameterValue,
 ) -> Option<(String, Option<String>)> {
     match value {
-        ParameterValue::Reference { id, .. } => {
-            let definition = document.definitions.get(id)?;
-            Some((
-                format!("`#{}`", id),
-                Some(format!(
-                    "```ifc\n{}\n```",
-                    extract_range_text(document, definition.entity_range)?.trim()
-                )),
-            ))
-        }
+        ParameterValue::Reference { id, .. } => Some((
+            format!("`#{}`", id),
+            Some(format!(
+                "```ifc\n{}\n```",
+                document.entity_instance_text_at_definition(*id)?.trim()
+            )),
+        )),
         ParameterValue::Enumeration { value, .. } => Some((format!("`.{}.`", value), None)),
         ParameterValue::Number { text, .. } => Some((format!("`{}`", text), None)),
         ParameterValue::Null { .. } => Some(("`$`".to_string(), None)),
@@ -144,30 +141,6 @@ struct ResolvedParameterValue {
     value: String,
     preview: Option<String>,
     resolution_note: Option<String>,
-}
-
-fn extract_range_text(document: &Document, range: tower_lsp::lsp_types::Range) -> Option<&str> {
-    let start = offset_at_position(&document.text, range.start)?;
-    let end = offset_at_position(&document.text, range.end)?;
-    document.text.get(start..end)
-}
-
-fn offset_at_position(text: &str, position: tower_lsp::lsp_types::Position) -> Option<usize> {
-    let mut offset = 0usize;
-    let mut lines = text.split('\n');
-
-    for _ in 0..position.line {
-        let line = lines.next()?;
-        offset += line.len() + 1;
-    }
-
-    let line = lines.next()?;
-    let character = position.character as usize;
-    if character > line.len() {
-        return None;
-    }
-
-    Some(offset + character)
 }
 
 fn ifc_dimensions_for_si_unit(unit_name: &str) -> Option<[i32; 7]> {

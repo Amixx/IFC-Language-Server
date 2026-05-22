@@ -6,6 +6,7 @@ mod backend;
 mod config;
 mod diagnostics;
 mod document;
+mod document_index;
 mod features;
 mod schema;
 mod step;

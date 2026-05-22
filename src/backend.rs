@@ -75,6 +75,10 @@ impl Backend {
     }
 
     async fn collect_diagnostics(&self, document: &Document) -> Vec<Diagnostic> {
+        if !document.has_ast() {
+            return Vec::new();
+        }
+
         let selected_schema_name = self.selected_schema_name(&document).await;
         if let Some(schema_name) = selected_schema_name.as_deref() {
             let schema_docs = self.schema_docs.read().await;
