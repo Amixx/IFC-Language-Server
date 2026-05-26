@@ -6,7 +6,7 @@
 use tower_lsp::lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position};
 
 use crate::document::Document;
-use crate::schema::{EntityAttributeDoc, EntityDoc, SchemaDocCollection};
+use crate::schema::{EntityAttributeDoc, EntityDoc, PrimitiveType, SchemaDocCollection, TypeDoc};
 use crate::step::{ast, derived, derived::ResolvedDerivedValue};
 
 pub fn hover(
@@ -35,6 +35,20 @@ pub fn hover(
             contents: HoverContents::Markup(MarkupContent {
                 kind: MarkupKind::Markdown,
                 value: render_entity_hover(entity_doc),
+            }),
+            range: Some(range),
+        });
+    }
+
+    if let Some((type_text, range)) = typed_value_name_at_position(document, position)
+        && let Some(schema_name) = selected_schema_name.or(document.schema_name.as_deref())
+        && let Some(schema) = schema_docs.get(schema_name)
+        && let Some(type_doc) = schema.type_decl(&type_text)
+    {
+        return Some(Hover {
+            contents: HoverContents::Markup(MarkupContent {
+                kind: MarkupKind::Markdown,
+                value: render_type_hover(type_doc),
             }),
             range: Some(range),
         });
@@ -122,6 +136,91 @@ fn render_reference_hover(document: &Document, id: u32) -> Option<String> {
     let preview = document.entity_instance_text_at_definition(id)?;
 
     Some(format!("```ifc\n{}\n```", preview.trim()))
+}
+
+fn typed_value_name_at_position(
+    document: &Document,
+    position: Position,
+) -> Option<(String, tower_lsp::lsp_types::Range)> {
+    let offset = document.position_to_offset(position)?;
+    let node = document.node_at_position(position)?;
+    let typed_parameter = ancestor_with_kind(node, "typed_parameter")?;
+    let entity_name = child_with_kind(typed_parameter, "entity_name")?;
+    if offset < entity_name.start_byte() || offset >= entity_name.end_byte() {
+        return None;
+    }
+
+    let text = entity_name.utf8_text(document.text.as_bytes()).ok()?;
+    Some((text.to_ascii_uppercase(), node_range(&entity_name)))
+}
+
+fn ancestor_with_kind<'tree>(
+    mut node: tree_sitter::Node<'tree>,
+    expected_kind: &str,
+) -> Option<tree_sitter::Node<'tree>> {
+    loop {
+        if node.kind() == expected_kind {
+            return Some(node);
+        }
+        node = node.parent()?;
+    }
+}
+
+fn child_with_kind<'tree>(
+    node: tree_sitter::Node<'tree>,
+    expected_kind: &str,
+) -> Option<tree_sitter::Node<'tree>> {
+    let mut cursor = node.walk();
+    node.children(&mut cursor)
+        .find(|child| child.kind() == expected_kind)
+}
+
+fn render_type_hover(type_doc: &TypeDoc) -> String {
+    match type_doc {
+        TypeDoc::Alias(alias) => format!(
+            "# {}\n\nAlias of `{}`",
+            alias.name,
+            format_alias_target(&alias.target)
+        ),
+        TypeDoc::Enumeration(enumeration) => format!(
+            "# {}\n\nEnumeration type with {} values.",
+            enumeration.name,
+            enumeration.items.len()
+        ),
+        TypeDoc::Select(select) => format!(
+            "# {}\n\nSelect type with {} options.",
+            select.name,
+            select.options.len()
+        ),
+    }
+}
+
+fn format_alias_target(ty: &crate::schema::TypeRef) -> String {
+    match ty {
+        crate::schema::TypeRef::Primitive(primitive) => format_primitive_type(primitive),
+        crate::schema::TypeRef::Named(named) => named.name.clone(),
+        _ => "complex type".to_string(),
+    }
+}
+
+fn format_primitive_type(primitive: &PrimitiveType) -> String {
+    match primitive {
+        PrimitiveType::Number => "NUMBER".to_string(),
+        PrimitiveType::Real => "REAL".to_string(),
+        PrimitiveType::Integer => "INTEGER".to_string(),
+        PrimitiveType::Logical => "LOGICAL".to_string(),
+        PrimitiveType::Boolean => "BOOLEAN".to_string(),
+        PrimitiveType::String { width, fixed } => format_width_type("STRING", *width, *fixed),
+        PrimitiveType::Binary { width, fixed } => format_width_type("BINARY", *width, *fixed),
+    }
+}
+
+fn format_width_type(name: &str, width: Option<usize>, fixed: bool) -> String {
+    match width {
+        Some(width) if fixed => format!("{name}({width}) FIXED"),
+        Some(width) => format!("{name}({width})"),
+        None => name.to_string(),
+    }
 }
 
 fn omitted_value_hover(
@@ -317,6 +416,51 @@ mod tests {
 
         assert!(value.contains("# IfcWall"));
         assert!(value.contains("Official documentation"));
+    }
+
+    #[test]
+    fn hover_returns_schema_docs_for_inline_defined_types() {
+        let text = "ISO-10303-21;HEADER;FILE_SCHEMA(('IFC4'));ENDSEC;DATA;#1=IFCPROPERTYSINGLEVALUE('Name',$,IFCLABEL('Living Room'));ENDSEC;END-ISO-10303-21;";
+        let schema = crate::schema::load_express(
+            crate::schema::IfcVersion::Ifc4Add2Tc1,
+            r#"
+            SCHEMA IFC4;
+              TYPE IfcLabel = STRING(255);
+              END_TYPE;
+            END_SCHEMA;
+            "#,
+        )
+        .expect("fixture schema should parse");
+        let schema_docs = SchemaDocCollection::from_docs([("IFC4".to_string(), schema)]);
+        let document = parse_document(text);
+
+        let hover = hover(&document, position_at(text, "IFCLABEL"), &schema_docs, None)
+            .expect("hover should exist");
+        let value = hover_text(hover);
+
+        assert!(value.contains("# IfcLabel"));
+        assert!(value.contains("Alias of `STRING(255)`"));
+    }
+
+    #[test]
+    fn typed_value_name_detection_finds_inline_type_name() {
+        let text = "#1=IFCPROPERTYSINGLEVALUE('Name',$,IFCLABEL('Living Room'));";
+        let document = parse_document(text);
+
+        let (name, range) = typed_value_name_at_position(&document, position_at(text, "IFCLABEL"))
+            .expect("inline typed value should resolve");
+
+        assert_eq!(name, "IFCLABEL");
+        assert_eq!(range.start, Position::new(0, 35));
+        assert_eq!(range.end, Position::new(0, 43));
+    }
+
+    #[test]
+    fn typed_value_name_detection_ignores_entity_definition_name() {
+        let text = "#1=IFCWALL($);";
+        let document = parse_document(text);
+
+        assert!(typed_value_name_at_position(&document, position_at(text, "IFCWALL")).is_none());
     }
 
     /// Test that hover returns definition preview for references to definitions.
@@ -548,5 +692,20 @@ mod tests {
         assert!(!markdown.contains("## Inherited Attributes"));
         assert!(markdown.contains("## Attributes Declared In This Entity"));
         assert!(markdown.contains("| 1 | *GlobalId* | `IfcGloballyUniqueId` |"));
+    }
+
+    #[test]
+    fn render_type_hover_renders_alias_types() {
+        let markdown = render_type_hover(&TypeDoc::Alias(crate::schema::AliasTypeDef {
+            name: "IfcLabel".to_string(),
+            target: crate::schema::TypeRef::Primitive(crate::schema::PrimitiveType::String {
+                width: Some(255),
+                fixed: false,
+            }),
+            where_rules: Vec::new(),
+        }));
+
+        assert!(markdown.contains("# IfcLabel"));
+        assert!(markdown.contains("Alias of `STRING(255)`"));
     }
 }
