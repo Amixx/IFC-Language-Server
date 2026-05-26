@@ -233,28 +233,4 @@ mod tests {
         assert!(!index.references.contains_key(&2));
         assert!(!index.references.contains_key(&3));
     }
-
-    #[test]
-    #[ignore]
-    fn times_large_generated_index_scan() {
-        let mut text = String::from("HEADER;FILE_SCHEMA(('IFC4'));ENDSEC;DATA;\n");
-        let instance_count = 3_000_000u32;
-        for id in 1..=instance_count {
-            let previous = id.saturating_sub(1).max(1);
-            text.push_str(&format!("#{id}=IFCWALL(#{previous});\n"));
-        }
-
-        let started = std::time::Instant::now();
-        let index = scan_text(&text);
-        let elapsed = started.elapsed();
-
-        eprintln!(
-            "scanned {} bytes, {} definitions, {} reference ids in {:?}",
-            text.len(),
-            index.definitions.len(),
-            index.references.len(),
-            elapsed
-        );
-        assert_eq!(index.definitions.len(), instance_count as usize);
-    }
 }
