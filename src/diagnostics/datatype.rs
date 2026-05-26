@@ -387,13 +387,8 @@ fn collect_error_nodes(
     loop {
         let node = cursor.node();
 
-        if node.is_error() {
-            diagnostics.push(Diagnostic {
-                range: node_range(&node),
-                severity: Some(DiagnosticSeverity::ERROR),
-                message: "Invalid IFC STEP syntax".to_string(),
-                ..Default::default()
-            });
+        if let Some(diagnostic) = syntax_diagnostic_for_node(&node) {
+            diagnostics.push(diagnostic);
         }
 
         if cursor.goto_first_child() {
@@ -404,6 +399,30 @@ fn collect_error_nodes(
         if !cursor.goto_next_sibling() {
             break;
         }
+    }
+}
+
+fn syntax_diagnostic_for_node(node: &tree_sitter::Node<'_>) -> Option<Diagnostic> {
+    let message = if node.is_error() {
+        Some("Invalid IFC STEP syntax".to_string())
+    } else if node.is_missing() {
+        Some(missing_node_message(node))
+    } else {
+        None
+    }?;
+
+    Some(Diagnostic {
+        range: node_range(node),
+        severity: Some(DiagnosticSeverity::ERROR),
+        message,
+        ..Default::default()
+    })
+}
+
+fn missing_node_message(node: &tree_sitter::Node<'_>) -> String {
+    match node.kind() {
+        ";" => "Missing `;`".to_string(),
+        kind => format!("Missing `{kind}`"),
     }
 }
 
@@ -594,6 +613,20 @@ mod tests {
                 .any(|diagnostic| diagnostic.message.contains("Invalid IFC STEP syntax")),
             "{diagnostics:?}"
         );
+    }
+
+    #[test]
+    fn datatype_validator_reports_missing_step_semicolon() {
+        let doc = parse_document("#1=IFCWALL('gid')\n#2=IFCWALL('next');");
+        let diagnostics = collect_with_schema_name(&doc, &test_schema(), None);
+
+        let diagnostic = diagnostics
+            .iter()
+            .find(|diagnostic| diagnostic.message == "Missing `;`")
+            .expect("missing semicolon should be reported");
+
+        assert_eq!(diagnostic.range.start, Position::new(0, 17));
+        assert_eq!(diagnostic.range.end, Position::new(0, 17));
     }
 
     /// Test that the datatype validator accepts inline typed values for selects.
