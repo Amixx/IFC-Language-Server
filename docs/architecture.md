@@ -1,12 +1,19 @@
 # IFC-Language-Server Architecture
 
-**For Human Developers:** Reference this file in your agent instructions (`AGENTS.md`, `.claude/`, etc.)
+**For Human Developers:** Reference this file in your agent instructions (`AGENTS.md`, `.claude/`, etc.).
 
 ## Goal
 
-This project currently stays small and focused.
+This project stays small and focused.
 
-The implemented architecture is built around one open IFC document, one tree-sitter parse, a small in-memory document index, and generated in-memory schema documentation that support the currently shipped LSP features:
+The implemented architecture is built around:
+
+- full-text document sync
+- one lightweight text index per open IFC document
+- optional tree-sitter parse state for the active document
+- generated in-memory EXPRESS schema documentation
+
+The shipped LSP features are:
 
 - hover
 - go-to-definition
@@ -15,207 +22,189 @@ The implemented architecture is built around one open IFC document, one tree-sit
 
 ## Core Design
 
-The codebase currently revolves around four main runtime concepts:
+The runtime code revolves around three main concepts:
 
 - `Backend`
-  The `tower-lsp` entrypoint. It owns the open-document map, a shared `tree_sitter::Parser`, and the in-memory schema docs used for hover and diagnostics.
+  The `tower-lsp` entrypoint. It owns the open-document map, loaded schema docs, server configuration, and large-file warning state.
 - `Document`
-  The parsed state of one IFC file. It stores the source text, optional syntax tree, detected schema version, definitions, references, and parsed entity-instance arguments.
-- `SchemaDocCollection` & `SchemaDoc`
-  A synchronous in-memory lookup for IFC entity & type documentation by schema version and entity name.
+  The in-memory representation of one IFC file. It always stores source text and cheap text indexes. It may also store tree-sitter state when AST-backed features are enabled for that document.
+- `SchemaDocCollection` and `SchemaDoc`
+  In-memory lookup tables for EXPRESS entity and type documentation, keyed by normalized schema name.
 
 Feature modules in `src/features/` stay thin and operate on `&Document`.
-Diagnostics operate on `&Document` plus `&SchemaDoc`/`SchemaDocCollection`.
+Diagnostics operate on `&Document` plus a selected `SchemaDoc`.
 
 ## Data Flow
 
-The current flow is:
+On open or full-text change:
 
-1. An editor opens a document or sends a full-text change.
-2. `Backend` reparses the full text with the shared tree-sitter parser.
-3. `Document::parse` detects the schema version and rebuilds the per-document indexes.
-4. If the schema version is supported, the matching `SchemaDoc` is used to collect diagnostics & entity hover info.
-5. `Backend` publishes diagnostics to the LSP client.
-6. The rebuilt `Document` replaces the previous entry in the backend's `HashMap<Url, Document>`.
-7. Hover, definition, references, and diagnostics all read from that stored `Document`.
+1. `Backend` unloads AST-backed parse state from other open documents.
+2. The active document stores the new full text.
+3. `Document::reload_parse_state` rebuilds the text index.
+4. If the file is within the configured AST size limit, the document is parsed with `tree-sitter-ifc` and entity instances are rebuilt from the syntax tree.
+5. If the file is above the AST size limit, the document is marked as `ast_skipped`.
+6. Diagnostics are collected only when the active document has an AST.
+7. Diagnostics are published to the LSP client.
 
-There is no incremental parsing, background indexing, or cross-document state.
+On hover, definition, or references requests:
+
+1. `Backend::ensure_document_loaded` reloads the requested document if its AST-backed state was previously unloaded.
+2. Reloading one document unloads AST-backed state from the other open documents.
+3. The feature handler reads the stored `Document`.
+4. If request-time reloading produced diagnostics, they are published after the request.
+
+There is still no incremental parsing, background indexing, or cross-document indexing.
 
 ## Backend
 
-`src/backend.rs` currently owns:
+`src/backend.rs` owns:
 
-- `client: Client`
 - `documents: Arc<RwLock<HashMap<Url, Document>>>`
-- `parser: Arc<RwLock<Parser>>`
-- `schema_docs: SchemaDocCollection`
+- `schema_docs: Arc<RwLock<SchemaDocCollection>>`
+- `config: Arc<RwLock<ConfigState>>`
+- `ast_skip_warning_shown: Arc<RwLock<HashSet<Url>>>`
 
-The server currently advertises these capabilities:
+The backend creates a fresh tree-sitter parser through `new_parser()` when AST state must be rebuilt. It does not keep one long-lived parser.
+
+The server advertises:
 
 - `textDocument/hover`
 - full text document sync
 - `textDocument/definition`
 - `textDocument/references`
 
-Diagnostics are published via `textDocument/publishDiagnostics` on open and change.
+Diagnostics are published with `textDocument/publishDiagnostics` on open, change, and request-time reloads.
 
 ## Document Model
 
-The `Document` type in `src/document.rs` is the central internal representation:
+`src/document.rs` is the central document representation:
 
 ```rust
 pub struct Document {
     pub text: String,
     pub tree: Option<tree_sitter::Tree>,
-    pub version: Option<IfcVersion>,
-    pub definitions: HashMap<u32, DefinitionInfo>,
-    pub references: HashMap<u32, Vec<Range>>,
+    pub ast_skipped: bool,
+    pub schema_name: Option<String>,
+    pub line_offsets: Vec<usize>,
+    pub definitions: HashMap<u32, usize>,
+    pub references: HashMap<u32, Vec<usize>>,
     pub instances: Vec<EntityInstanceInfo>,
-}
-
-pub struct DefinitionInfo {
-    pub id_range: Range,
-    pub entity_range: Range,
-    pub entity_name: String,
 }
 ```
 
-Important details:
+Important fields:
 
 - `text`
-  Used for hover rendering and node text extraction.
-- `tree`
-  Stored as `Option<Tree>` because parsing may fail.
-- `version`
-  Detected with a simple `FILE_SCHEMA` text scan. Unknown schemas remain `None`.
+  The full source text used by all features.
+- `line_offsets`
+  Byte offsets for line starts. Position conversion handles LSP UTF-16 columns.
+- `schema_name`
+  The `FILE_SCHEMA(...)` value detected by the text scanner.
 - `definitions`
-  Maps numeric ids such as `123` to the `instance_id` range, full entity-instance range, and defining entity name.
+  Maps numeric ids such as `123` to the byte offset of the local `#123` definition.
 - `references`
-  Maps numeric ids to all `reference` ranges in the same document.
+  Maps numeric ids to byte offsets of all local `#123` tokens, including the definition token.
+- `tree`
+  Optional tree-sitter syntax tree for AST-backed features.
+- `ast_skipped`
+  Marks a document whose text exceeded the configured AST parsing limit.
 - `instances`
-  Stores parsed `entity_instance` values, including entity name, argument ranges, and structured parameter values used by diagnostics.
+  Parsed entity instances and parameter values, rebuilt only when an AST is available.
 
-The document index is built by traversing the syntax tree and recording:
+`src/document_index.rs` provides the lightweight scanner used by every document. It records line starts, local ids, references, and `FILE_SCHEMA(...)` without requiring tree-sitter.
 
-- `entity_instance` nodes for definitions
-- `reference` nodes for references
-- parameter values such as strings, numbers, references, enumerations, `$`, `*`, lists, and inline typed values
+## Loading And Unloading
 
-Ids are stored as `u32`, not as raw `#123` strings.
+`Document::new_unloaded(text)` creates a document with source text and the lightweight text index only.
+
+`Document::unload_parse_state()` drops:
+
+- `tree`
+- `instances`
+- the private instance id lookup
+
+It keeps:
+
+- `text`
+- `line_offsets`
+- `schema_name`
+- `definitions`
+- `references`
+
+`Document::reload_parse_state(parser, ast_file_size_limit_bytes)` always rebuilds the text index first. It then parses the document only if `text.len()` is within the AST limit. Files above the limit keep text-index-backed features available and set `ast_skipped = true` so the server does not repeatedly attempt to parse them.
+
+The backend intentionally keeps AST-backed state for at most one active document at a time. Other open documents remain in memory as text plus the lightweight index.
+
+## AST Size Limit
+
+The default AST parsing limit is `70 MiB` (`DEFAULT_AST_FILE_SIZE_LIMIT_BYTES`).
+
+Clients can override it with the LSP initialization option:
+
+```json
+{
+  "astFileSizeLimitMb": 128
+}
+```
+
+When a file is larger than the limit:
+
+- the server shows one warning per URI
+- tree-sitter parsing is skipped
+- schema diagnostics are disabled
+- derived `*` hover is disabled
+- basic hover and navigation remain available from the text index
+
+## Feature AST Usage
+
+These features do not require an AST:
+
+- local reference hover for `#123`
+- entity definition hover for names such as `IFCWALL`, when schema docs are available
+- go-to-definition for local `#id` references
+- find-references for local `#id` tokens
+- schema name detection from `FILE_SCHEMA(...)`
+
+These features require an AST:
+
+- syntax diagnostics
+- schema-aware datatype diagnostics
+- parsed entity argument validation
+- derived `*` hover
+
+New features should explicitly choose the cheapest data source that is sufficient. Prefer the text index for navigation and simple token lookup. Use tree-sitter only when syntax structure or parsed parameter values are required.
 
 ## Schema Documentation
 
-The `SchemaDoc` and `SchemaDocCollection` structs are defined as follows:
+Official EXPRESS definitions for supported IFC versions are fetched by `build.rs` at compile time, written into Cargo's `OUT_DIR`, and embedded into the binary with `include_str!`.
 
-```rust
-pub struct EntityAttributeDoc {
-    pub name: String,
-    pub type_name: String,
-    pub declared_in: String,
-    pub ty: TypeRef,
-    pub optional: bool,
-    pub allows_omitted: bool,
-}
+At runtime, startup parses those bundled EXPRESS strings into a `SchemaDocCollection`. Custom EXPRESS schemas can also be loaded from paths supplied in `initializationOptions`.
 
-pub struct EntityDoc {
-    pub name: String,
-    pub attributes: Vec<EntityAttributeDoc>,
-    pub url: String,
-    pub all_supertypes: HashSet<String>,
-}
-
-pub enum TypeDoc {
-    Alias(AliasTypeDef),
-    Enumeration(EnumerationTypeDef),
-    Select(SelectTypeDef),
-}
-
-pub struct SchemaDoc {
-    pub entities: HashMap<String, EntityDoc>,
-    pub types: HashMap<String, TypeDoc>,
-}
-
-pub struct SchemaDocCollection {
-    pub docs: HashMap<IfcVersion, SchemaDoc>,
-}
-```
-
-A `SchemaDoc` contains information about:
-- Entities:
-  - attributes
-  - attribute types
-  - where attributes have been declared
-  - inheritance
-- Types:
-  - Alias Types (e.g., a wrapper around a primitive)
-  - Enumeration Types (e.g. one of a set of values)
-  - Select Types (can be one of many types)
-
-The `SchemaDoc` is the single-source of truth for all information about entities and types of an IfcVersion, with all relevant hover and diagnostics information sourced from it. A `SchemaDocCollection` is simply a collection of those docs by IfcVersion.
-
-The official EXPRESS definitions for the supported IfcVersions are fetched from buildingSMART at compile time by `build.rs`, written into Cargo's `OUT_DIR`, and embedded into the binary with `include_str!`. At runtime startup, the LS reads those bundled EXPRESS strings and parses them with the `espr` crate to build the in-memory `SchemaDocCollection`. `load_express` is the central conversion function from EXPRESS text to `SchemaDoc`; support for custom IFC EXPRESS definitions is also possible in the future.
-
-This keeps runtime startup and restart offline-safe for the officially supported schemas while still avoiding checked-in EXPRESS files in the repository. Fresh builds do require network access to fetch the official EXPRESS inputs. If parsing a bundled supported schema fails, that schema is omitted from the `SchemaDocCollection`, the backend logs a warning, and schema-aware hover and diagnostics are unavailable for that IfcVersion.
-
-## tree-sitter Integration
-
-The server depends on the published `tree-sitter-ifc` crate from crates.io.
-
-At runtime:
-
-- `Backend::new` creates one `tree_sitter::Parser`
-- the parser is configured with `tree_sitter_ifc::LANGUAGE`
-- document text is parsed into a `tree_sitter::Tree`
-- feature handlers use `Document::node_at_position` to inspect the node under the cursor
-
-The tree-sitter grammar remains the source of truth for IFC syntax recognition. This crate is responsible for indexing and LSP behavior on top of that parse tree.
+`SchemaDocCollection` is keyed by normalized schema name, not by open document. If an official schema fails to load, the backend logs a warning and schema-aware hover or diagnostics for that schema are unavailable.
 
 ## Feature Behavior
 
 ### Hover
 
-`src/features/hover.rs` currently supports:
+`src/features/hover.rs` supports:
 
-- entity-name hover for `entity_name` nodes when `Document::version` is known and a matching loaded `SchemaDoc` exists
-- reference hover for `reference` nodes by rendering the full defining entity instance as an IFC code block
-- a generic instructional hover for other node kinds
-
-Entity hover currently renders:
-
-- the entity name
-- an inherited attribute table
-- a direct-attribute table
-- a link to the official documentation page
-
-Although the `SchemaDoc` include more data, the current hover rendering consumes only:
-
-- `name`
-- `attributes`
-- `url`
+- reference hover by rendering the local defining entity instance as an IFC code block
+- entity definition hover from the selected schema docs
+- derived `*` hover when AST state is available
 
 ### Go To Definition
 
-`src/features/definition.rs` only resolves `reference` nodes.
-
-It returns the `id_range` of the matching local definition. It does not jump from an `instance_id` token to itself, and it does not perform cross-file lookup.
+`src/features/definition.rs` resolves local `#id` references to their same-document definition offset. It does not perform cross-file lookup.
 
 ### Find References
 
-`src/features/references.rs` accepts either:
-
-- an `instance_id`
-- a `reference`
-
-It returns:
-
-- the definition location if present
-- every indexed reference location for the same id in the same document
+`src/features/references.rs` returns all same-document text-indexed `#id` locations, including the definition token.
 
 ### Diagnostics
 
-`src/diagnostics/datatype.rs` currently validates IFC entity instance arguments against runtime schema documentation.
+`src/diagnostics/datatype.rs` validates parsed IFC entity instances against runtime schema documentation. Diagnostics currently require AST-backed `Document::instances`.
 
-The current diagnostics provider supports:
+The provider supports:
 
 - schema non-compliant entity names
 - wrong local reference target types
@@ -229,45 +218,37 @@ The current diagnostics provider supports:
 - `SELECT` branch validation
 - inline typed values such as `IFCLABEL('Name')`
 
-The current provider does not yet evaluate general EXPRESS `WHERE` rules.
-
+It does not evaluate general EXPRESS `WHERE` rules.
 
 ## Project Structure
-
-The current codebase is intentionally small:
 
 ```text
 build.rs
 src/
   main.rs
   backend.rs
-  diagnostics/
-    mod.rs
-    datatype.rs
+  config.rs
   document.rs
-  schema/
-    *.rs
+  document_index.rs
+  diagnostics/
   features/
-    mod.rs
-    hover.rs
-    definition.rs
-    references.rs
+  schema/
+  step/
 samples/
   *.ifc
 ```
 
-## Non-Goals For The Current Architecture
+## Non-Goals
 
-The current project should continue to avoid the following, unless explicitely requested by the user:
+Avoid these unless explicitly requested:
 
 - cross-file indexing
 - incremental parsing infrastructure
 - background worker systems
+- retaining ASTs for every open document
 - large abstraction layers or service registries
 - premature support for unimplemented LSP features
 
 ## Guiding Principle
 
-Keep the implementation direct.
-
-If a new abstraction does not clearly support the currently shipped feature set, it probably does not belong here yet.
+Keep the implementation direct. If a new abstraction does not clearly support the current feature set or large-file behavior, it probably does not belong here yet.
