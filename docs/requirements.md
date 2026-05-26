@@ -54,6 +54,21 @@ The language server should implement find references functionality for IFC symbo
 
 For the current scope, this should be limited to a single document. Cross-file indexing is not required.
 
+### Large IFC Files
+
+The language server should remain usable for large IFC files without retaining tree-sitter ASTs for every open document.
+
+For files above the configured AST parsing limit:
+
+- local reference hover should remain available
+- entity definition hover should remain available when schema docs are available
+- go-to-definition should remain available for local `#id` references
+- find-references should remain available for local `#id` tokens
+- AST-backed schema diagnostics may be disabled
+- derived `*` hover may be disabled
+
+The AST parsing limit should be configurable through `initializationOptions.astFileSizeLimitMb`.
+
 ### Schema Diagnostics
 
 The LS should provide schema-aware diagnostics for things like:

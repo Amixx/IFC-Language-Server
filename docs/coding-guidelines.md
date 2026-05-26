@@ -16,11 +16,15 @@ Prefer the simplest implementation that matches the documented current scope in 
 
 ## Architectural Discipline
 
-- Keep changes aligned with the current `Backend` / `Document` / `SchemaDocCollection` split.
+- Keep changes aligned with the current `Backend` / `Document` / `document_index` / `SchemaDocCollection` split.
 - Prefer feature logic that operates on `&Document` instead of pushing more logic into the LSP trait implementation.
 - Preserve the current single-document model unless the work explicitly requires widening scope.
 - Prefer full-document reparsing over incremental parsing complexity unless there is a demonstrated need.
-- Keep per-document indexes small and derived from the syntax tree.
+- Keep per-document text indexes small and independent from tree-sitter.
+- Prefer the lightweight text index for navigation and simple token lookup.
+- Use tree-sitter only when syntax structure or parsed parameter values are required.
+- Do not retain AST-backed parse state for every open document.
+- New features must account for files above the configured AST parsing limit.
 
 ## Code Style
 
@@ -39,6 +43,7 @@ Prefer the simplest implementation that matches the documented current scope in 
   - Prefer the standard library or existing dependencies for small tasks.
 - Major architectural changes require approval.
 - Large refactors require approval.
+- Changes to the document memory strategy, AST loading/unloading behavior, or AST size-threshold behavior require explicit user approval.
 - No modifications to `./docs` without specific instructions by the user.
 - No deleting, resetting, or reverting unrelated work without approval.
 - Ask the user when encountering ambiguous requirements, conflicting docs, or risky edits.
@@ -46,7 +51,7 @@ Prefer the simplest implementation that matches the documented current scope in 
 ## Error Handling
 
 - Handle errors deliberately; do not ignore them silently.
-- Prefer graceful fallbacks for unsupported schema versions, missing docs, and absent syntax nodes.
+- Prefer graceful fallbacks for unsupported schema versions, missing docs, absent syntax nodes, and documents without loaded AST state.
 - Use `expect` only when failure is truly unrecoverable or in tests.
 - Avoid panics in normal LSP request handling paths.
 
@@ -54,7 +59,7 @@ Prefer the simplest implementation that matches the documented current scope in 
 
 - Prefer small unit tests close to the code they exercise.
 - Test behavior, not implementation noise.
-- When changing parsing, indexing, version detection, schema loading, or hover rendering, update tests in the same module.
+- When changing text indexing, parsing, AST loading/unloading, AST size limits, schema loading, version detection, or hover rendering, update tests in the same module.
 - Use short IFC snippets in tests unless a repository sample file is clearly more useful.
 - Note: Builds require internet access due to the EXPRESS schema pulling at compile time in `build.rs`.
 
