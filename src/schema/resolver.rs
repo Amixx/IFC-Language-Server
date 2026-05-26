@@ -57,7 +57,7 @@ fn resolve_all_attributes(
         attributes.extend(resolve_all_attributes(entities, supertype, visiting));
     }
 
-    let derived_attributes = entity.derived_attributes.clone();
+    let derived_attributes = &entity.derived_attributes;
 
     attributes.extend(entity.attributes.iter().map(|attr| EntityAttributeDoc {
         name: attr.name.clone(),
