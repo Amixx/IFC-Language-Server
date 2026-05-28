@@ -117,3 +117,4 @@ flake.lock
 AGENTS.md
 .claude/
 logs/
+samples/Gebaeude_1-rvt2019.ifc
