@@ -10,6 +10,7 @@ use tokio::sync::RwLock;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer};
+use tracing::{debug, info, instrument, warn};
 
 use crate::config::{ServerConfig, expand_schema_candidates, parse_server_config};
 use crate::diagnostics::datatype;
@@ -61,6 +62,7 @@ impl Backend {
         self.config.read().await.ast_file_size_limit_bytes
     }
 
+    #[instrument(skip(self), fields(uri = %uri, text_len, limit_bytes))]
     async fn check_ast_support(&self, uri: &Url, text_len: usize, limit_bytes: usize) -> bool {
         let mut shown = self.ast_skip_warning_shown.write().await;
         if text_len <= limit_bytes {
@@ -78,12 +80,14 @@ impl Backend {
                     ),
                 )
                 .await;
+            warn!("skipping AST parse because document exceeds configured size limit");
             return true;
         }
 
         false
     }
 
+    #[instrument(skip(self, document), fields(schema_name = document.schema_name.as_deref().unwrap_or("<none>")))]
     async fn check_schema_support(&self, document: &Document) {
         let forced_schema_name = self.config.read().await.forced_schema_name.clone();
 
@@ -106,6 +110,7 @@ impl Backend {
         }
 
         if self.selected_schema_name(document).await.is_none() {
+            warn!("document schema is unknown or unsupported");
             self.client
                 .show_message(
                     MessageType::WARNING,
@@ -115,31 +120,41 @@ impl Backend {
         }
     }
 
+    #[instrument(skip(self, document), fields(has_ast = document.has_ast(), schema_name = document.schema_name.as_deref().unwrap_or("<none>")))]
     async fn collect_diagnostics(&self, document: &Document) -> Vec<Diagnostic> {
         if !document.has_ast() {
+            debug!("skipping diagnostics because AST is not loaded");
             return Vec::new();
         }
 
         let selected_schema_name = self.selected_schema_name(&document).await;
         if let Some(schema_name) = selected_schema_name.as_deref() {
             let schema_docs = self.schema_docs.read().await;
-            schema_docs
+            let diagnostics = schema_docs
                 .get(schema_name)
                 .map(|schema| {
                     datatype::collect_with_schema_name(&document, schema, Some(schema_name))
                 })
-                .unwrap_or_default()
+                .unwrap_or_default();
+            debug!(
+                diagnostic_count = diagnostics.len(),
+                "collected diagnostics"
+            );
+            diagnostics
         } else {
+            debug!("skipping diagnostics because no schema was selected");
             Vec::new()
         }
     }
 
+    #[instrument(skip(self, diagnostics), fields(uri = %uri, diagnostic_count = diagnostics.len()))]
     async fn publish_document_diagnostics(&self, uri: &Url, diagnostics: Vec<Diagnostic>) {
         self.client
             .publish_diagnostics(uri.clone(), diagnostics, None)
             .await;
     }
 
+    #[instrument(skip(self, text), fields(uri = %uri, text_len = text.len()))]
     async fn load_text_as_active_document(&self, uri: &Url, text: String) -> Vec<Diagnostic> {
         let ast_file_size_limit_bytes = self.ast_file_size_limit_bytes().await;
         if self
@@ -167,10 +182,20 @@ impl Backend {
             document.reload_parse_state(&mut parser, ast_file_size_limit_bytes);
         }
 
+        info!(
+            schema_name = document.schema_name.as_deref().unwrap_or("<none>"),
+            has_ast = document.has_ast(),
+            ast_skipped = document.ast_skipped,
+            definition_count = document.definitions.len(),
+            reference_id_count = document.references.len(),
+            instance_count = document.instances.len(),
+            "reloaded active document"
+        );
         self.check_schema_support(document).await;
         self.collect_diagnostics(document).await
     }
 
+    #[instrument(skip(self, documents), fields(uri = %uri))]
     async fn ensure_document_loaded(
         &self,
         documents: &mut HashMap<Url, Document>,
@@ -195,18 +220,29 @@ impl Backend {
 
         let diagnostics = {
             let document = documents.get(uri)?;
+            info!(
+                schema_name = document.schema_name.as_deref().unwrap_or("<none>"),
+                has_ast = document.has_ast(),
+                ast_skipped = document.ast_skipped,
+                definition_count = document.definitions.len(),
+                reference_id_count = document.references.len(),
+                instance_count = document.instances.len(),
+                "reloaded document parse state on demand"
+            );
             self.collect_diagnostics(document).await
         };
 
         Some(Some(diagnostics))
     }
 
+    #[instrument(skip(self, diagnostics), fields(uri = %uri))]
     async fn request_time_diagnostics(&self, diagnostics: Option<Vec<Diagnostic>>, uri: &Url) {
         if let Some(diagnostics) = diagnostics {
             self.publish_document_diagnostics(uri, diagnostics).await;
         }
     }
 
+    #[instrument(skip(self, document), fields(schema_name = document.schema_name.as_deref().unwrap_or("<none>")))]
     async fn selected_schema_name(&self, document: &Document) -> Option<String> {
         let (forced_schema_name, additional_path) = {
             let config = self.config.read().await;
@@ -241,18 +277,22 @@ impl Backend {
                 let mut schema_docs = self.schema_docs.write().await;
                 if schema_docs.get(&normalized_loaded).is_none() {
                     schema_docs.insert(&loaded_schema_name, schema);
+                    info!(
+                        schema_name = normalized_loaded,
+                        path = %path.display(),
+                        "loaded local schema documentation"
+                    );
                 }
                 Some(normalized_loaded)
             }
             Err(error) => {
-                self.client
-                    .log_message(MessageType::WARNING, error.to_string())
-                    .await;
+                warn!(error = %error, path = %path.display(), "failed to load local schema");
                 None
             }
         }
     }
 
+    #[instrument(skip(self, config), fields(ast_file_size_limit_bytes = config.ast_file_size_limit_bytes))]
     async fn apply_config(&self, config: ServerConfig) {
         let mut schema_docs = SchemaDocCollection::new();
         let mut next_state = ConfigState {
@@ -265,11 +305,14 @@ impl Backend {
                 Ok((schema_name, schema)) => {
                     next_state.forced_schema_name = Some(normalize_name(&schema_name));
                     schema_docs.insert(&schema_name, schema);
+                    info!(
+                        schema_name = next_state.forced_schema_name.as_deref().unwrap_or("<none>"),
+                        path = %path.display(),
+                        "configured forced local schema"
+                    );
                 }
                 Err(error) => {
-                    self.client
-                        .log_message(MessageType::WARNING, error.to_string())
-                        .await;
+                    warn!(error = %error, path = %path.display(), "failed to load forced local schema");
                 }
             }
         }
@@ -283,29 +326,26 @@ impl Backend {
                             .additional_schema_paths
                             .insert(normalized.clone(), candidate.clone())
                         {
-                            self.client
-                                .log_message(
-                                    MessageType::WARNING,
-                                    format!(
-                                        "Duplicate local schema `{}` configured at `{}` and `{}`; using `{}`",
-                                        normalized,
-                                        previous.display(),
-                                        candidate.display(),
-                                        candidate.display()
-                                    ),
-                                )
-                                .await;
+                            warn!(
+                                schema_name = normalized,
+                                previous_path = %previous.display(),
+                                candidate_path = %candidate.display(),
+                                "duplicate local schema configuration; using latest path"
+                            );
                         }
                     }
                     Err(error) => {
-                        self.client
-                            .log_message(MessageType::WARNING, error.to_string())
-                            .await;
+                        warn!(error = %error, path = %candidate.display(), "failed to inspect local schema");
                     }
                 }
             }
         }
 
+        info!(
+            forced_schema = next_state.forced_schema_name.as_deref().unwrap_or("<none>"),
+            additional_schema_count = next_state.additional_schema_paths.len(),
+            "applied server configuration"
+        );
         *self.schema_docs.write().await = schema_docs;
         *self.config.write().await = next_state;
     }
@@ -321,6 +361,7 @@ fn new_parser() -> tree_sitter::Parser {
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
+    #[instrument(skip(self, params))]
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
         let pending_init_config = params
             .initialization_options
@@ -330,6 +371,7 @@ impl LanguageServer for Backend {
 
         let mut config = self.config.write().await;
         config.pending_init_config = Some(pending_init_config);
+        info!("received initialize request");
 
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
@@ -346,13 +388,11 @@ impl LanguageServer for Backend {
     }
 
     async fn initialized(&self, _: InitializedParams) {
-        self.client
-            .log_message(MessageType::INFO, "IFC LSP server initialized!")
-            .await;
+        info!("IFC LSP server initialized");
 
         let load_errors = self.schema_docs.read().await.load_errors().to_vec();
         for error in load_errors {
-            self.client.log_message(MessageType::WARNING, error).await;
+            warn!(error, "failed to load bundled schema documentation");
         }
 
         let pending_init_config = {
@@ -366,29 +406,32 @@ impl LanguageServer for Backend {
     }
 
     async fn shutdown(&self) -> Result<()> {
+        info!("received shutdown request");
         Ok(())
     }
 
+    #[instrument(skip(self, params), fields(uri = %params.text_document.uri))]
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let uri = params.text_document.uri;
         let text = params.text_document.text;
 
-        self.client
-            .log_message(MessageType::INFO, format!("Document opened: {}", uri))
-            .await;
+        info!(text_len = text.len(), "document opened");
 
         let diagnostics = self.load_text_as_active_document(&uri, text).await;
         self.publish_document_diagnostics(&uri, diagnostics).await;
     }
 
+    #[instrument(skip(self, params), fields(uri = %params.text_document.uri))]
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri;
         if let Some(change) = params.content_changes.into_iter().next() {
+            debug!(text_len = change.text.len(), "document changed");
             let diagnostics = self.load_text_as_active_document(&uri, change.text).await;
             self.publish_document_diagnostics(&uri, diagnostics).await;
         }
     }
 
+    #[instrument(skip(self, params), fields(uri = %params.text_document.uri))]
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
         let uri = params.text_document.uri;
 
@@ -398,8 +441,10 @@ impl LanguageServer for Backend {
 
         self.ast_skip_warning_shown.write().await.remove(&uri);
         self.client.publish_diagnostics(uri, Vec::new(), None).await;
+        info!("document closed");
     }
 
+    #[instrument(skip(self, params), fields(uri = %params.text_document_position_params.text_document.uri))]
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         let uri = params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
@@ -415,13 +460,13 @@ impl LanguageServer for Backend {
             None => return Ok(None),
         };
 
-        let node_message = document.node_at_position(position).map(|node| {
-            format!(
-                "Node at cursor: kind={}, text={}",
-                node.kind(),
-                node.utf8_text(document.text.as_bytes()).unwrap_or("?")
-            )
-        });
+        if let Some(node) = document.node_at_position(position) {
+            debug!(
+                node_kind = node.kind(),
+                node_text = node.utf8_text(document.text.as_bytes()).unwrap_or("?"),
+                "resolved syntax node at hover position"
+            );
+        }
         let schema_docs = self.schema_docs.read().await;
 
         let result = hover::hover(
@@ -433,14 +478,13 @@ impl LanguageServer for Backend {
         drop(schema_docs);
         drop(documents);
 
-        if let Some(message) = node_message {
-            self.client.log_message(MessageType::INFO, message).await;
-        }
         self.request_time_diagnostics(diagnostics, &uri).await;
+        debug!(has_result = result.is_some(), "hover request completed");
 
         Ok(result)
     }
 
+    #[instrument(skip(self, params), fields(uri = %params.text_document_position_params.text_document.uri))]
     async fn goto_definition(
         &self,
         params: GotoDefinitionParams,
@@ -462,10 +506,16 @@ impl LanguageServer for Backend {
         drop(documents);
 
         self.request_time_diagnostics(diagnostics, &uri).await;
+        if result.is_some() {
+            debug!("go to definition resolved target");
+        } else {
+            debug!("go to definition found no target");
+        }
 
         Ok(result)
     }
 
+    #[instrument(skip(self, params), fields(uri = %params.text_document_position.text_document.uri))]
     async fn references(&self, params: ReferenceParams) -> Result<Option<Vec<Location>>> {
         let uri = params.text_document_position.text_document.uri;
         let position = params.text_document_position.position;
@@ -484,6 +534,10 @@ impl LanguageServer for Backend {
         drop(documents);
 
         self.request_time_diagnostics(diagnostics, &uri).await;
+        debug!(
+            result_count = result.as_ref().map_or(0, Vec::len),
+            "find references request completed"
+        );
 
         Ok(result)
     }
