@@ -54,6 +54,7 @@ Prefer the simplest implementation that matches the documented current scope in 
 - Prefer graceful fallbacks for unsupported schema versions, missing docs, absent syntax nodes, and documents without loaded AST state.
 - Use `expect` only when failure is truly unrecoverable or in tests.
 - Avoid panics in normal LSP request handling paths.
+- Prefer runtime logging through `tracing` on `stderr`; keep `stdout` reserved for the LSP protocol stream.
 
 ## Testing
 
