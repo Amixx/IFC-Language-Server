@@ -75,6 +75,13 @@ The server advertises:
 
 Diagnostics are published with `textDocument/publishDiagnostics` on open, change, and request-time reloads.
 
+## Logging
+
+Runtime logs are written to `stderr` through `tracing`. The language server keeps `stdout`
+reserved for the LSP protocol stream, while editor integrations are expected to decide whether
+and how `stderr` should be captured into a log file. User-facing warnings still go through LSP
+notifications such as `window/showMessage`.
+
 ## Document Model
 
 `src/document.rs` is the central document representation:
