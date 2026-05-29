@@ -16,7 +16,7 @@ pub fn collect_with_schema_name(
     schema: &SchemaDoc,
     schema_name: Option<&str>,
 ) -> Vec<Diagnostic> {
-    let mut diagnostics = collect_syntax_diagnostics(document);
+    let mut diagnostics = Vec::new();
 
     for instance in &document.instances {
         let Some(entity) = schema.entity(&instance.entity_name) else {
@@ -369,73 +369,6 @@ impl AggregateKindDisplay for AggregateKind {
     }
 }
 
-fn collect_syntax_diagnostics(document: &Document) -> Vec<Diagnostic> {
-    let Some(tree) = &document.tree else {
-        return Vec::new();
-    };
-
-    let mut diagnostics = Vec::new();
-    let mut cursor = tree.root_node().walk();
-    collect_error_nodes(&mut cursor, &mut diagnostics);
-    diagnostics
-}
-
-fn collect_error_nodes(
-    cursor: &mut tree_sitter::TreeCursor<'_>,
-    diagnostics: &mut Vec<Diagnostic>,
-) {
-    loop {
-        let node = cursor.node();
-
-        if let Some(diagnostic) = syntax_diagnostic_for_node(&node) {
-            diagnostics.push(diagnostic);
-        }
-
-        if cursor.goto_first_child() {
-            collect_error_nodes(cursor, diagnostics);
-            cursor.goto_parent();
-        }
-
-        if !cursor.goto_next_sibling() {
-            break;
-        }
-    }
-}
-
-fn syntax_diagnostic_for_node(node: &tree_sitter::Node<'_>) -> Option<Diagnostic> {
-    let message = if node.is_error() {
-        Some("Invalid IFC STEP syntax".to_string())
-    } else if node.is_missing() {
-        Some(missing_node_message(node))
-    } else {
-        None
-    }?;
-
-    Some(Diagnostic {
-        range: node_range(node),
-        severity: Some(DiagnosticSeverity::ERROR),
-        message,
-        ..Default::default()
-    })
-}
-
-fn missing_node_message(node: &tree_sitter::Node<'_>) -> String {
-    match node.kind() {
-        ";" => "Missing `;`".to_string(),
-        kind => format!("Missing `{kind}`"),
-    }
-}
-
-fn node_range(node: &tree_sitter::Node<'_>) -> tower_lsp::lsp_types::Range {
-    let start = node.start_position();
-    let end = node.end_position();
-
-    tower_lsp::lsp_types::Range {
-        start: tower_lsp::lsp_types::Position::new(start.row as u32, start.column as u32),
-        end: tower_lsp::lsp_types::Position::new(end.row as u32, end.column as u32),
-    }
-}
-
 //*----- TESTS BEGIN HERE -----*
 #[cfg(test)]
 mod tests {
@@ -598,35 +531,6 @@ mod tests {
         let diagnostics = collect_with_schema_name(&doc, &schema, None);
 
         assert!(diagnostics.is_empty(), "{diagnostics:?}");
-    }
-
-    /// Test that the datatype validator reports invalid STEP syntax.
-    #[test]
-    fn datatype_validator_reports_invalid_step_syntax() {
-        // string literals in STEP use single quotes instead of double quotes.
-        let doc = parse_document(r#"#14=IFCUNITASSIGNMENT((#15,#16,#17, "test"));"#);
-        let diagnostics = collect_with_schema_name(&doc, &test_schema(), None);
-
-        assert!(
-            diagnostics
-                .iter()
-                .any(|diagnostic| diagnostic.message.contains("Invalid IFC STEP syntax")),
-            "{diagnostics:?}"
-        );
-    }
-
-    #[test]
-    fn datatype_validator_reports_missing_step_semicolon() {
-        let doc = parse_document("#1=IFCWALL('gid')\n#2=IFCWALL('next');");
-        let diagnostics = collect_with_schema_name(&doc, &test_schema(), None);
-
-        let diagnostic = diagnostics
-            .iter()
-            .find(|diagnostic| diagnostic.message == "Missing `;`")
-            .expect("missing semicolon should be reported");
-
-        assert_eq!(diagnostic.range.start, Position::new(0, 17));
-        assert_eq!(diagnostic.range.end, Position::new(0, 17));
     }
 
     /// Test that the datatype validator accepts inline typed values for selects.

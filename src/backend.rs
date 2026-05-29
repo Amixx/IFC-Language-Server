@@ -13,7 +13,7 @@ use tower_lsp::{Client, LanguageServer};
 use tracing::{debug, info, instrument, warn};
 
 use crate::config::{ServerConfig, expand_schema_candidates, parse_server_config};
-use crate::diagnostics::datatype;
+use crate::diagnostics;
 use crate::document::{DEFAULT_AST_FILE_SIZE_LIMIT_BYTES, Document};
 use crate::features::{definition, hover, references};
 use crate::schema::{
@@ -133,7 +133,7 @@ impl Backend {
             let diagnostics = schema_docs
                 .get(schema_name)
                 .map(|schema| {
-                    datatype::collect_with_schema_name(&document, schema, Some(schema_name))
+                    diagnostics::collect_with_schema_name(&document, schema, Some(schema_name))
                 })
                 .unwrap_or_default();
             debug!(
