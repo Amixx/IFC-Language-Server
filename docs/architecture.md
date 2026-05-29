@@ -18,6 +18,7 @@ The shipped LSP features are:
 - hover
 - go-to-definition
 - find-references
+- range-based semantic tokens
 - schema-aware diagnostics
 
 ## Core Design
@@ -53,6 +54,9 @@ On hover, definition, or references requests:
 3. The feature handler reads the stored `Document`.
 4. If request-time reloading produced diagnostics, they are published after the request.
 
+On semantic-token range requests, the backend reads the stored document text and text index only.
+Semantic-token requests do not reload tree-sitter parse state or publish diagnostics.
+
 There is still no incremental parsing, background indexing, or cross-document indexing.
 
 ## Backend
@@ -72,6 +76,7 @@ The server advertises:
 - full text document sync
 - `textDocument/definition`
 - `textDocument/references`
+- `textDocument/semanticTokens/range`
 
 Diagnostics are published with `textDocument/publishDiagnostics` on open, change, and request-time reloads.
 
@@ -160,7 +165,7 @@ When a file is larger than the limit:
 - tree-sitter parsing is skipped
 - schema diagnostics are disabled
 - derived `*` hover is disabled
-- basic hover and navigation remain available from the text index
+- basic hover, navigation, and range-based semantic tokens remain available from the text index/source text
 
 ## Feature AST Usage
 
@@ -171,6 +176,7 @@ These features do not require an AST:
 - go-to-definition for local `#id` references
 - find-references for local `#id` tokens
 - schema name detection from `FILE_SCHEMA(...)`
+- range-based semantic tokens
 
 These features require an AST:
 
@@ -206,6 +212,15 @@ At runtime, startup parses those bundled EXPRESS strings into a `SchemaDocCollec
 ### Find References
 
 `src/features/references.rs` returns all same-document text-indexed `#id` locations, including the definition token.
+
+### Semantic Tokens
+
+`src/features/semantic_tokens.rs` handles LSP semantic-token encoding for requested ranges.
+The lexer in `src/features/semantic_tokens/lexer.rs` scans borrowed document text and emits
+absolute byte ranges for STEP keywords, entity/type identifiers, instance ids, strings, numbers,
+enumerations, operators, and block comments.
+
+Semantic tokens do not use tree-sitter or schema docs.
 
 ### Diagnostics
 
