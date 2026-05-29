@@ -2,7 +2,6 @@
 //! This module converts lexer output into LSP semantic-token deltas while keeping the lexer free
 //! of protocol types.
 
-#[path = "semantic_tokens/lexer.rs"]
 mod lexer;
 
 use tower_lsp::lsp_types::{
