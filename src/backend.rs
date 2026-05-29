@@ -15,7 +15,7 @@ use tracing::{debug, info, instrument, warn};
 use crate::config::{ServerConfig, expand_schema_candidates, parse_server_config};
 use crate::diagnostics::datatype;
 use crate::document::{DEFAULT_AST_FILE_SIZE_LIMIT_BYTES, Document};
-use crate::features::{definition, hover, references};
+use crate::features::{definition, hover, references, semantic_tokens};
 use crate::schema::{
     SchemaDocCollection, inspect_local_schema_name, load_local_schema, normalize_name,
 };
@@ -26,6 +26,7 @@ struct ConfigState {
     additional_schema_paths: HashMap<String, std::path::PathBuf>,
     pending_init_config: Option<ServerConfig>,
     ast_file_size_limit_bytes: usize,
+    semantic_tokens_enabled: bool,
 }
 
 impl Default for ConfigState {
@@ -35,6 +36,7 @@ impl Default for ConfigState {
             additional_schema_paths: HashMap::new(),
             pending_init_config: None,
             ast_file_size_limit_bytes: DEFAULT_AST_FILE_SIZE_LIMIT_BYTES,
+            semantic_tokens_enabled: true,
         }
     }
 }
@@ -297,6 +299,7 @@ impl Backend {
         let mut schema_docs = SchemaDocCollection::new();
         let mut next_state = ConfigState {
             ast_file_size_limit_bytes: config.ast_file_size_limit_bytes,
+            semantic_tokens_enabled: config.semantic_tokens_enabled,
             ..ConfigState::default()
         };
 
@@ -344,6 +347,7 @@ impl Backend {
         info!(
             forced_schema = next_state.forced_schema_name.as_deref().unwrap_or("<none>"),
             additional_schema_count = next_state.additional_schema_paths.len(),
+            semantic_tokens_enabled = next_state.semantic_tokens_enabled,
             "applied server configuration"
         );
         *self.schema_docs.write().await = schema_docs;
@@ -368,8 +372,18 @@ impl LanguageServer for Backend {
             .as_ref()
             .map(parse_server_config)
             .unwrap_or_default();
+        let semantic_tokens_enabled = pending_init_config.semantic_tokens_enabled;
+        let semantic_tokens_provider = semantic_tokens_enabled.then(|| {
+            SemanticTokensServerCapabilities::SemanticTokensOptions(SemanticTokensOptions {
+                work_done_progress_options: WorkDoneProgressOptions::default(),
+                legend: semantic_tokens::legend(),
+                range: Some(true),
+                full: None,
+            })
+        });
 
         let mut config = self.config.write().await;
+        config.semantic_tokens_enabled = semantic_tokens_enabled;
         config.pending_init_config = Some(pending_init_config);
         info!("received initialize request");
 
@@ -381,6 +395,7 @@ impl LanguageServer for Backend {
                 )),
                 definition_provider: Some(OneOf::Left(true)),
                 references_provider: Some(OneOf::Left(true)),
+                semantic_tokens_provider,
                 ..Default::default()
             },
             ..Default::default()
@@ -537,6 +552,34 @@ impl LanguageServer for Backend {
         debug!(
             result_count = result.as_ref().map_or(0, Vec::len),
             "find references request completed"
+        );
+
+        Ok(result)
+    }
+
+    #[instrument(skip(self, params), fields(uri = %params.text_document.uri))]
+    async fn semantic_tokens_range(
+        &self,
+        params: SemanticTokensRangeParams,
+    ) -> Result<Option<SemanticTokensRangeResult>> {
+        let uri = params.text_document.uri;
+        if !self.config.read().await.semantic_tokens_enabled {
+            return Ok(None);
+        }
+
+        let documents = self.documents.read().await;
+        let Some(document) = documents.get(&uri) else {
+            return Ok(None);
+        };
+
+        let result = semantic_tokens::semantic_tokens_range(document, params.range)
+            .map(SemanticTokensRangeResult::Tokens);
+        debug!(
+            result_count = result.as_ref().map_or(0, |result| match result {
+                SemanticTokensRangeResult::Tokens(tokens) => tokens.data.len(),
+                SemanticTokensRangeResult::Partial(partial) => partial.data.len(),
+            }),
+            "semantic tokens range request completed"
         );
 
         Ok(result)
