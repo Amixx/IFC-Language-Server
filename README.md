@@ -9,6 +9,7 @@
 - Hover preview for entity references such as `#123`
 - Go-to-definition for local entity references
 - Find-references within the current document
+- Range-based semantic tokens for syntax highlighting
 - Schema-aware diagnostics for:
   - invalid local reference targets
   - primitive datatype mismatches
@@ -30,7 +31,7 @@ Bundled entity documentation is currently included for:
 - Full-document reparsing on open and change
 - Diagnostics currently focus on entity-instance argument validation, not full EXPRESS rule evaluation
 - No completion, rename, code actions, or formatting support
-- Syntax highlighting depends on editor grammar support such as `tree-sitter-ifc`; it is not provided by the LSP server itself
+- The LSP server provides range-based semantic tokens, but does not provide full-document semantic-token or TextMate grammar support
 
 ## Installation
 
@@ -88,7 +89,11 @@ Supported options:
 - `astFileSizeLimitMb`
   - Maximum file size in MiB for AST-backed features.
   - Defaults to `70`.
-  - Files above this limit keep basic hover/navigation available, but skip schema diagnostics and derived-value hover.
+  - Files above this limit keep basic hover/navigation and semantic tokens available, but skip schema diagnostics and derived-value hover.
+
+- `semanticTokensEnabled`
+  - Enables range-based semantic tokens.
+  - Defaults to `true`.
 
 Configuration changes currently require restarting the server.
 
@@ -98,6 +103,7 @@ Example `initializationOptions`:
 {
   "overwriteExpSchemaWithLocal": "/Users/alice/dev/express/IFC4x2.exp",
   "astFileSizeLimitMb": 128,
+  "semanticTokensEnabled": true,
   "addLocalSchemaToSelection": [
     "/Users/alice/dev/express/IFC4x1.exp",
     "/Users/alice/dev/express/custom-schemas"

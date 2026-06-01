@@ -14,6 +14,7 @@ pub struct ServerConfig {
     pub overwrite_exp_schema_with_local: Option<PathBuf>,
     pub add_local_schema_to_selection: Vec<PathBuf>,
     pub ast_file_size_limit_bytes: usize,
+    pub semantic_tokens_enabled: bool,
 }
 
 impl Default for ServerConfig {
@@ -22,6 +23,7 @@ impl Default for ServerConfig {
             overwrite_exp_schema_with_local: None,
             add_local_schema_to_selection: Vec::new(),
             ast_file_size_limit_bytes: DEFAULT_AST_FILE_SIZE_LIMIT_BYTES,
+            semantic_tokens_enabled: true,
         }
     }
 }
@@ -45,6 +47,10 @@ pub fn parse_server_config(value: &LSPAny) -> ServerConfig {
             .get("astFileSizeLimitMb")
             .and_then(parse_size_limit_mb)
             .unwrap_or(DEFAULT_AST_FILE_SIZE_LIMIT_BYTES),
+        semantic_tokens_enabled: object
+            .get("semanticTokensEnabled")
+            .and_then(|value| value.as_bool())
+            .unwrap_or(true),
     }
 }
 
@@ -96,4 +102,27 @@ pub fn expand_schema_candidates(path: &Path) -> Vec<PathBuf> {
                     .is_some_and(|extension| extension.eq_ignore_ascii_case("exp"))
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn semantic_tokens_default_to_enabled() {
+        let value = "{}".parse::<LSPAny>().unwrap();
+
+        let config = parse_server_config(&value);
+
+        assert!(config.semantic_tokens_enabled);
+    }
+
+    #[test]
+    fn parses_semantic_tokens_enabled_flag() {
+        let value = r#"{"semanticTokensEnabled":false}"#.parse::<LSPAny>().unwrap();
+
+        let config = parse_server_config(&value);
+
+        assert!(!config.semantic_tokens_enabled);
+    }
 }
