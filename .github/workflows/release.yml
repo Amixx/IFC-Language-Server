@@ -35,16 +35,19 @@ jobs:
             os_name: linux-x86_64
             bin_name: ifc-language-server
             asset_name: ifc-language-server-${{ github.ref_name }}-linux-x86_64.tar.gz
+            rustflags: ""
 
           - runner: windows-2025
             os_name: windows-x86_64
             bin_name: ifc-language-server.exe
             asset_name: ifc-language-server-${{ github.ref_name }}-windows-x86_64.zip
+            rustflags: "-C target-feature=+crt-static"
 
           - runner: macos-14
             os_name: macos-arm64
             bin_name: ifc-language-server
             asset_name: ifc-language-server-${{ github.ref_name }}-macos-arm64.tar.gz
+            rustflags: ""
 
     runs-on: ${{ matrix.runner }}
 
@@ -60,6 +63,8 @@ jobs:
 
       - name: Build release binary
         run: cargo build --release --locked
+        env:
+          RUSTFLAGS: ${{ matrix.rustflags }}
 
       - name: Package Unix binary
         if: runner.os != 'Windows'
