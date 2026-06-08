@@ -3,10 +3,13 @@
 //! reference previews from the current document. Derived `*` hovers still use tree-sitter context.
 //! Hover stays synchronous by reading only the in-memory document and schema collections.
 
-use tower_lsp::lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position};
+use tower_lsp::lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position, Range};
 
-use crate::document::Document;
-use crate::schema::{EntityAttributeDoc, EntityDoc, PrimitiveType, SchemaDocCollection, TypeDoc};
+use crate::document::{Document, EntityInstanceInfo, ParameterValue};
+use crate::schema::{
+    EntityAttributeDoc, EntityDoc, EnumerationTypeDef, NamedTypeKind, PrimitiveType, SchemaDoc,
+    SchemaDocCollection, TypeDoc, TypeRef,
+};
 use crate::step::{ast, derived, derived::ResolvedDerivedValue};
 
 pub fn hover(
@@ -49,6 +52,20 @@ pub fn hover(
             contents: HoverContents::Markup(MarkupContent {
                 kind: MarkupKind::Markdown,
                 value: render_type_hover(type_doc),
+            }),
+            range: Some(range),
+        });
+    }
+
+    if let Some(schema_name) = selected_schema_name.or(document.schema_name.as_deref())
+        && let Some(schema) = schema_docs.get(schema_name)
+        && let Some((value, range, attribute, enum_def)) =
+            enum_value_at_position(document, schema, position)
+    {
+        return Some(Hover {
+            contents: HoverContents::Markup(MarkupContent {
+                kind: MarkupKind::Markdown,
+                value: render_enum_hover(value, attribute, enum_def),
             }),
             range: Some(range),
         });
@@ -136,6 +153,166 @@ fn render_reference_hover(document: &Document, id: u32) -> Option<String> {
     let preview = document.entity_instance_text_at_definition(id)?;
 
     Some(format!("```ifc\n{}\n```", preview.trim()))
+}
+
+fn enum_value_at_position<'a>(
+    document: &'a Document,
+    schema: &'a SchemaDoc,
+    position: Position,
+) -> Option<(
+    &'a str,
+    Range,
+    &'a EntityAttributeDoc,
+    &'a EnumerationTypeDef,
+)> {
+    for instance in &document.instances {
+        if !position_in_range(position, instance.entity_range) {
+            continue;
+        }
+
+        if let Some(result) = enum_value_in_instance(schema, instance, position) {
+            return Some(result);
+        }
+    }
+
+    None
+}
+
+fn enum_value_in_instance<'a>(
+    schema: &'a SchemaDoc,
+    instance: &'a EntityInstanceInfo,
+    position: Position,
+) -> Option<(
+    &'a str,
+    Range,
+    &'a EntityAttributeDoc,
+    &'a EnumerationTypeDef,
+)> {
+    let entity = schema.entity(&instance.entity_name)?;
+
+    for (index, parameter) in instance.parameters.iter().enumerate() {
+        if !position_in_range(position, parameter.range()) {
+            continue;
+        }
+
+        let attribute = entity.attributes.get(index)?;
+        let enum_value = enum_value_in_parameter(parameter, position)?;
+        let enum_def = enum_value
+            .typed_name
+            .and_then(|type_name| enum_type_from_type_name(schema, type_name))
+            .or_else(|| enum_type_from_type_ref(schema, &attribute.ty, 0))?;
+
+        return Some((enum_value.value, enum_value.range, attribute, enum_def));
+    }
+
+    None
+}
+
+struct EnumValueAtPosition<'a> {
+    value: &'a str,
+    range: Range,
+    typed_name: Option<&'a str>,
+}
+
+fn enum_value_in_parameter<'a>(
+    parameter: &'a ParameterValue,
+    position: Position,
+) -> Option<EnumValueAtPosition<'a>> {
+    if !position_in_range(position, parameter.range()) {
+        return None;
+    }
+
+    match parameter {
+        ParameterValue::Enumeration { value, range } if position_in_range(position, *range) => {
+            Some(EnumValueAtPosition {
+                value,
+                range: *range,
+                typed_name: None,
+            })
+        }
+        ParameterValue::List { items, .. } => items
+            .iter()
+            .find_map(|item| enum_value_in_parameter(item, position)),
+        ParameterValue::Typed {
+            type_name, inner, ..
+        } => inner.iter().find_map(|item| {
+            enum_value_in_parameter(item, position).map(|mut enum_value| {
+                enum_value.typed_name = Some(type_name);
+                enum_value
+            })
+        }),
+        _ => None,
+    }
+}
+
+fn enum_type_from_type_name<'a>(
+    schema: &'a SchemaDoc,
+    type_name: &str,
+) -> Option<&'a EnumerationTypeDef> {
+    enum_type_from_type_doc(schema, schema.type_decl(type_name)?, 0)
+}
+
+fn enum_type_from_type_ref<'a>(
+    schema: &'a SchemaDoc,
+    type_ref: &'a TypeRef,
+    depth: usize,
+) -> Option<&'a EnumerationTypeDef> {
+    if depth > 16 {
+        return None;
+    }
+
+    match type_ref {
+        TypeRef::Named(named) => match named.kind {
+            NamedTypeKind::Type | NamedTypeKind::Unresolved => {
+                enum_type_from_type_doc(schema, schema.type_decl(&named.name)?, depth + 1)
+            }
+            NamedTypeKind::Entity => None,
+        },
+        TypeRef::Aggregate(aggregate) => {
+            enum_type_from_type_ref(schema, aggregate.item.as_ref(), depth + 1)
+        }
+        _ => None,
+    }
+}
+
+fn enum_type_from_type_doc<'a>(
+    schema: &'a SchemaDoc,
+    type_doc: &'a TypeDoc,
+    depth: usize,
+) -> Option<&'a EnumerationTypeDef> {
+    if depth > 16 {
+        return None;
+    }
+
+    match type_doc {
+        TypeDoc::Enumeration(enumeration) => Some(enumeration),
+        TypeDoc::Alias(alias) => enum_type_from_type_ref(schema, &alias.target, depth + 1),
+        TypeDoc::Select(select) => {
+            let mut matches = select
+                .options
+                .iter()
+                .filter_map(|option| enum_type_from_type_ref(schema, option, depth + 1));
+            let first = matches.next()?;
+            matches.next().is_none().then_some(first)
+        }
+    }
+}
+
+fn render_enum_hover(
+    value: &str,
+    attribute: &EntityAttributeDoc,
+    enum_def: &EnumerationTypeDef,
+) -> String {
+    let mut markdown = format!(
+        "# {}\n\nAttribute: `{}`\n\nCurrent value: `.{value}.`\n\nOptions:",
+        enum_def.name, attribute.name
+    );
+
+    for item in &enum_def.items {
+        markdown.push_str(&format!("\n- `.{item}.`"));
+    }
+
+    markdown
 }
 
 fn typed_value_name_at_position(
@@ -251,6 +428,18 @@ fn node_range(node: &tree_sitter::Node<'_>) -> tower_lsp::lsp_types::Range {
         start: Position::new(start.row as u32, start.column as u32),
         end: Position::new(end.row as u32, end.column as u32),
     }
+}
+
+fn position_in_range(position: Position, range: Range) -> bool {
+    position_at_or_after(position, range.start) && position_before(position, range.end)
+}
+
+fn position_at_or_after(left: Position, right: Position) -> bool {
+    left.line > right.line || (left.line == right.line && left.character >= right.character)
+}
+
+fn position_before(left: Position, right: Position) -> bool {
+    left.line < right.line || (left.line == right.line && left.character < right.character)
 }
 
 fn escape_table_cell(text: &str) -> String {
@@ -443,6 +632,79 @@ mod tests {
     }
 
     #[test]
+    fn hover_returns_enum_options_for_attribute_value() {
+        let text = "#1=IFCWALL($,.USERDEFINED.);";
+        let document = parse_document(text);
+
+        let hover = hover(
+            &document,
+            position_at(text, ".USERDEFINED."),
+            &schema_docs_with_wall(),
+            Some("IFC4"),
+        )
+        .expect("hover should exist");
+        let range = hover.range.expect("hover should have a range");
+        let value = hover_text(hover);
+
+        assert_eq!(range.start, Position::new(0, 13));
+        assert_eq!(range.end, Position::new(0, 26));
+        assert!(value.contains("# IfcWallTypeEnum"));
+        assert!(value.contains("Attribute: `PredefinedType`"));
+        assert!(value.contains("Current value: `.USERDEFINED.`"));
+        assert!(value.contains("- `.MOVABLE.`"));
+        assert!(value.contains("- `.USERDEFINED.`"));
+    }
+
+    #[test]
+    fn hover_returns_enum_options_for_typed_enum_value() {
+        let text = "#1=IFCTHING(IFCWALLTYPEENUM(.MOVABLE.));";
+        let schema = crate::schema::load_express(
+            crate::schema::IfcVersion::Ifc4Add2Tc1,
+            r#"
+            SCHEMA IFC4;
+              TYPE IfcWallTypeEnum = ENUMERATION OF (MOVABLE, USERDEFINED);
+              END_TYPE;
+              ENTITY IfcThing;
+                PredefinedType : IfcWallTypeEnum;
+              END_ENTITY;
+            END_SCHEMA;
+            "#,
+        )
+        .expect("fixture schema should parse");
+        let schema_docs = SchemaDocCollection::from_docs([("IFC4".to_string(), schema)]);
+        let document = parse_document(text);
+
+        let hover = hover(
+            &document,
+            position_at(text, ".MOVABLE."),
+            &schema_docs,
+            Some("IFC4"),
+        )
+        .expect("hover should exist");
+        let value = hover_text(hover);
+
+        assert!(value.contains("# IfcWallTypeEnum"));
+        assert!(value.contains("Attribute: `PredefinedType`"));
+        assert!(value.contains("Current value: `.MOVABLE.`"));
+        assert!(value.contains("- `.USERDEFINED.`"));
+    }
+
+    #[test]
+    fn hover_returns_none_for_enum_value_without_schema() {
+        let text = "#1=IFCWALL($,.USERDEFINED.);";
+        let document = parse_document(text);
+
+        let hover = hover(
+            &document,
+            position_at(text, ".USERDEFINED."),
+            &empty_schema_docs(),
+            Some("IFC4"),
+        );
+
+        assert!(hover.is_none());
+    }
+
+    #[test]
     fn typed_value_name_detection_finds_inline_type_name() {
         let text = "#1=IFCPROPERTYSINGLEVALUE('Name',$,IFCLABEL('Living Room'));";
         let document = parse_document(text);
@@ -619,6 +881,21 @@ mod tests {
         let document = Document::new_unloaded("#1=IFCWALL($);".to_string());
 
         assert!(hover(&document, Position::new(0, 0), &empty_schema_docs(), None).is_none());
+    }
+
+    #[test]
+    fn hover_returns_none_for_enum_value_without_a_syntax_tree() {
+        let text = "#1=IFCWALL($,.USERDEFINED.);";
+        let document = Document::new_unloaded(text.to_string());
+
+        let hover = hover(
+            &document,
+            position_at(text, ".USERDEFINED."),
+            &schema_docs_with_wall(),
+            Some("IFC4"),
+        );
+
+        assert!(hover.is_none());
     }
 
     /// Test that the markdown rendering for entity hover includes inherited and direct attribute tables.
