@@ -59,13 +59,13 @@ pub fn hover(
 
     if let Some(schema_name) = selected_schema_name.or(document.schema_name.as_deref())
         && let Some(schema) = schema_docs.get(schema_name)
-        && let Some((value, range, attribute, enum_def)) =
+        && let Some((_value, range, attribute, enum_def)) =
             enum_value_at_position(document, schema, position)
     {
         return Some(Hover {
             contents: HoverContents::Markup(MarkupContent {
                 kind: MarkupKind::Markdown,
-                value: render_enum_hover(value, attribute, enum_def),
+                value: render_enum_hover(attribute, enum_def),
             }),
             range: Some(range),
         });
@@ -298,13 +298,9 @@ fn enum_type_from_type_doc<'a>(
     }
 }
 
-fn render_enum_hover(
-    value: &str,
-    attribute: &EntityAttributeDoc,
-    enum_def: &EnumerationTypeDef,
-) -> String {
+fn render_enum_hover(attribute: &EntityAttributeDoc, enum_def: &EnumerationTypeDef) -> String {
     let mut markdown = format!(
-        "# {}\n\nAttribute: `{}`\n\nCurrent value: `.{value}.`\n\nOptions:",
+        "# {}\n\nAttribute: `{}`\n\nOptions:",
         enum_def.name, attribute.name
     );
 
