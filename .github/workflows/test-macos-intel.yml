@@ -25,3 +25,10 @@ jobs:
 
       - name: Verify binary architecture
         run: file target/release/ifc-language-server
+
+      - name: Upload Intel binary
+        uses: actions/upload-artifact@v6
+        with:
+          name: ifc-language-server-macos-x86_64
+          path: target/release/ifc-language-server
+          if-no-files-found: error
