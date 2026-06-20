@@ -5,7 +5,7 @@
 
 use tower_lsp::lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position, Range};
 
-use crate::document::{Document, EntityInstanceInfo, ParameterValue};
+use crate::document::{Document, ParameterValue};
 use crate::schema::{
     EntityAttributeDoc, EntityDoc, EnumerationTypeDef, NamedTypeKind, PrimitiveType, SchemaDoc,
     SchemaDocCollection, TypeDoc, TypeRef,
@@ -59,7 +59,7 @@ pub fn hover(
 
     if let Some(schema_name) = selected_schema_name.or(document.schema_name.as_deref())
         && let Some(schema) = schema_docs.get(schema_name)
-        && let Some((_value, range, attribute, enum_def)) =
+        && let Some((range, attribute, enum_def)) =
             enum_value_at_position(document, schema, position)
     {
         return Some(Hover {
@@ -159,57 +159,25 @@ fn enum_value_at_position<'a>(
     document: &'a Document,
     schema: &'a SchemaDoc,
     position: Position,
-) -> Option<(
-    &'a str,
-    Range,
-    &'a EntityAttributeDoc,
-    &'a EnumerationTypeDef,
-)> {
-    for instance in &document.instances {
-        if !position_in_range(position, instance.entity_range) {
-            continue;
-        }
+) -> Option<(Range, &'a EntityAttributeDoc, &'a EnumerationTypeDef)> {
+    let node = document.node_at_position(position)?;
+    let context = ast::parameter_context(node, &document.text)?;
+    let instance = document.instance_by_id(context.instance_id)?;
+    let parameter = instance.parameters.get(context.parameter_index)?;
+    let attribute = schema
+        .entity(&context.entity_name)?
+        .attributes
+        .get(context.parameter_index)?;
+    let enum_value = enum_value_in_parameter(parameter, position)?;
+    let enum_def = enum_value
+        .typed_name
+        .and_then(|type_name| enum_type_from_type_name(schema, type_name))
+        .or_else(|| enum_type_from_type_ref(schema, &attribute.ty, 0))?;
 
-        if let Some(result) = enum_value_in_instance(schema, instance, position) {
-            return Some(result);
-        }
-    }
-
-    None
-}
-
-fn enum_value_in_instance<'a>(
-    schema: &'a SchemaDoc,
-    instance: &'a EntityInstanceInfo,
-    position: Position,
-) -> Option<(
-    &'a str,
-    Range,
-    &'a EntityAttributeDoc,
-    &'a EnumerationTypeDef,
-)> {
-    let entity = schema.entity(&instance.entity_name)?;
-
-    for (index, parameter) in instance.parameters.iter().enumerate() {
-        if !position_in_range(position, parameter.range()) {
-            continue;
-        }
-
-        let attribute = entity.attributes.get(index)?;
-        let enum_value = enum_value_in_parameter(parameter, position)?;
-        let enum_def = enum_value
-            .typed_name
-            .and_then(|type_name| enum_type_from_type_name(schema, type_name))
-            .or_else(|| enum_type_from_type_ref(schema, &attribute.ty, 0))?;
-
-        return Some((enum_value.value, enum_value.range, attribute, enum_def));
-    }
-
-    None
+    Some((enum_value.range, attribute, enum_def))
 }
 
 struct EnumValueAtPosition<'a> {
-    value: &'a str,
     range: Range,
     typed_name: Option<&'a str>,
 }
@@ -223,9 +191,8 @@ fn enum_value_in_parameter<'a>(
     }
 
     match parameter {
-        ParameterValue::Enumeration { value, range } if position_in_range(position, *range) => {
+        ParameterValue::Enumeration { range, .. } if position_in_range(position, *range) => {
             Some(EnumValueAtPosition {
-                value,
                 range: *range,
                 typed_name: None,
             })
@@ -646,14 +613,14 @@ mod tests {
         assert_eq!(range.end, Position::new(0, 26));
         assert!(value.contains("# IfcWallTypeEnum"));
         assert!(value.contains("Attribute: `PredefinedType`"));
-        assert!(value.contains("Current value: `.USERDEFINED.`"));
+        assert!(!value.contains("Current value:"));
         assert!(value.contains("- `.MOVABLE.`"));
         assert!(value.contains("- `.USERDEFINED.`"));
     }
 
     #[test]
     fn hover_returns_enum_options_for_typed_enum_value() {
-        let text = "#1=IFCTHING(IFCWALLTYPEENUM(.MOVABLE.));";
+        let text = "#1=IFCTHING($,IFCWALLTYPEENUM(.MOVABLE.));";
         let schema = crate::schema::load_express(
             crate::schema::IfcVersion::Ifc4Add2Tc1,
             r#"
@@ -661,6 +628,7 @@ mod tests {
               TYPE IfcWallTypeEnum = ENUMERATION OF (MOVABLE, USERDEFINED);
               END_TYPE;
               ENTITY IfcThing;
+                Name : OPTIONAL STRING;
                 PredefinedType : IfcWallTypeEnum;
               END_ENTITY;
             END_SCHEMA;
@@ -681,7 +649,7 @@ mod tests {
 
         assert!(value.contains("# IfcWallTypeEnum"));
         assert!(value.contains("Attribute: `PredefinedType`"));
-        assert!(value.contains("Current value: `.MOVABLE.`"));
+        assert!(!value.contains("Current value:"));
         assert!(value.contains("- `.USERDEFINED.`"));
     }
 
