@@ -40,6 +40,15 @@ Preferably, the hover should include:
 
 Hovering over an entity id such as `#1234` should display a preview of the line in the file where that entity is defined.
 
+#### Derived Attribute Hover
+
+Hovering over an omitted value (`*`) should provide derived-value information only for the IFC cases represented in STEP instance arguments:
+
+- `IfcSIUnit.Dimensions`, resolved from `Name`
+- inherited `IfcGeometricRepresentationSubContext` attributes, resolved from `ParentContext`
+
+General EXPRESS `DERIVE` evaluation and hover information for other omitted values are out of scope.
+
 ### Go to Definition
 
 When a user invokes Go to Definition, for example through an editor context menu or keyboard shortcut, the language server should:

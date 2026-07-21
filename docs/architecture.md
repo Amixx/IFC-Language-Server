@@ -183,7 +183,7 @@ These features require an AST:
 - syntax diagnostics
 - schema-aware datatype diagnostics
 - parsed entity argument validation
-- derived `*` hover
+- derived `*` hover for `IfcSIUnit` and `IfcGeometricRepresentationSubContext`
 
 New features should explicitly choose the cheapest data source that is sufficient. Prefer the text index for navigation and simple token lookup. Use tree-sitter only when syntax structure or parsed parameter values are required.
 
@@ -203,7 +203,10 @@ At runtime, startup parses those bundled EXPRESS strings into a `SchemaDocCollec
 
 - reference hover by rendering the local defining entity instance as an IFC code block
 - entity definition hover from the selected schema docs
-- derived `*` hover when AST state is available
+- explicit derived `*` hover for `IfcSIUnit.Dimensions`, resolved from `Name`
+- explicit derived `*` hover for inherited `IfcGeometricRepresentationSubContext` attributes, resolved from `ParentContext`
+
+Derived hover uses the fixed STEP parameter layouts for these two entities. It does not evaluate general EXPRESS `DERIVE` expressions or consult schema metadata to discover additional derived attributes.
 
 ### Go To Definition
 

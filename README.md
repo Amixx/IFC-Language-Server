@@ -7,6 +7,7 @@
 
 - Hover on IFC entity names such as `IFCWALL` and `IFCSPACE`
 - Hover preview for entity references such as `#123`
+- Derived `*` hover for `IfcSIUnit` and `IfcGeometricRepresentationSubContext`
 - Go-to-definition for local entity references
 - Find-references within the current document
 - Range-based semantic tokens for syntax highlighting
