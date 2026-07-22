@@ -187,9 +187,11 @@ impl Document {
 
     pub fn node_at_position(&self, position: Position) -> Option<Node<'_>> {
         let tree = self.tree.as_ref()?;
+        let offset = self.position_to_offset(position)?;
+        let line_start = *self.line_offsets.get(position.line as usize)?;
         let point = Point {
             row: position.line as usize,
-            column: position.character as usize,
+            column: offset.checked_sub(line_start)?,
         };
 
         tree.root_node().descendant_for_point_range(point, point)

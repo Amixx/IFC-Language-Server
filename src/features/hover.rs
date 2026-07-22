@@ -81,7 +81,7 @@ pub fn hover(
                 kind: MarkupKind::Markdown,
                 value: derived_value_hover(document, &context)?,
             }),
-            range: Some(node_range(&node)),
+            range: Some(document.range_for_offsets(node.start_byte(), node.end_byte())?),
         });
     }
 
@@ -155,48 +155,64 @@ fn enum_value_at_position<'a>(
         .entity(&context.entity_name)?
         .attributes
         .get(context.parameter_index)?;
-    let enum_value = enum_value_in_parameter(parameter, position)?;
+    let offset = document.position_to_offset(position)?;
+    let enum_value = enum_value_in_parameter(document, parameter, offset)?;
     let enum_def = enum_value
         .typed_name
         .and_then(|type_name| enum_type_from_type_name(schema, type_name))
         .or_else(|| enum_type_from_type_ref(schema, &attribute.ty, 0))?;
+    let range = document.range_for_offsets(enum_value.start_offset, enum_value.end_offset)?;
 
-    Some((enum_value.range, attribute, enum_def))
+    Some((range, attribute, enum_def))
 }
 
 struct EnumValueAtPosition<'a> {
-    range: Range,
+    start_offset: usize,
+    end_offset: usize,
     typed_name: Option<&'a str>,
 }
 
 fn enum_value_in_parameter<'a>(
+    document: &Document,
     parameter: &'a ParameterValue,
-    position: Position,
+    offset: usize,
 ) -> Option<EnumValueAtPosition<'a>> {
-    if !position_in_range(position, parameter.range()) {
+    let (start_offset, end_offset) = tree_sitter_range_offsets(document, parameter.range())?;
+    if offset < start_offset || offset >= end_offset {
         return None;
     }
 
     match parameter {
-        ParameterValue::Enumeration { range, .. } if position_in_range(position, *range) => {
-            Some(EnumValueAtPosition {
-                range: *range,
-                typed_name: None,
-            })
-        }
+        ParameterValue::Enumeration { .. } => Some(EnumValueAtPosition {
+            start_offset,
+            end_offset,
+            typed_name: None,
+        }),
         ParameterValue::List { items, .. } => items
             .iter()
-            .find_map(|item| enum_value_in_parameter(item, position)),
+            .find_map(|item| enum_value_in_parameter(document, item, offset)),
         ParameterValue::Typed {
             type_name, inner, ..
         } => inner.iter().find_map(|item| {
-            enum_value_in_parameter(item, position).map(|mut enum_value| {
+            enum_value_in_parameter(document, item, offset).map(|mut enum_value| {
                 enum_value.typed_name = Some(type_name);
                 enum_value
             })
         }),
         _ => None,
     }
+}
+
+fn tree_sitter_range_offsets(document: &Document, range: Range) -> Option<(usize, usize)> {
+    let start = document
+        .line_offsets
+        .get(range.start.line as usize)?
+        .checked_add(range.start.character as usize)?;
+    let end = document
+        .line_offsets
+        .get(range.end.line as usize)?
+        .checked_add(range.end.character as usize)?;
+    (end <= document.text.len()).then_some((start, end))
 }
 
 fn enum_type_from_type_name<'a>(
@@ -278,7 +294,10 @@ fn typed_value_name_at_position(
     }
 
     let text = entity_name.utf8_text(document.text.as_bytes()).ok()?;
-    Some((text.to_ascii_uppercase(), node_range(&entity_name)))
+    Some((
+        text.to_ascii_uppercase(),
+        document.range_for_offsets(entity_name.start_byte(), entity_name.end_byte())?,
+    ))
 }
 
 fn ancestor_with_kind<'tree>(
@@ -460,28 +479,6 @@ fn ifc_dimensions_for_si_unit(unit_name: &str) -> Option<[i32; 7]> {
     })
 }
 
-fn node_range(node: &tree_sitter::Node<'_>) -> tower_lsp::lsp_types::Range {
-    let start = node.start_position();
-    let end = node.end_position();
-
-    tower_lsp::lsp_types::Range {
-        start: Position::new(start.row as u32, start.column as u32),
-        end: Position::new(end.row as u32, end.column as u32),
-    }
-}
-
-fn position_in_range(position: Position, range: Range) -> bool {
-    position_at_or_after(position, range.start) && position_before(position, range.end)
-}
-
-fn position_at_or_after(left: Position, right: Position) -> bool {
-    left.line > right.line || (left.line == right.line && left.character >= right.character)
-}
-
-fn position_before(left: Position, right: Position) -> bool {
-    left.line < right.line || (left.line == right.line && left.character < right.character)
-}
-
 fn escape_table_cell(text: &str) -> String {
     text.split_whitespace()
         .collect::<Vec<_>>()
@@ -634,6 +631,42 @@ mod tests {
         assert!(!value.contains("Current value:"));
         assert!(value.contains("- `.MOVABLE.`"));
         assert!(value.contains("- `.USERDEFINED.`"));
+    }
+
+    #[test]
+    fn hover_returns_enum_options_after_non_ascii_text() {
+        let text = "#1=IFCWALL('Wänd',.USERDEFINED.);";
+        let document = parse_document(text);
+        let enum_offset = text.find(".USERDEFINED.").expect("enum value should exist");
+        let position = document
+            .offset_to_position(enum_offset)
+            .expect("enum offset should convert to an LSP position");
+
+        let hover = hover(&document, position, &schema_docs_with_wall(), Some("IFC4"))
+            .expect("hover should exist");
+        let range = hover.range.expect("hover should have a range");
+
+        assert_eq!(range.start, position);
+        assert!(hover_text(hover).contains("# IfcWallTypeEnum"));
+    }
+
+    #[test]
+    fn hover_returns_enum_options_with_bundled_ifc4_schema() {
+        let text = "ISO-10303-21;HEADER;FILE_SCHEMA(('IFC4'));ENDSEC;DATA;#1=IFCWALL('id',$,$,$,$,$,$,$,.STANDARD.);ENDSEC;END-ISO-10303-21;";
+        let document = parse_document(text);
+
+        let hover = hover(
+            &document,
+            position_at(text, ".STANDARD."),
+            &SchemaDocCollection::new(),
+            None,
+        )
+        .expect("hover should exist");
+        let value = hover_text(hover);
+
+        assert!(value.contains("# IfcWallTypeEnum"));
+        assert!(value.contains("Attribute: `PredefinedType`"));
+        assert!(value.contains("- `.STANDARD.`"));
     }
 
     #[test]
