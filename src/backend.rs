@@ -15,7 +15,7 @@ use tracing::{debug, info, instrument, warn};
 use crate::config::{ServerConfig, expand_schema_candidates, parse_server_config};
 use crate::diagnostics;
 use crate::document::{DEFAULT_AST_FILE_SIZE_LIMIT_BYTES, Document};
-use crate::features::{definition, hover, references, semantic_tokens};
+use crate::features::{definition, hover, references, semantic_tokens, signature_help};
 use crate::schema::{
     SchemaDocCollection, inspect_local_schema_name, load_local_schema, normalize_name,
 };
@@ -395,6 +395,11 @@ impl LanguageServer for Backend {
                 )),
                 definition_provider: Some(OneOf::Left(true)),
                 references_provider: Some(OneOf::Left(true)),
+                signature_help_provider: Some(SignatureHelpOptions {
+                    trigger_characters: Some(vec!["(".to_string(), ",".to_string()]),
+                    retrigger_characters: Some(vec![",".to_string()]),
+                    work_done_progress_options: WorkDoneProgressOptions::default(),
+                }),
                 semantic_tokens_provider,
                 ..Default::default()
             },
@@ -552,6 +557,32 @@ impl LanguageServer for Backend {
         debug!(
             result_count = result.as_ref().map_or(0, Vec::len),
             "find references request completed"
+        );
+
+        Ok(result)
+    }
+
+    #[instrument(skip(self, params), fields(uri = %params.text_document_position_params.text_document.uri))]
+    async fn signature_help(&self, params: SignatureHelpParams) -> Result<Option<SignatureHelp>> {
+        let uri = params.text_document_position_params.text_document.uri;
+        let position = params.text_document_position_params.position;
+        let forced_schema_name = self.config.read().await.forced_schema_name.clone();
+
+        let documents = self.documents.read().await;
+        let Some(document) = documents.get(&uri) else {
+            return Ok(None);
+        };
+        let schema_docs = self.schema_docs.read().await;
+
+        let result = signature_help::signature_help(
+            document,
+            position,
+            &schema_docs,
+            forced_schema_name.as_deref(),
+        );
+        debug!(
+            has_result = result.is_some(),
+            "signature help request completed"
         );
 
         Ok(result)
