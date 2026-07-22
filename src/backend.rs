@@ -15,7 +15,9 @@ use tracing::{debug, info, instrument, warn};
 use crate::config::{ServerConfig, expand_schema_candidates, parse_server_config};
 use crate::diagnostics;
 use crate::document::{DEFAULT_AST_FILE_SIZE_LIMIT_BYTES, Document};
-use crate::features::{definition, hover, references, semantic_tokens, signature_help};
+use crate::features::{
+    definition, document_highlight, hover, references, semantic_tokens, signature_help,
+};
 use crate::schema::{
     SchemaDocCollection, inspect_local_schema_name, load_local_schema, normalize_name,
 };
@@ -395,6 +397,7 @@ impl LanguageServer for Backend {
                 )),
                 definition_provider: Some(OneOf::Left(true)),
                 references_provider: Some(OneOf::Left(true)),
+                document_highlight_provider: Some(OneOf::Left(true)),
                 signature_help_provider: Some(SignatureHelpOptions {
                     trigger_characters: Some(vec!["(".to_string(), ",".to_string()]),
                     retrigger_characters: Some(vec![",".to_string()]),
@@ -557,6 +560,28 @@ impl LanguageServer for Backend {
         debug!(
             result_count = result.as_ref().map_or(0, Vec::len),
             "find references request completed"
+        );
+
+        Ok(result)
+    }
+
+    #[instrument(skip(self, params), fields(uri = %params.text_document_position_params.text_document.uri))]
+    async fn document_highlight(
+        &self,
+        params: DocumentHighlightParams,
+    ) -> Result<Option<Vec<DocumentHighlight>>> {
+        let uri = params.text_document_position_params.text_document.uri;
+        let position = params.text_document_position_params.position;
+
+        let documents = self.documents.read().await;
+        let Some(document) = documents.get(&uri) else {
+            return Ok(None);
+        };
+
+        let result = document_highlight::document_highlight(document, position);
+        debug!(
+            result_count = result.as_ref().map_or(0, Vec::len),
+            "document highlight request completed"
         );
 
         Ok(result)
