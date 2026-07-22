@@ -1,25 +1,29 @@
 //! Tree-sitter helpers for locating STEP instance and parameter context around a cursor node.
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct OmittedValueContext {
+pub struct ParameterContext {
     pub instance_id: u32,
     pub entity_name: String,
     pub parameter_index: usize,
 }
 
-pub fn omitted_value_context(
-    node: tree_sitter::Node<'_>,
-    text: &str,
-) -> Option<OmittedValueContext> {
-    let parameter = ancestor_with_kind(node, "parameter")?;
-    let parameter_sequence = ancestor_with_kind(parameter, "parameter_sequence")?;
-    let entity_instance = ancestor_with_kind(parameter_sequence, "entity_instance")?;
+pub fn parameter_context(node: tree_sitter::Node<'_>, text: &str) -> Option<ParameterContext> {
+    let entity_instance = ancestor_with_kind(node, "entity_instance")?;
+    let parameter_sequence = entity_parameter_sequence(entity_instance)?;
+    let parameter_index = parameter_sequence
+        .named_children(&mut parameter_sequence.walk())
+        .filter(|child| child.kind() == "parameter")
+        .position(|parameter| contains_node(parameter, node))?;
 
-    Some(OmittedValueContext {
+    Some(ParameterContext {
         instance_id: parse_instance_id(entity_instance, text)?,
         entity_name: parse_entity_name(entity_instance, text)?,
-        parameter_index: parameter_index(parameter_sequence, parameter)?,
+        parameter_index,
     })
+}
+
+pub fn omitted_value_context(node: tree_sitter::Node<'_>, text: &str) -> Option<ParameterContext> {
+    parameter_context(node, text)
 }
 
 fn ancestor_with_kind<'tree>(
@@ -50,17 +54,19 @@ fn parse_entity_name(node: tree_sitter::Node<'_>, text: &str) -> Option<String> 
         .map(|value| value.to_ascii_uppercase())
 }
 
-fn parameter_index(
-    parameter_sequence: tree_sitter::Node<'_>,
-    parameter: tree_sitter::Node<'_>,
-) -> Option<usize> {
-    let mut cursor = parameter_sequence.walk();
-    parameter_sequence
-        .children(&mut cursor)
-        .filter(|child| child.kind() == "parameter")
-        .position(|child| same_node(child, parameter))
+fn entity_parameter_sequence(
+    entity_instance: tree_sitter::Node<'_>,
+) -> Option<tree_sitter::Node<'_>> {
+    let mut cursor = entity_instance.walk();
+    let parameter_list = entity_instance
+        .named_children(&mut cursor)
+        .find(|child| child.kind() == "parameter_list")?;
+    let mut cursor = parameter_list.walk();
+    parameter_list
+        .named_children(&mut cursor)
+        .find(|child| child.kind() == "parameter_sequence")
 }
 
-fn same_node(a: tree_sitter::Node<'_>, b: tree_sitter::Node<'_>) -> bool {
-    a.start_byte() == b.start_byte() && a.end_byte() == b.end_byte()
+fn contains_node(outer: tree_sitter::Node<'_>, inner: tree_sitter::Node<'_>) -> bool {
+    outer.start_byte() <= inner.start_byte() && inner.end_byte() <= outer.end_byte()
 }
