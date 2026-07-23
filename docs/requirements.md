@@ -63,6 +63,28 @@ The language server should implement find references functionality for IFC symbo
 
 For the current scope, this should be limited to a single document. Cross-file indexing is not required.
 
+### Document Highlight
+
+The language server should implement document highlight functionality for local IFC STEP ids.
+
+When the cursor is on a local id such as `#123`, the server should return all same-document
+occurrences of that id, including the definition token and reference tokens.
+
+Cross-file highlights are out of scope.
+
+### Signature Help
+
+The language server should provide signature help for IFC entity parameter lists.
+
+When the cursor is inside a STEP entity instance argument list, the server should:
+
+- identify the selected IFC entity, such as `IFCWALL`
+- show the entity parameter signature from the selected schema docs
+- highlight the active parameter based on the cursor position
+- include concise parameter metadata where available, such as type information and optionality
+
+Signature help should not require tree-sitter AST state.
+
 ### Semantic Tokens
 
 The language server should provide range-based semantic tokens for IFC STEP syntax highlighting.
@@ -84,6 +106,8 @@ For files above the configured AST parsing limit:
 - entity definition hover should remain available when schema docs are available
 - go-to-definition should remain available for local `#id` references
 - find-references should remain available for local `#id` tokens
+- document highlight should remain available for local `#id` tokens
+- signature help should remain available for IFC entity parameter lists when schema docs are available
 - range-based semantic tokens should remain available
 - AST-backed schema diagnostics may be disabled
 - derived `*` hover may be disabled

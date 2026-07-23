@@ -18,6 +18,8 @@ The shipped LSP features are:
 - hover
 - go-to-definition
 - find-references
+- document highlight
+- signature help
 - range-based semantic tokens
 - schema-aware diagnostics
 
@@ -54,8 +56,9 @@ On hover, definition, or references requests:
 3. The feature handler reads the stored `Document`.
 4. If request-time reloading produced diagnostics, they are published after the request.
 
-On semantic-token range requests, the backend reads the stored document text and text index only.
-Semantic-token requests do not reload tree-sitter parse state or publish diagnostics.
+On document-highlight, signature-help, or semantic-token range requests, the backend reads the
+stored document text and text index only. These requests do not reload tree-sitter parse state or
+publish diagnostics.
 
 There is still no incremental parsing, background indexing, or cross-document indexing.
 
@@ -76,6 +79,8 @@ The server advertises:
 - full text document sync
 - `textDocument/definition`
 - `textDocument/references`
+- `textDocument/documentHighlight`
+- `textDocument/signatureHelp`
 - `textDocument/semanticTokens/range`
 
 Diagnostics are published with `textDocument/publishDiagnostics` on open, change, and request-time reloads.
@@ -165,7 +170,7 @@ When a file is larger than the limit:
 - tree-sitter parsing is skipped
 - schema diagnostics are disabled
 - derived `*` hover is disabled
-- basic hover, navigation, and range-based semantic tokens remain available from the text index/source text
+- basic hover, navigation, document highlight, signature help, and range-based semantic tokens remain available from the text index/source text
 
 ## Feature AST Usage
 
@@ -175,6 +180,8 @@ These features do not require an AST:
 - entity definition hover for names such as `IFCWALL`, when schema docs are available
 - go-to-definition for local `#id` references
 - find-references for local `#id` tokens
+- document highlight for local `#id` tokens
+- signature help for IFC entity parameter lists, when schema docs are available
 - schema name detection from `FILE_SCHEMA(...)`
 - range-based semantic tokens
 
@@ -215,6 +222,22 @@ Derived hover uses the fixed STEP parameter layouts for these two entities. It d
 ### Find References
 
 `src/features/references.rs` returns all same-document text-indexed `#id` locations, including the definition token.
+
+### Document Highlight
+
+`src/features/document_highlight.rs` returns all same-document text-indexed `#id` ranges for the
+id under the cursor. All occurrences are returned as textual highlights.
+
+Document highlight does not use tree-sitter or schema docs.
+
+### Signature Help
+
+`src/features/signature_help.rs` provides IFC entity parameter signatures from the selected schema
+docs. It uses a lightweight text scanner to find the current STEP entity argument list and count
+top-level commas before the cursor to choose the active parameter.
+
+Signature help ignores commas inside nested parameter lists, strings, and block comments. It does
+not use tree-sitter AST state.
 
 ### Semantic Tokens
 

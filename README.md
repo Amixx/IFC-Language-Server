@@ -1,6 +1,6 @@
 # IFC-Language-Server
 
-`ifc-language-server` is a lightweight Language Server Protocol server for [IFC STEP P21](https://technical.buildingsmart.org/standards/ifc/ifc-schema-specifications/) files (ISO 10303). It provides schema-aware hover information and local symbol navigation for IFC entity instances.
+`ifc-language-server` is a lightweight Language Server Protocol server for [IFC STEP P21](https://technical.buildingsmart.org/standards/ifc/ifc-schema-specifications/) files (ISO 10303). It provides schema-aware IFC editing features, local STEP id navigation, diagnostics, semantic tokens, and editor assistance for IFC entity arguments.
 
 
 ## Current Capabilities
@@ -10,6 +10,8 @@
 - Derived `*` hover for `IfcSIUnit` and `IfcGeometricRepresentationSubContext`
 - Go-to-definition for local entity references
 - Find-references within the current document
+- Document highlight for local STEP ids such as `#123`
+- Signature help for IFC entity parameter lists
 - Range-based semantic tokens for syntax highlighting
 - Schema-aware diagnostics for:
   - invalid local reference targets
@@ -90,7 +92,7 @@ Supported options:
 - `astFileSizeLimitMb`
   - Maximum file size in MiB for AST-backed features.
   - Defaults to `70`.
-  - Files above this limit keep basic hover/navigation and semantic tokens available, but skip schema diagnostics and derived-value hover.
+  - Files above this limit keep basic hover/navigation, document highlight, signature help, and semantic tokens available, but skip schema diagnostics and derived-value hover.
 
 - `semanticTokensEnabled`
   - Enables range-based semantic tokens.
