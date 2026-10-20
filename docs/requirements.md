@@ -131,9 +131,10 @@ The language server should provide lightweight IFC STEP completions for:
 
 Entity construction snippets should generate GUID arguments, preserve omitted arguments as `*`,
 make optional arguments editable with `$` defaults, scaffold required aggregate arguments, and include
-the closing semicolon. Completion items should expose entity documentation and a preview of referenced
-instances. Documentation should be resolved lazily when the client supports completion-item resolve,
-with eager documentation as a compatibility fallback.
+the closing semicolon. Accepting an entity construction snippet should request parameter hints so the
+entity signature remains visible while editing its placeholders. Completion items should expose entity
+documentation and a preview of referenced instances. Documentation should be resolved lazily when the
+client supports completion-item resolve, with eager documentation as a compatibility fallback.
 
 Schema-aware argument completions should trigger after `(`, `,`, and `#`, remain available without
 tree-sitter AST state, and replace only an empty or partially typed value. On an otherwise empty

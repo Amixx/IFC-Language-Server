@@ -286,12 +286,13 @@ uses the shared STEP argument scanner to locate the active flattened attribute, 
 aggregates, and entity selects through `SchemaDoc`, and scans indexed local definitions on demand
 when compatible reference suggestions are requested. IFC GUID generation is shared with scaffold
 rendering. Snippet-capable clients receive complete entity constructions and schema-shaped aggregate
-values; other clients retain plain entity-name insertion. Entity and reference documentation is
-resolved through `completionItem/resolve` when supported and attached eagerly otherwise. Reference
-lists are capped at 100 results and returned as incomplete when additional matches exist. The `#`
-trigger is interpreted by context: it completes the next definition prefix on an otherwise empty
-line and local references inside entity arguments. No semantic entity-instance collection is
-retained for completion.
+values; entity snippets request the client's parameter-hints command after insertion so signature help
+opens at the first placeholder. Other clients retain plain entity-name insertion. Entity and reference
+documentation is resolved through `completionItem/resolve` when supported and attached eagerly
+otherwise. Reference lists are capped at 100 results and returned as incomplete when additional
+matches exist. The `#` trigger is interpreted by context: it completes the next definition prefix on
+an otherwise empty line and local references inside entity arguments. No semantic entity-instance
+collection is retained for completion.
 
 ### Related Entity Navigation
 

@@ -4,8 +4,8 @@
 use std::collections::HashSet;
 
 use tower_lsp::lsp_types::{
-    CompletionItem, CompletionItemKind, CompletionTextEdit, Documentation, InsertTextFormat,
-    MarkupContent, MarkupKind, Position, Range, TextEdit, Url,
+    Command, CompletionItem, CompletionItemKind, CompletionTextEdit, Documentation,
+    InsertTextFormat, MarkupContent, MarkupKind, Position, Range, TextEdit, Url,
 };
 
 use crate::document::Document;
@@ -19,6 +19,7 @@ use super::ifc_guid::{IFC_GUID_ALPHABET, new_guid};
 use super::step_scan::{entity_argument_context, scan_definition_entity_name};
 
 const MAX_REFERENCE_COMPLETIONS: usize = 100;
+const TRIGGER_PARAMETER_HINTS_COMMAND: &str = "editor.action.triggerParameterHints";
 
 pub struct CompletionResults {
     pub items: Vec<CompletionItem>,
@@ -156,6 +157,13 @@ fn entity_name_completions(
             } else {
                 InsertTextFormat::PLAIN_TEXT
             });
+            if use_snippet {
+                item.command = Some(Command::new(
+                    "Show IFC entity signature".to_string(),
+                    TRIGGER_PARAMETER_HINTS_COMMAND.to_string(),
+                    None,
+                ));
+            }
             if let Some(schema_name) = schema_name {
                 item.data = Some(serde_json::json!({
                     "kind": "entity",
@@ -1134,6 +1142,12 @@ mod tests {
         assert!(text.starts_with("IFCWALL('") && text.ends_with(");$0"));
         assert!(text.contains("',${1},${2},(${3}),${4})"));
         assert_eq!(wall.insert_text_format, Some(InsertTextFormat::SNIPPET));
+        assert_eq!(
+            wall.command
+                .as_ref()
+                .map(|command| command.command.as_str()),
+            Some(TRIGGER_PARAMETER_HINTS_COMMAND)
+        );
         assert!(wall.documentation.is_none());
         assert!(wall.data.is_some());
     }
@@ -1163,6 +1177,7 @@ mod tests {
 
         assert_eq!(new_text(wall), "IFCWALL");
         assert_eq!(wall.insert_text_format, Some(InsertTextFormat::PLAIN_TEXT));
+        assert!(wall.command.is_none());
     }
 
     #[test]
