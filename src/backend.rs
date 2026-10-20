@@ -323,10 +323,9 @@ impl Backend {
     #[instrument(skip(self, config), fields(ast_file_size_limit_bytes = config.ast_file_size_limit_bytes))]
     async fn apply_config(&self, config: ServerConfig) {
         let mut schema_docs = SchemaDocCollection::new();
-        let mut next_state = ConfigState {
-            ast_file_size_limit_bytes: config.ast_file_size_limit_bytes,
-            semantic_tokens_enabled: config.semantic_tokens_enabled,
-            ..ConfigState::default()
+        let mut next_state = {
+            let current_state = self.config.read().await;
+            config_state_with_client_capabilities(&config, &current_state)
         };
 
         if let Some(path) = config.overwrite_exp_schema_with_local.as_ref() {
@@ -378,6 +377,20 @@ impl Backend {
         );
         *self.schema_docs.write().await = schema_docs;
         *self.config.write().await = next_state;
+    }
+}
+
+fn config_state_with_client_capabilities(
+    config: &ServerConfig,
+    current_state: &ConfigState,
+) -> ConfigState {
+    ConfigState {
+        ast_file_size_limit_bytes: config.ast_file_size_limit_bytes,
+        semantic_tokens_enabled: config.semantic_tokens_enabled,
+        completion_snippet_support: current_state.completion_snippet_support,
+        completion_documentation_resolve_support: current_state
+            .completion_documentation_resolve_support,
+        ..ConfigState::default()
     }
 }
 
@@ -961,5 +974,25 @@ fn append_completion_items(
             items.append(&mut list.items);
         }
         None => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn applying_server_config_preserves_negotiated_completion_capabilities() {
+        let current_state = ConfigState {
+            completion_snippet_support: true,
+            completion_documentation_resolve_support: true,
+            ..ConfigState::default()
+        };
+
+        let next_state =
+            config_state_with_client_capabilities(&ServerConfig::default(), &current_state);
+
+        assert!(next_state.completion_snippet_support);
+        assert!(next_state.completion_documentation_resolve_support);
     }
 }
