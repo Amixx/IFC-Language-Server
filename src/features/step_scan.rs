@@ -9,6 +9,110 @@ pub(crate) struct ScannedInstance {
     pub(crate) argument_starts: Vec<usize>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct EntityArgumentContext {
+    pub(crate) entity_name: String,
+    pub(crate) active_parameter: usize,
+    pub(crate) aggregate_depth: usize,
+    pub(crate) value_start: usize,
+}
+
+/// Locates the positional argument containing `cursor_offset` without requiring an AST.
+pub(crate) fn entity_argument_context(
+    text: &str,
+    cursor_offset: usize,
+) -> Option<EntityArgumentContext> {
+    if cursor_offset > text.len() || !text.is_char_boundary(cursor_offset) {
+        return None;
+    }
+
+    let bytes = text.as_bytes();
+    let mut offset = statement_start_before_cursor(text, cursor_offset);
+    offset = skip_trivia(bytes, offset, bytes.len());
+    let (_, next) = scan_instance_id(bytes, offset, bytes.len())?;
+    offset = skip_trivia(bytes, next, bytes.len());
+    if bytes.get(offset) != Some(&b'=') {
+        return None;
+    }
+
+    offset = skip_trivia(bytes, offset + 1, bytes.len());
+    let entity_start = offset;
+    offset = scan_identifier(bytes, offset, bytes.len())?;
+    let entity_name = text.get(entity_start..offset)?.to_ascii_uppercase();
+    offset = skip_trivia(bytes, offset, bytes.len());
+    if bytes.get(offset) != Some(&b'(') || cursor_offset <= offset {
+        return None;
+    }
+
+    let mut active_parameter = 0usize;
+    let mut aggregate_depth = 0usize;
+    let mut value_start = offset + 1;
+    offset += 1;
+
+    while offset < cursor_offset {
+        match bytes[offset] {
+            b'\'' => offset = scan_string(bytes, offset, cursor_offset),
+            b'/' if bytes.get(offset + 1) == Some(&b'*') => {
+                let comment_start = offset;
+                offset = scan_block_comment(bytes, offset, cursor_offset);
+                if bytes[value_start..comment_start]
+                    .iter()
+                    .all(|byte| byte.is_ascii_whitespace())
+                {
+                    value_start = offset;
+                }
+            }
+            b'(' => {
+                aggregate_depth += 1;
+                offset += 1;
+                value_start = offset;
+            }
+            b')' if aggregate_depth == 0 => return None,
+            b')' => {
+                aggregate_depth -= 1;
+                offset += 1;
+            }
+            b',' => {
+                if aggregate_depth == 0 {
+                    active_parameter += 1;
+                }
+                offset += 1;
+                value_start = offset;
+            }
+            _ => offset += 1,
+        }
+    }
+
+    Some(EntityArgumentContext {
+        entity_name,
+        active_parameter,
+        aggregate_depth,
+        value_start,
+    })
+}
+
+fn statement_start_before_cursor(text: &str, cursor_offset: usize) -> usize {
+    let bytes = text.as_bytes();
+    let mut offset = 0;
+    let mut statement_start = 0;
+
+    while offset < cursor_offset {
+        match bytes[offset] {
+            b'\'' => offset = scan_string(bytes, offset, cursor_offset),
+            b'/' if bytes.get(offset + 1) == Some(&b'*') => {
+                offset = scan_block_comment(bytes, offset, cursor_offset);
+            }
+            b';' => {
+                offset += 1;
+                statement_start = offset;
+            }
+            _ => offset += 1,
+        }
+    }
+
+    statement_start
+}
+
 /// Scans one entity instance starting at its `#id=` offset, returning the parsed instance and
 /// the offset just past its closing `)`.
 pub(crate) fn scan_instance(
@@ -40,6 +144,25 @@ pub(crate) fn scan_instance(
         },
         end,
     ))
+}
+
+/// Reads only the entity name at a known `#id=` definition offset.
+pub(crate) fn scan_definition_entity_name(
+    text: &str,
+    start: usize,
+    scan_end: usize,
+) -> Option<String> {
+    let bytes = text.as_bytes();
+    let (_, mut offset) = scan_instance_id(bytes, start, scan_end)?;
+    offset = skip_trivia(bytes, offset, scan_end);
+    if bytes.get(offset) != Some(&b'=') {
+        return None;
+    }
+
+    offset = skip_trivia(bytes, offset + 1, scan_end);
+    let entity_start = offset;
+    offset = scan_identifier(bytes, offset, scan_end)?;
+    text.get(entity_start..offset).map(str::to_ascii_uppercase)
 }
 
 /// Collects every local instance id (`#N`) referenced within `[start, end)`, skipping strings
@@ -206,6 +329,25 @@ mod tests {
         assert_eq!(instance.entity_name, "IFCWALL");
         assert_eq!(instance.argument_starts, vec![11, 17, 21]);
         assert_eq!(end, text.len());
+    }
+
+    #[test]
+    fn scans_only_definition_entity_name() {
+        let text = "#12 = IfcWall(";
+
+        assert_eq!(
+            scan_definition_entity_name(text, 0, text.len()).as_deref(),
+            Some("IFCWALL")
+        );
+    }
+
+    #[test]
+    fn argument_context_skips_leading_comments() {
+        let text = "#1=IFCWALL($, /* explanation */ .SO";
+        let context = entity_argument_context(text, text.len()).expect("expected argument context");
+
+        assert_eq!(context.active_parameter, 1);
+        assert_eq!(&text[context.value_start..], " .SO");
     }
 
     #[test]

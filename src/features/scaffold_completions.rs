@@ -3,6 +3,7 @@
 //! actions without requiring AST state.
 
 use crate::document::Document;
+use crate::features::ifc_guid::new_guid;
 use crate::schema::IfcVersion;
 use std::collections::HashMap;
 use time::OffsetDateTime;
@@ -11,11 +12,8 @@ use tower_lsp::lsp_types::{
     CompletionItemKind, CompletionResponse, CompletionTextEdit, InsertTextFormat, Position, Range,
     TextEdit, Url, WorkspaceEdit,
 };
-use uuid::Uuid;
 
 const DEFAULT_SCHEMA: IfcVersion = IfcVersion::Ifc4x3Add2;
-const IFC_GUID_ALPHABET: &[u8; 64] =
-    b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$";
 const METADATA_TEMPLATE: &str = include_str!("scaffold_templates/metadata.ifc.tpl");
 const PROJECT_TEMPLATE: &str = include_str!("scaffold_templates/project.ifc.tpl");
 const SPATIAL_TEMPLATE: &str = include_str!("scaffold_templates/spatial.ifc.tpl");
@@ -317,22 +315,6 @@ fn step_string(value: &str) -> String {
     value.replace('\'', "''")
 }
 
-/// Freshly generated IFC GlobalId, base64-style compressed per the IFC GUID encoding.
-fn new_guid() -> String {
-    compress_uuid(Uuid::new_v4().as_u128())
-}
-
-fn compress_uuid(mut value: u128) -> String {
-    let mut output = [b'0'; 22];
-    for character in output.iter_mut().rev() {
-        let index = (value & 0b11_1111) as usize;
-        *character = IFC_GUID_ALPHABET[index];
-        value >>= 6;
-    }
-
-    String::from_utf8(output.to_vec()).expect("IFC GUID alphabet should be ASCII")
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -604,13 +586,5 @@ mod tests {
             )
             .is_none()
         );
-    }
-
-    #[test]
-    fn compressed_guids_have_ifc_shape() {
-        let guid = compress_uuid(0x0123_4567_89ab_cdef_fedc_ba98_7654_3210);
-
-        assert_eq!(guid.len(), 22);
-        assert!(guid.bytes().all(|byte| IFC_GUID_ALPHABET.contains(&byte)));
     }
 }

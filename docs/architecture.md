@@ -66,6 +66,9 @@ Definition, references, document-highlight, signature-help, and semantic-token r
 the stored document text and text index only. These requests do not reload tree-sitter parse state
 or publish diagnostics.
 
+Completion requests also use only stored text, the lightweight index, and the selected schema docs.
+They do not reload tree-sitter state.
+
 There is still no incremental text indexing, incremental entity-instance rebuilding, background
 indexing, diagnostic caching, or cross-document indexing.
 
@@ -202,6 +205,7 @@ These features do not require an AST:
 - find-references for local `#id` tokens
 - document highlight for local `#id` tokens
 - signature help for IFC entity parameter lists, when schema docs are available
+- next-id, entity-name, GUID, enumeration, and compatible-reference completions
 - schema-backed inlay hints for STEP entity arguments
 - schema name detection from `FILE_SCHEMA(...)`
 - related-entity navigation code actions, when schema docs are available
@@ -274,6 +278,16 @@ text code actions for empty or whitespace-only documents.
 
 Boilerplate generation targets the current default schema. Older schema versions are not generated
 directly.
+
+### Completions
+
+`src/features/completions.rs` provides next-id and schema-aware completions without AST state. It
+uses the shared STEP argument scanner to locate the active flattened attribute, resolves aliases,
+aggregates, and entity selects through `SchemaDoc`, and scans indexed local definitions on demand
+when compatible reference suggestions are requested. IFC GUID generation is shared with scaffold
+rendering. The `#` trigger is interpreted by context: it completes the next definition prefix on an
+otherwise empty line and local references inside entity arguments. No semantic entity-instance
+collection is retained for completion.
 
 ### Related Entity Navigation
 

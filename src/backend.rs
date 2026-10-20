@@ -17,7 +17,7 @@ use crate::diagnostics::DiagnosticSnapshot;
 use crate::diagnostics::scheduler::{DiagnosticScheduler, DiagnosticTicket};
 use crate::document::{DEFAULT_AST_FILE_SIZE_LIMIT_BYTES, Document};
 use crate::features::{
-    definition, document_highlight, document_symbols, hover, inlay_hints, references,
+    completions, definition, document_highlight, document_symbols, hover, inlay_hints, references,
     related_entities, scaffold_completions, semantic_tokens, signature_help,
 };
 use crate::schema::{
@@ -451,7 +451,12 @@ impl LanguageServer for Backend {
                 }),
                 inlay_hint_provider: Some(OneOf::Left(true)),
                 completion_provider: Some(CompletionOptions {
-                    trigger_characters: Some(vec!["!".to_string()]),
+                    trigger_characters: Some(vec![
+                        "!".to_string(),
+                        "(".to_string(),
+                        ",".to_string(),
+                        "#".to_string(),
+                    ]),
                     ..CompletionOptions::default()
                 }),
                 code_action_provider: Some(CodeActionProviderCapability::Options(
@@ -548,8 +553,24 @@ impl LanguageServer for Backend {
         let Some(document) = documents.get(&uri) else {
             return Ok(None);
         };
+        let selected_schema_name = self
+            .selected_schema_name(document.schema_name.as_deref())
+            .await;
+        let schema_docs = self.schema_docs.read().await;
+        let schema = selected_schema_name
+            .as_deref()
+            .and_then(|name| schema_docs.get(name));
 
-        let result = scaffold_completions::completions(document, &uri, position, snippet_supported);
+        let mut items = Vec::new();
+        append_completion_items(
+            &mut items,
+            scaffold_completions::completions(document, &uri, position, snippet_supported),
+        );
+        append_completion_items(
+            &mut items,
+            completions::completions(document, position, schema),
+        );
+        let result = (!items.is_empty()).then_some(CompletionResponse::Array(items));
         debug!(
             has_result = result.is_some(),
             "completion request completed"
@@ -871,5 +892,13 @@ impl LanguageServer for Backend {
         );
 
         Ok(result)
+    }
+}
+
+fn append_completion_items(items: &mut Vec<CompletionItem>, response: Option<CompletionResponse>) {
+    match response {
+        Some(CompletionResponse::Array(mut response_items)) => items.append(&mut response_items),
+        Some(CompletionResponse::List(mut list)) => items.append(&mut list.items),
+        None => {}
     }
 }
