@@ -136,7 +136,7 @@ entity signature remains visible while editing its placeholders. Completion item
 documentation and a preview of referenced instances. Documentation should be resolved lazily when the
 client supports completion-item resolve, with eager documentation as a compatibility fallback.
 
-Schema-aware argument completions should trigger after `(`, `,`, and `#`, remain available without
+Schema-aware argument completions should trigger after `(`, `,`, `#`, and `.`, remain available without
 tree-sitter AST state, and replace only an empty or partially typed value. On an otherwise empty
 line, `#` should instead complete the next instance definition prefix without adding whitespace.
 Compatible-reference results should be capped at 100 items and marked incomplete when more matches

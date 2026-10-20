@@ -439,6 +439,13 @@ fn completion_documentation_resolve_support(params: &InitializeParams) -> bool {
         })
 }
 
+fn completion_trigger_characters() -> Vec<String> {
+    ["!", "(", ",", "#", "."]
+        .into_iter()
+        .map(str::to_string)
+        .collect()
+}
+
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     #[instrument(skip(self, params))]
@@ -486,12 +493,7 @@ impl LanguageServer for Backend {
                 inlay_hint_provider: Some(OneOf::Left(true)),
                 completion_provider: Some(CompletionOptions {
                     resolve_provider: Some(true),
-                    trigger_characters: Some(vec![
-                        "!".to_string(),
-                        "(".to_string(),
-                        ",".to_string(),
-                        "#".to_string(),
-                    ]),
+                    trigger_characters: Some(completion_trigger_characters()),
                     ..CompletionOptions::default()
                 }),
                 code_action_provider: Some(CodeActionProviderCapability::Options(
@@ -994,5 +996,14 @@ mod tests {
 
         assert!(next_state.completion_snippet_support);
         assert!(next_state.completion_documentation_resolve_support);
+    }
+
+    #[test]
+    fn dot_triggers_enum_completion() {
+        assert!(
+            completion_trigger_characters()
+                .iter()
+                .any(|trigger| trigger == ".")
+        );
     }
 }
