@@ -32,6 +32,7 @@ struct ConfigState {
     ast_file_size_limit_bytes: usize,
     semantic_tokens_enabled: bool,
     completion_snippet_support: bool,
+    completion_documentation_resolve_support: bool,
 }
 
 impl Default for ConfigState {
@@ -43,6 +44,7 @@ impl Default for ConfigState {
             ast_file_size_limit_bytes: DEFAULT_AST_FILE_SIZE_LIMIT_BYTES,
             semantic_tokens_enabled: true,
             completion_snippet_support: false,
+            completion_documentation_resolve_support: false,
         }
     }
 }
@@ -408,6 +410,22 @@ fn completion_snippet_support(params: &InitializeParams) -> bool {
         .unwrap_or(false)
 }
 
+fn completion_documentation_resolve_support(params: &InitializeParams) -> bool {
+    params
+        .capabilities
+        .text_document
+        .as_ref()
+        .and_then(|capabilities| capabilities.completion.as_ref())
+        .and_then(|capabilities| capabilities.completion_item.as_ref())
+        .and_then(|capabilities| capabilities.resolve_support.as_ref())
+        .is_some_and(|support| {
+            support
+                .properties
+                .iter()
+                .any(|property| property == "documentation")
+        })
+}
+
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     #[instrument(skip(self, params))]
@@ -418,6 +436,8 @@ impl LanguageServer for Backend {
             .map(parse_server_config)
             .unwrap_or_default();
         let completion_snippet_support = completion_snippet_support(&params);
+        let completion_documentation_resolve_support =
+            completion_documentation_resolve_support(&params);
         let semantic_tokens_enabled = pending_init_config.semantic_tokens_enabled;
         let semantic_tokens_provider = semantic_tokens_enabled.then(|| {
             SemanticTokensServerCapabilities::SemanticTokensOptions(SemanticTokensOptions {
@@ -431,6 +451,7 @@ impl LanguageServer for Backend {
         let mut config = self.config.write().await;
         config.semantic_tokens_enabled = semantic_tokens_enabled;
         config.completion_snippet_support = completion_snippet_support;
+        config.completion_documentation_resolve_support = completion_documentation_resolve_support;
         config.pending_init_config = Some(pending_init_config);
         info!("received initialize request");
 
@@ -451,6 +472,7 @@ impl LanguageServer for Backend {
                 }),
                 inlay_hint_provider: Some(OneOf::Left(true)),
                 completion_provider: Some(CompletionOptions {
+                    resolve_provider: Some(true),
                     trigger_characters: Some(vec![
                         "!".to_string(),
                         "(".to_string(),
@@ -547,7 +569,13 @@ impl LanguageServer for Backend {
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
         let uri = params.text_document_position.text_document.uri;
         let position = params.text_document_position.position;
-        let snippet_supported = self.config.read().await.completion_snippet_support;
+        let (snippet_supported, resolve_documentation_supported) = {
+            let config = self.config.read().await;
+            (
+                config.completion_snippet_support,
+                config.completion_documentation_resolve_support,
+            )
+        };
 
         let documents = self.documents.read().await;
         let Some(document) = documents.get(&uri) else {
@@ -562,21 +590,47 @@ impl LanguageServer for Backend {
             .and_then(|name| schema_docs.get(name));
 
         let mut items = Vec::new();
+        let mut is_incomplete = false;
         append_completion_items(
             &mut items,
+            &mut is_incomplete,
             scaffold_completions::completions(document, &uri, position, snippet_supported),
         );
-        append_completion_items(
-            &mut items,
-            completions::completions(document, position, schema),
-        );
-        let result = (!items.is_empty()).then_some(CompletionResponse::Array(items));
+        if let Some(schema_results) = completions::completions(
+            document,
+            &uri,
+            position,
+            selected_schema_name.as_deref(),
+            schema,
+            snippet_supported,
+            !resolve_documentation_supported,
+        ) {
+            items.extend(schema_results.items);
+            is_incomplete |= schema_results.is_incomplete;
+        }
+        let result = (!items.is_empty()).then_some(CompletionResponse::List(CompletionList {
+            is_incomplete,
+            items,
+        }));
         debug!(
             has_result = result.is_some(),
             "completion request completed"
         );
 
         Ok(result)
+    }
+
+    #[instrument(skip(self, item))]
+    async fn completion_resolve(&self, item: CompletionItem) -> Result<CompletionItem> {
+        let uri = completions::resolution_uri(&item);
+        let schema_name = completions::resolution_schema_name(&item).map(str::to_string);
+        let documents = self.documents.read().await;
+        let document = uri.as_ref().and_then(|uri| documents.get(uri));
+        let schema_docs = self.schema_docs.read().await;
+        let schema = schema_name
+            .as_deref()
+            .and_then(|schema_name| schema_docs.get(schema_name));
+        Ok(completions::resolve_completion_item(item, document, schema))
     }
 
     #[instrument(skip(self, params), fields(uri = %params.text_document.uri))]
@@ -895,10 +949,17 @@ impl LanguageServer for Backend {
     }
 }
 
-fn append_completion_items(items: &mut Vec<CompletionItem>, response: Option<CompletionResponse>) {
+fn append_completion_items(
+    items: &mut Vec<CompletionItem>,
+    is_incomplete: &mut bool,
+    response: Option<CompletionResponse>,
+) {
     match response {
         Some(CompletionResponse::Array(mut response_items)) => items.append(&mut response_items),
-        Some(CompletionResponse::List(mut list)) => items.append(&mut list.items),
+        Some(CompletionResponse::List(mut list)) => {
+            *is_incomplete |= list.is_incomplete;
+            items.append(&mut list.items);
+        }
         None => {}
     }
 }

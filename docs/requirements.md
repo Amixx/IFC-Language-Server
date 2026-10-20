@@ -122,14 +122,24 @@ versions is out of scope.
 The language server should provide lightweight IFC STEP completions for:
 
 - the next instance definition prefix (`#<maximum id + 1>=`) on an empty line
-- entity names from the selected built-in or custom EXPRESS schema
+- entity names from the selected built-in or custom EXPRESS schema, expanding to complete entity
+  construction snippets when the client supports snippets
 - fresh quoted IFC-compressed GUIDs for `IfcGloballyUniqueId` attributes
 - enumeration values from the selected schema
 - same-document entity references filtered to schema-compatible target types
+- aggregate value scaffolds whose initial shape follows the schema's lower bounds
+
+Entity construction snippets should generate GUID arguments, preserve omitted arguments as `*`,
+make optional arguments editable with `$` defaults, scaffold required aggregate arguments, and include
+the closing semicolon. Completion items should expose entity documentation and a preview of referenced
+instances. Documentation should be resolved lazily when the client supports completion-item resolve,
+with eager documentation as a compatibility fallback.
 
 Schema-aware argument completions should trigger after `(`, `,`, and `#`, remain available without
 tree-sitter AST state, and replace only an empty or partially typed value. On an otherwise empty
 line, `#` should instead complete the next instance definition prefix without adding whitespace.
+Compatible-reference results should be capped at 100 items and marked incomplete when more matches
+exist, allowing the client to request a narrower result as the user types.
 General punctuation completion is out of scope.
 
 ### Semantic Tokens

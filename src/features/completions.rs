@@ -4,34 +4,70 @@
 use std::collections::HashSet;
 
 use tower_lsp::lsp_types::{
-    CompletionItem, CompletionItemKind, CompletionResponse, CompletionTextEdit, InsertTextFormat,
-    Position, Range, TextEdit,
+    CompletionItem, CompletionItemKind, CompletionTextEdit, Documentation, InsertTextFormat,
+    MarkupContent, MarkupKind, Position, Range, TextEdit, Url,
 };
 
 use crate::document::Document;
-use crate::schema::{NamedTypeKind, SchemaDoc, TypeDoc, TypeRef, normalize_name};
+use crate::schema::{
+    AggregateKind, AggregateTypeRef, BoundValue, EntityDoc, NamedTypeKind, SchemaDoc, TypeDoc,
+    TypeRef, normalize_name,
+};
 
+use super::hover::{render_entity_hover, render_reference_hover};
 use super::ifc_guid::{IFC_GUID_ALPHABET, new_guid};
 use super::step_scan::{entity_argument_context, scan_definition_entity_name};
 
+const MAX_REFERENCE_COMPLETIONS: usize = 100;
+
+pub struct CompletionResults {
+    pub items: Vec<CompletionItem>,
+    pub is_incomplete: bool,
+}
+
 pub fn completions(
     document: &Document,
+    uri: &Url,
     position: Position,
+    schema_name: Option<&str>,
     schema: Option<&SchemaDoc>,
-) -> Option<CompletionResponse> {
+    snippet_supported: bool,
+    eager_documentation: bool,
+) -> Option<CompletionResults> {
     let offset = document.position_to_offset(position)?;
     let mut items = Vec::new();
+    let mut is_incomplete = false;
 
     if let Some(item) = next_id_completion(document, position, offset) {
         items.push(item);
     }
 
     if let Some(schema) = schema {
-        items.extend(entity_name_completions(document, position, offset, schema));
-        items.extend(argument_completions(document, position, offset, schema));
+        items.extend(entity_name_completions(
+            document,
+            position,
+            offset,
+            schema_name,
+            schema,
+            snippet_supported,
+            eager_documentation,
+        ));
+        let argument_results = argument_completions(
+            document,
+            uri,
+            offset,
+            schema,
+            snippet_supported,
+            eager_documentation,
+        );
+        items.extend(argument_results.items);
+        is_incomplete |= argument_results.is_incomplete;
     }
 
-    (!items.is_empty()).then_some(CompletionResponse::Array(items))
+    (!items.is_empty()).then_some(CompletionResults {
+        items,
+        is_incomplete,
+    })
 }
 
 fn next_id_completion(
@@ -82,9 +118,13 @@ fn entity_name_completions(
     document: &Document,
     position: Position,
     offset: usize,
+    schema_name: Option<&str>,
     schema: &SchemaDoc,
+    snippet_supported: bool,
+    eager_documentation: bool,
 ) -> Vec<CompletionItem> {
-    let Some((prefix, range)) = entity_name_request(document, position, offset) else {
+    let Some((prefix, range, can_insert_snippet)) = entity_name_request(document, position, offset)
+    else {
         return Vec::new();
     };
 
@@ -94,15 +134,39 @@ fn entity_name_completions(
         .into_iter()
         .filter(|name| starts_with_ignore_ascii_case(name, &prefix))
         .enumerate()
-        .map(|(index, name)| {
-            completion_item(
+        .filter_map(|(index, name)| {
+            let entity = schema.entity(&name)?;
+            let use_snippet = snippet_supported && can_insert_snippet;
+            let new_text = if use_snippet {
+                render_entity_snippet(entity, schema)
+            } else {
+                name.clone()
+            };
+            let mut item = completion_item(
                 name.clone(),
-                "IFC entity",
+                &render_entity_signature(entity),
                 CompletionItemKind::CLASS,
-                name,
+                new_text,
                 range,
                 format!("{index:06}_entity"),
-            )
+            );
+            item.filter_text = Some(name);
+            item.insert_text_format = Some(if use_snippet {
+                InsertTextFormat::SNIPPET
+            } else {
+                InsertTextFormat::PLAIN_TEXT
+            });
+            if let Some(schema_name) = schema_name {
+                item.data = Some(serde_json::json!({
+                    "kind": "entity",
+                    "schema": schema_name,
+                    "entity": entity.name,
+                }));
+            }
+            if eager_documentation {
+                item.documentation = Some(markdown_documentation(render_entity_hover(entity)));
+            }
+            Some(item)
         })
         .collect()
 }
@@ -111,7 +175,7 @@ fn entity_name_request(
     document: &Document,
     position: Position,
     offset: usize,
-) -> Option<(String, Range)> {
+) -> Option<(String, Range, bool)> {
     let line_start = *document.line_offsets.get(position.line as usize)?;
     let bytes = document.text.as_bytes();
     let mut prefix_start = offset;
@@ -142,26 +206,34 @@ fn entity_name_request(
         return None;
     }
 
-    Some((prefix, document.range_for_offsets(prefix_start, offset)?))
+    let line_end = document.line_end_offset(position.line as usize)?;
+    let can_insert_snippet = document.text.get(offset..line_end)?.trim().is_empty();
+    Some((
+        prefix,
+        document.range_for_offsets(prefix_start, offset)?,
+        can_insert_snippet,
+    ))
 }
 
 fn argument_completions(
     document: &Document,
-    _position: Position,
+    uri: &Url,
     offset: usize,
     schema: &SchemaDoc,
-) -> Vec<CompletionItem> {
+    snippet_supported: bool,
+    eager_documentation: bool,
+) -> CompletionResults {
     let Some(context) = entity_argument_context(&document.text, offset) else {
-        return Vec::new();
+        return empty_results();
     };
     let Some(entity) = schema.entity(&context.entity_name) else {
-        return Vec::new();
+        return empty_results();
     };
     let Some(attribute) = entity.attributes.get(context.active_parameter) else {
-        return Vec::new();
+        return empty_results();
     };
     let Some(token) = argument_token(document, context.value_start, offset) else {
-        return Vec::new();
+        return empty_results();
     };
 
     if type_is_guid(
@@ -170,7 +242,7 @@ fn argument_completions(
         context.aggregate_depth,
         &mut HashSet::new(),
     ) {
-        return guid_completions(token);
+        return complete_results(guid_completions(token));
     }
 
     if let Some(values) = enumeration_values(
@@ -179,7 +251,15 @@ fn argument_completions(
         context.aggregate_depth,
         &mut HashSet::new(),
     ) {
-        return enumeration_completions(values, token);
+        return complete_results(enumeration_completions(values, token));
+    }
+
+    if context.aggregate_depth == 0
+        && snippet_supported
+        && token.text.is_empty()
+        && let Some(aggregate) = resolve_aggregate(schema, &attribute.ty, &mut HashSet::new())
+    {
+        return complete_results(vec![aggregate_completion(aggregate, schema, token.range)]);
     }
 
     let mut expected_entities = HashSet::new();
@@ -192,13 +272,33 @@ fn argument_completions(
         &mut expected_entities,
         &mut accepts_any_entity,
     );
-    reference_completions(
+    let (items, is_incomplete) = reference_completions(
         document,
+        uri,
         schema,
         &expected_entities,
         accepts_any_entity,
         token,
-    )
+        eager_documentation,
+    );
+    CompletionResults {
+        items,
+        is_incomplete,
+    }
+}
+
+fn empty_results() -> CompletionResults {
+    CompletionResults {
+        items: Vec::new(),
+        is_incomplete: false,
+    }
+}
+
+fn complete_results(items: Vec<CompletionItem>) -> CompletionResults {
+    CompletionResults {
+        items,
+        is_incomplete: false,
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -280,23 +380,25 @@ fn enumeration_completions(values: &[String], token: ArgumentToken<'_>) -> Vec<C
 
 fn reference_completions(
     document: &Document,
+    uri: &Url,
     schema: &SchemaDoc,
     expected_entities: &HashSet<String>,
     accepts_any_entity: bool,
     token: ArgumentToken<'_>,
-) -> Vec<CompletionItem> {
+    eager_documentation: bool,
+) -> (Vec<CompletionItem>, bool) {
     if !accepts_any_entity && expected_entities.is_empty() {
-        return Vec::new();
+        return (Vec::new(), false);
     }
     let prefix = if token.text.is_empty() {
         ""
     } else if let Some(value) = token.text.strip_prefix('#') {
         if !value.bytes().all(|byte| byte.is_ascii_digit()) {
-            return Vec::new();
+            return (Vec::new(), false);
         }
         value
     } else {
-        return Vec::new();
+        return (Vec::new(), false);
     };
 
     let mut definitions = document
@@ -306,7 +408,7 @@ fn reference_completions(
         .collect::<Vec<_>>();
     definitions.sort_by_key(|(id, _)| *id);
 
-    definitions
+    let mut matching = definitions
         .into_iter()
         .filter_map(|(id, offset)| {
             let id_text = id.to_string();
@@ -324,16 +426,222 @@ fn reference_completions(
             }
 
             let reference = format!("#{id}");
-            Some(completion_item(
+            let mut item = completion_item(
                 reference.clone(),
                 &entity_name,
                 CompletionItemKind::REFERENCE,
                 reference,
                 token.range,
                 format!("{id:010}_reference"),
-            ))
+            );
+            item.data = Some(serde_json::json!({
+                "kind": "reference",
+                "uri": uri,
+                "id": id,
+            }));
+            if eager_documentation && let Some(documentation) = render_reference_hover(document, id)
+            {
+                item.documentation = Some(markdown_documentation(documentation));
+            }
+            Some(item)
         })
-        .collect()
+        .take(MAX_REFERENCE_COMPLETIONS + 1)
+        .collect::<Vec<_>>();
+    let is_incomplete = matching.len() > MAX_REFERENCE_COMPLETIONS;
+    matching.truncate(MAX_REFERENCE_COMPLETIONS);
+    (matching, is_incomplete)
+}
+
+fn render_entity_signature(entity: &EntityDoc) -> String {
+    format!(
+        "{}({})",
+        entity.name,
+        entity
+            .attributes
+            .iter()
+            .map(|attribute| attribute.name.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    )
+}
+
+fn render_entity_snippet(entity: &EntityDoc, schema: &SchemaDoc) -> String {
+    let mut next_tabstop = 1usize;
+    let arguments = entity
+        .attributes
+        .iter()
+        .map(|attribute| {
+            if type_is_guid(schema, &attribute.ty, 0, &mut HashSet::new()) {
+                format!("'{}'", new_guid())
+            } else if attribute.allows_omitted {
+                "*".to_string()
+            } else if attribute.optional {
+                snippet_tabstop(&mut next_tabstop, Some("$"))
+            } else {
+                render_type_snippet(
+                    schema,
+                    &attribute.ty,
+                    &mut next_tabstop,
+                    &mut HashSet::new(),
+                )
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(",");
+    format!("{}({arguments});$0", entity.name.to_ascii_uppercase())
+}
+
+fn aggregate_completion(
+    aggregate: &AggregateTypeRef,
+    schema: &SchemaDoc,
+    range: Range,
+) -> CompletionItem {
+    let mut next_tabstop = 1usize;
+    let new_text =
+        render_aggregate_snippet(schema, aggregate, &mut next_tabstop, &mut HashSet::new());
+    let mut item = completion_item(
+        format!("Insert {} value", aggregate_kind_name(aggregate.kind)),
+        &format_aggregate_detail(aggregate),
+        CompletionItemKind::SNIPPET,
+        new_text,
+        range,
+        "000_aggregate".to_string(),
+    );
+    item.insert_text_format = Some(InsertTextFormat::SNIPPET);
+    item.documentation = Some(markdown_documentation(format!(
+        "Schema type: `{}`",
+        format_aggregate_detail(aggregate)
+    )));
+    item
+}
+
+fn render_type_snippet(
+    schema: &SchemaDoc,
+    ty: &TypeRef,
+    next_tabstop: &mut usize,
+    visiting: &mut HashSet<String>,
+) -> String {
+    match ty {
+        TypeRef::Aggregate(aggregate) => {
+            render_aggregate_snippet(schema, aggregate, next_tabstop, visiting)
+        }
+        TypeRef::Named(named) if named.kind != NamedTypeKind::Entity => {
+            let name = normalize_name(&named.name);
+            if !visiting.insert(name.clone()) {
+                return snippet_tabstop(next_tabstop, None);
+            }
+            let rendered = match schema.type_decl(&name) {
+                Some(TypeDoc::Alias(alias)) => {
+                    render_type_snippet(schema, &alias.target, next_tabstop, visiting)
+                }
+                _ => snippet_tabstop(next_tabstop, None),
+            };
+            visiting.remove(&name);
+            rendered
+        }
+        _ => snippet_tabstop(next_tabstop, None),
+    }
+}
+
+fn render_aggregate_snippet(
+    schema: &SchemaDoc,
+    aggregate: &AggregateTypeRef,
+    next_tabstop: &mut usize,
+    visiting: &mut HashSet<String>,
+) -> String {
+    let count = aggregate_placeholder_count(aggregate);
+    let values = (0..count)
+        .map(|_| render_type_snippet(schema, &aggregate.item, next_tabstop, visiting))
+        .collect::<Vec<_>>()
+        .join(",");
+    format!("({values})")
+}
+
+fn aggregate_placeholder_count(aggregate: &AggregateTypeRef) -> usize {
+    let required = match (&aggregate.kind, &aggregate.bounds) {
+        (AggregateKind::Array, Some(bounds)) => match (&bounds.lower, &bounds.upper) {
+            (BoundValue::Integer(lower), BoundValue::Integer(upper)) if upper >= lower => {
+                upper.saturating_sub(*lower).saturating_add(1) as usize
+            }
+            _ => 1,
+        },
+        (_, Some(bounds)) => match bounds.lower {
+            BoundValue::Integer(lower) => lower as usize,
+            BoundValue::Unbounded | BoundValue::UnsupportedExpression => 1,
+        },
+        (_, None) => 1,
+    };
+    required.clamp(1, 8)
+}
+
+fn snippet_tabstop(next_tabstop: &mut usize, default: Option<&str>) -> String {
+    let index = *next_tabstop;
+    *next_tabstop += 1;
+    match default {
+        Some(default) => format!("${{{index}:\\{default}}}"),
+        None => format!("${{{index}}}"),
+    }
+}
+
+fn resolve_aggregate<'a>(
+    schema: &'a SchemaDoc,
+    ty: &'a TypeRef,
+    visiting: &mut HashSet<String>,
+) -> Option<&'a AggregateTypeRef> {
+    match ty {
+        TypeRef::Aggregate(aggregate) => Some(aggregate),
+        TypeRef::Named(named) if named.kind != NamedTypeKind::Entity => {
+            let name = normalize_name(&named.name);
+            if !visiting.insert(name.clone()) {
+                return None;
+            }
+            let result = match schema.type_decl(&name) {
+                Some(TypeDoc::Alias(alias)) => resolve_aggregate(schema, &alias.target, visiting),
+                _ => None,
+            };
+            visiting.remove(&name);
+            result
+        }
+        _ => None,
+    }
+}
+
+fn aggregate_kind_name(kind: AggregateKind) -> &'static str {
+    match kind {
+        AggregateKind::Set => "SET",
+        AggregateKind::Bag => "BAG",
+        AggregateKind::List => "LIST",
+        AggregateKind::Array => "ARRAY",
+    }
+}
+
+fn format_aggregate_detail(aggregate: &AggregateTypeRef) -> String {
+    let bounds = aggregate
+        .bounds
+        .as_ref()
+        .map_or_else(String::new, |bounds| {
+            format!(
+                " [{}:{}]",
+                format_bound(&bounds.lower),
+                format_bound(&bounds.upper)
+            )
+        });
+    let unique = if aggregate.unique { " UNIQUE" } else { "" };
+    format!("{}{bounds}{unique}", aggregate_kind_name(aggregate.kind))
+}
+
+fn format_bound(bound: &BoundValue) -> String {
+    match bound {
+        BoundValue::Integer(value) => value.to_string(),
+        BoundValue::Unbounded | BoundValue::UnsupportedExpression => "?".to_string(),
+    }
+}
+
+fn markdown_documentation(value: String) -> Documentation {
+    Documentation::MarkupContent(MarkupContent {
+        kind: MarkupKind::Markdown,
+        value,
+    })
 }
 
 fn type_is_guid(
@@ -475,6 +783,50 @@ fn completion_item(
     item
 }
 
+pub fn resolution_uri(item: &CompletionItem) -> Option<Url> {
+    item.data.as_ref()?.get("uri")?.as_str()?.parse().ok()
+}
+
+pub fn resolution_schema_name(item: &CompletionItem) -> Option<&str> {
+    item.data.as_ref()?.get("schema")?.as_str()
+}
+
+pub fn resolve_completion_item(
+    mut item: CompletionItem,
+    document: Option<&Document>,
+    schema: Option<&SchemaDoc>,
+) -> CompletionItem {
+    let Some(data) = item.data.as_ref() else {
+        return item;
+    };
+    match data.get("kind").and_then(serde_json::Value::as_str) {
+        Some("entity") => {
+            let Some(entity_name) = data.get("entity").and_then(serde_json::Value::as_str) else {
+                return item;
+            };
+            if let Some(entity) = schema.and_then(|schema| schema.entity(entity_name)) {
+                item.documentation = Some(markdown_documentation(render_entity_hover(entity)));
+            }
+        }
+        Some("reference") => {
+            let Some(id) = data
+                .get("id")
+                .and_then(serde_json::Value::as_u64)
+                .and_then(|id| u32::try_from(id).ok())
+            else {
+                return item;
+            };
+            if let Some(documentation) =
+                document.and_then(|document| render_reference_hover(document, id))
+            {
+                item.documentation = Some(markdown_documentation(documentation));
+            }
+        }
+        _ => {}
+    }
+    item
+}
+
 fn starts_with_ignore_ascii_case(value: &str, prefix: &str) -> bool {
     value
         .get(..prefix.len())
@@ -602,14 +954,29 @@ mod tests {
     }
 
     fn items(text: &str, schema: Option<&SchemaDoc>) -> Vec<CompletionItem> {
+        results(text, schema, false, true).items
+    }
+
+    fn results(
+        text: &str,
+        schema: Option<&SchemaDoc>,
+        snippet_supported: bool,
+        eager_documentation: bool,
+    ) -> CompletionResults {
         let document = Document::new_unloaded(text.to_string());
         let position = document
             .offset_to_position(text.len())
             .expect("end position should be valid");
-        match completions(&document, position, schema) {
-            Some(CompletionResponse::Array(items)) => items,
-            _ => Vec::new(),
-        }
+        completions(
+            &document,
+            &Url::parse("file:///test.ifc").unwrap(),
+            position,
+            Some("IFC4"),
+            schema,
+            snippet_supported,
+            eager_documentation,
+        )
+        .unwrap_or_else(empty_results)
     }
 
     fn new_text(item: &CompletionItem) -> &str {
@@ -755,6 +1122,185 @@ mod tests {
     }
 
     #[test]
+    fn snippet_capable_client_gets_complete_entity_construction() {
+        let results = results("#18=IFCW", Some(&schema()), true, false);
+        let wall = results
+            .items
+            .iter()
+            .find(|item| item.label == "IFCWALL")
+            .expect("expected wall completion");
+        let text = new_text(wall);
+
+        assert!(text.starts_with("IFCWALL('") && text.ends_with(");$0"));
+        assert!(text.contains("',${1},${2},(${3}),${4})"));
+        assert_eq!(wall.insert_text_format, Some(InsertTextFormat::SNIPPET));
+        assert!(wall.documentation.is_none());
+        assert!(wall.data.is_some());
+    }
+
+    #[test]
+    fn entity_completion_stays_plain_when_text_follows_cursor() {
+        let text = "#18=IFCWALL();";
+        let document = Document::new_unloaded(text.to_string());
+        let position = document
+            .offset_to_position("#18=IFCWALL".len())
+            .expect("cursor position should be valid");
+        let results = completions(
+            &document,
+            &Url::parse("file:///test.ifc").unwrap(),
+            position,
+            Some("IFC4"),
+            Some(&schema()),
+            true,
+            false,
+        )
+        .expect("expected completion results");
+        let wall = results
+            .items
+            .iter()
+            .find(|item| item.label == "IFCWALL")
+            .expect("expected wall completion");
+
+        assert_eq!(new_text(wall), "IFCWALL");
+        assert_eq!(wall.insert_text_format, Some(InsertTextFormat::PLAIN_TEXT));
+    }
+
+    #[test]
+    fn entity_snippet_uses_optional_and_omitted_defaults() {
+        let mut schema = schema();
+        let wall = schema.entities.get_mut("IFCWALL").unwrap();
+        wall.attributes[1].optional = true;
+        wall.attributes[2].allows_omitted = true;
+
+        let results = results("#18=IFCWALL", Some(&schema), true, true);
+        let text = new_text(&results.items[0]);
+
+        assert!(text.contains("${1:\\$},*"));
+        assert!(results.items[0].documentation.is_some());
+    }
+
+    #[test]
+    fn aggregate_completion_uses_schema_minimum_and_nested_shapes() {
+        let nested = AggregateTypeRef {
+            kind: AggregateKind::List,
+            bounds: Some(crate::schema::AggregateBounds {
+                lower: BoundValue::Integer(2),
+                upper: BoundValue::Unbounded,
+            }),
+            item: Box::new(TypeRef::Aggregate(AggregateTypeRef {
+                kind: AggregateKind::Array,
+                bounds: Some(crate::schema::AggregateBounds {
+                    lower: BoundValue::Integer(1),
+                    upper: BoundValue::Integer(3),
+                }),
+                item: Box::new(named("IfcRoot", NamedTypeKind::Entity)),
+                unique: false,
+                optional: false,
+            })),
+            unique: true,
+            optional: false,
+        };
+        let mut schema = schema();
+        schema.entities.get_mut("IFCWALL").unwrap().attributes[3].ty = TypeRef::Aggregate(nested);
+
+        let results = results("#18=IFCWALL('id',#2,.X.,", Some(&schema), true, true);
+        assert_eq!(results.items.len(), 1);
+        assert_eq!(
+            new_text(&results.items[0]),
+            "((${1},${2},${3}),(${4},${5},${6}))"
+        );
+        assert!(
+            results.items[0]
+                .detail
+                .as_deref()
+                .unwrap()
+                .contains("LIST [2:?] UNIQUE")
+        );
+    }
+
+    #[test]
+    fn aggregate_placeholder_count_is_capped_at_eight() {
+        let aggregate = AggregateTypeRef {
+            kind: AggregateKind::List,
+            bounds: Some(crate::schema::AggregateBounds {
+                lower: BoundValue::Integer(20),
+                upper: BoundValue::Unbounded,
+            }),
+            item: Box::new(named("IfcRoot", NamedTypeKind::Entity)),
+            unique: false,
+            optional: false,
+        };
+
+        assert_eq!(aggregate_placeholder_count(&aggregate), 8);
+    }
+
+    #[test]
+    fn resolve_adds_entity_and_reference_documentation() {
+        let schema = schema();
+        let entity_results = results("#18=IFCW", Some(&schema), false, false);
+        let entity_item = entity_results
+            .items
+            .into_iter()
+            .find(|item| item.label == "IFCWALL")
+            .unwrap();
+        let resolved_entity = resolve_completion_item(entity_item, None, Some(&schema));
+        assert!(matches!(
+            resolved_entity.documentation,
+            Some(Documentation::MarkupContent(_))
+        ));
+
+        let text = "#2=IFCOWNERHISTORY($);#18=IFCWALL('id', #";
+        let document = Document::new_unloaded(text.to_string());
+        let reference_item = results(text, Some(&schema), false, false)
+            .items
+            .into_iter()
+            .next()
+            .unwrap();
+        let resolved_reference = resolve_completion_item(reference_item, Some(&document), None);
+        let Some(Documentation::MarkupContent(documentation)) = resolved_reference.documentation
+        else {
+            panic!("expected markdown documentation");
+        };
+        assert!(documentation.value.contains("#2=IFCOWNERHISTORY($);"));
+    }
+
+    #[test]
+    fn resolve_leaves_stale_item_unchanged() {
+        let schema = schema();
+        let item = results(
+            "#2=IFCOWNERHISTORY($);#18=IFCWALL('id', #",
+            Some(&schema),
+            false,
+            false,
+        )
+        .items
+        .into_iter()
+        .next()
+        .unwrap();
+
+        let resolved = resolve_completion_item(item.clone(), None, None);
+        assert_eq!(resolved, item);
+    }
+
+    #[test]
+    fn reference_results_are_bounded_and_marked_incomplete() {
+        let definitions = (1..=101)
+            .map(|id| format!("#{id}=IFCWALL($);"))
+            .collect::<String>();
+        let text = format!("{definitions}#200=IFCWALL($,$,$,(#");
+        let response = results(&text, Some(&schema()), false, false);
+
+        assert_eq!(response.items.len(), MAX_REFERENCE_COMPLETIONS);
+        assert!(response.is_incomplete);
+
+        let narrowed = format!("{definitions}#200=IFCWALL($,$,$,(#100");
+        let narrowed_results = results(&narrowed, Some(&schema()), false, false);
+        assert_eq!(narrowed_results.items.len(), 1);
+        assert_eq!(narrowed_results.items[0].label, "#100");
+        assert!(!narrowed_results.is_incomplete);
+    }
+
+    #[test]
     fn hash_inside_argument_does_not_offer_next_definition_id() {
         let text = "#2=IFCOWNERHISTORY($);\n#17=IFCWALL('fresh', #";
         let results = items(text, Some(&schema()));
@@ -769,7 +1315,18 @@ mod tests {
         let mut document = Document::new_unloaded("#1=IFCWALL(".to_string());
         document.ast_skipped = true;
         let position = document.offset_to_position(document.text.len()).unwrap();
-        assert!(completions(&document, position, Some(&schema())).is_some());
+        assert!(
+            completions(
+                &document,
+                &Url::parse("file:///test.ifc").unwrap(),
+                position,
+                Some("IFC4"),
+                Some(&schema()),
+                false,
+                true,
+            )
+            .is_some()
+        );
     }
 
     #[test]
