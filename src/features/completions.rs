@@ -539,7 +539,9 @@ struct CycleGuard<'a> {
 impl<'a> CycleGuard<'a> {
     /// Returns `None` if `name` is already being visited (cycle detected).
     fn enter(visiting: &'a mut HashSet<String>, name: String) -> Option<Self> {
-        visiting.insert(name.clone()).then(|| Self { visiting, name })
+        visiting
+            .insert(name.clone())
+            .then(|| Self { visiting, name })
     }
 
     fn visiting(&mut self) -> &mut HashSet<String> {
