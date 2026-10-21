@@ -8,7 +8,7 @@ use tower_lsp::lsp_types::{
     InsertTextFormat, MarkupContent, MarkupKind, Position, Range, TextEdit, Url,
 };
 
-use crate::document::Document;
+use crate::document::{Document, is_identifier_part};
 use crate::schema::{
     AggregateKind, AggregateTypeRef, BoundValue, EntityDoc, NamedTypeKind, SchemaDoc, TypeDoc,
     TypeRef, normalize_name,
@@ -16,6 +16,7 @@ use crate::schema::{
 
 use super::hover::{render_entity_hover, render_reference_hover};
 use super::ifc_guid::{IFC_GUID_ALPHABET, new_guid};
+use super::scaffold_completions::starts_with_ignore_ascii_case;
 use super::step_scan::{entity_argument_context, scan_definition_entity_name};
 
 const MAX_REFERENCE_COMPLETIONS: usize = 100;
@@ -76,6 +77,10 @@ fn next_id_completion(
     position: Position,
     offset: usize,
 ) -> Option<CompletionItem> {
+    if entity_argument_context(&document.text, offset).is_some() {
+        return None;
+    }
+
     let line_start = *document.line_offsets.get(position.line as usize)?;
     let line_end = document.line_end_offset(position.line as usize)?;
     let line_prefix = document.text.get(line_start..offset)?;
@@ -129,11 +134,15 @@ fn entity_name_completions(
         return Vec::new();
     };
 
-    let mut names = schema.entities.keys().cloned().collect::<Vec<_>>();
+    let mut names = schema
+        .entities
+        .keys()
+        .filter(|name| starts_with_ignore_ascii_case(name, &prefix))
+        .cloned()
+        .collect::<Vec<_>>();
     names.sort();
     names
         .into_iter()
-        .filter(|name| starts_with_ignore_ascii_case(name, &prefix))
         .enumerate()
         .filter_map(|(index, name)| {
             let entity = schema.entity(&name)?;
@@ -413,16 +422,13 @@ fn reference_completions(
         .definitions
         .iter()
         .map(|(id, offset)| (*id, *offset))
+        .filter(|(id, _)| id.to_string().starts_with(prefix))
         .collect::<Vec<_>>();
     definitions.sort_by_key(|(id, _)| *id);
 
     let mut matching = definitions
         .into_iter()
         .filter_map(|(id, offset)| {
-            let id_text = id.to_string();
-            if !id_text.starts_with(prefix) {
-                return None;
-            }
             let entity_name =
                 scan_definition_entity_name(&document.text, offset, document.text.len())?;
             if !accepts_any_entity
@@ -523,6 +529,30 @@ fn aggregate_completion(
     item
 }
 
+/// Marks `name` as visited for alias-cycle detection; un-marks it automatically on drop
+/// (including on early return), replacing a hand-copied insert/match/remove pattern.
+struct CycleGuard<'a> {
+    visiting: &'a mut HashSet<String>,
+    name: String,
+}
+
+impl<'a> CycleGuard<'a> {
+    /// Returns `None` if `name` is already being visited (cycle detected).
+    fn enter(visiting: &'a mut HashSet<String>, name: String) -> Option<Self> {
+        visiting.insert(name.clone()).then(|| Self { visiting, name })
+    }
+
+    fn visiting(&mut self) -> &mut HashSet<String> {
+        self.visiting
+    }
+}
+
+impl Drop for CycleGuard<'_> {
+    fn drop(&mut self) {
+        self.visiting.remove(&self.name);
+    }
+}
+
 fn render_type_snippet(
     schema: &SchemaDoc,
     ty: &TypeRef,
@@ -535,17 +565,15 @@ fn render_type_snippet(
         }
         TypeRef::Named(named) if named.kind != NamedTypeKind::Entity => {
             let name = normalize_name(&named.name);
-            if !visiting.insert(name.clone()) {
+            let Some(mut guard) = CycleGuard::enter(visiting, name.clone()) else {
                 return snippet_tabstop(next_tabstop, None);
-            }
-            let rendered = match schema.type_decl(&name) {
+            };
+            match schema.type_decl(&name) {
                 Some(TypeDoc::Alias(alias)) => {
-                    render_type_snippet(schema, &alias.target, next_tabstop, visiting)
+                    render_type_snippet(schema, &alias.target, next_tabstop, guard.visiting())
                 }
                 _ => snippet_tabstop(next_tabstop, None),
-            };
-            visiting.remove(&name);
-            rendered
+            }
         }
         _ => snippet_tabstop(next_tabstop, None),
     }
@@ -600,15 +628,13 @@ fn resolve_aggregate<'a>(
         TypeRef::Aggregate(aggregate) => Some(aggregate),
         TypeRef::Named(named) if named.kind != NamedTypeKind::Entity => {
             let name = normalize_name(&named.name);
-            if !visiting.insert(name.clone()) {
-                return None;
-            }
-            let result = match schema.type_decl(&name) {
-                Some(TypeDoc::Alias(alias)) => resolve_aggregate(schema, &alias.target, visiting),
+            let mut guard = CycleGuard::enter(visiting, name.clone())?;
+            match schema.type_decl(&name) {
+                Some(TypeDoc::Alias(alias)) => {
+                    resolve_aggregate(schema, &alias.target, guard.visiting())
+                }
                 _ => None,
-            };
-            visiting.remove(&name);
-            result
+            }
         }
         _ => None,
     }
@@ -668,17 +694,15 @@ fn type_is_guid(
             if aggregate_depth == 0 && name == "IFCGLOBALLYUNIQUEID" {
                 return true;
             }
-            if !visiting.insert(name.clone()) {
+            let Some(mut guard) = CycleGuard::enter(visiting, name.clone()) else {
                 return false;
-            }
-            let result = match schema.type_decl(&name) {
+            };
+            match schema.type_decl(&name) {
                 Some(TypeDoc::Alias(alias)) => {
-                    type_is_guid(schema, &alias.target, aggregate_depth, visiting)
+                    type_is_guid(schema, &alias.target, aggregate_depth, guard.visiting())
                 }
                 _ => false,
-            };
-            visiting.remove(&name);
-            result
+            }
         }
         _ => false,
     }
@@ -697,20 +721,16 @@ fn enumeration_values<'a>(
         TypeRef::Aggregate(_) => None,
         TypeRef::Named(named) if named.kind != NamedTypeKind::Entity => {
             let name = normalize_name(&named.name);
-            if !visiting.insert(name.clone()) {
-                return None;
-            }
-            let result = match schema.type_decl(&name) {
+            let mut guard = CycleGuard::enter(visiting, name.clone())?;
+            match schema.type_decl(&name) {
                 Some(TypeDoc::Alias(alias)) => {
-                    enumeration_values(schema, &alias.target, aggregate_depth, visiting)
+                    enumeration_values(schema, &alias.target, aggregate_depth, guard.visiting())
                 }
                 Some(TypeDoc::Enumeration(enumeration)) if aggregate_depth == 0 => {
                     Some(enumeration.items.as_slice())
                 }
                 _ => None,
-            };
-            visiting.remove(&name);
-            result
+            }
         }
         _ => None,
     }
@@ -741,15 +761,15 @@ fn collect_entity_constraints(
                 expected.insert(name);
                 return;
             }
-            if !visiting.insert(name.clone()) {
+            let Some(mut guard) = CycleGuard::enter(visiting, name.clone()) else {
                 return;
-            }
+            };
             match schema.type_decl(&name) {
                 Some(TypeDoc::Alias(alias)) => collect_entity_constraints(
                     schema,
                     &alias.target,
                     0,
-                    visiting,
+                    guard.visiting(),
                     expected,
                     accepts_any,
                 ),
@@ -762,7 +782,7 @@ fn collect_entity_constraints(
                             schema,
                             option,
                             0,
-                            visiting,
+                            guard.visiting(),
                             expected,
                             accepts_any,
                         );
@@ -770,7 +790,6 @@ fn collect_entity_constraints(
                 }
                 _ => {}
             }
-            visiting.remove(&name);
         }
         _ => {}
     }
@@ -833,16 +852,6 @@ pub fn resolve_completion_item(
         _ => {}
     }
     item
-}
-
-fn starts_with_ignore_ascii_case(value: &str, prefix: &str) -> bool {
-    value
-        .get(..prefix.len())
-        .is_some_and(|start| start.eq_ignore_ascii_case(prefix))
-}
-
-fn is_identifier_part(byte: u8) -> bool {
-    byte.is_ascii_alphanumeric() || byte == b'_'
 }
 
 #[cfg(test)]
@@ -1316,6 +1325,14 @@ mod tests {
     }
 
     #[test]
+    fn next_id_not_offered_inside_open_multiline_statement() {
+        let text = "#1=IFCWALL(\n  ";
+        let results = items(text, Some(&schema()));
+
+        assert!(results.iter().map(new_text).all(|text| text != "#2="));
+    }
+
+    #[test]
     fn hash_inside_argument_does_not_offer_next_definition_id() {
         let text = "#2=IFCOWNERHISTORY($);\n#17=IFCWALL('fresh', #";
         let results = items(text, Some(&schema()));
@@ -1348,6 +1365,23 @@ mod tests {
     fn ignores_ids_in_strings_when_computing_next_id() {
         let results = items("'#99='\n", None);
         assert_eq!(new_text(&results[0]), "#1=");
+    }
+
+    #[test]
+    fn self_referential_alias_does_not_recurse_infinitely() {
+        let mut schema = schema();
+        schema.types.insert(
+            "IFCSELFALIAS".to_string(),
+            TypeDoc::Alias(AliasTypeDef {
+                name: "IfcSelfAlias".to_string(),
+                target: named("IfcSelfAlias", NamedTypeKind::Type),
+            }),
+        );
+        let ty = named("IfcSelfAlias", NamedTypeKind::Type);
+
+        assert!(!type_is_guid(&schema, &ty, 0, &mut HashSet::new()));
+        assert!(enumeration_values(&schema, &ty, 0, &mut HashSet::new()).is_none());
+        assert!(resolve_aggregate(&schema, &ty, &mut HashSet::new()).is_none());
     }
 
     #[test]

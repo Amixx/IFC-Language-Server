@@ -265,11 +265,16 @@ pub(crate) fn scan_instance_id(
     mut offset: usize,
     scan_end: usize,
 ) -> Option<(u32, usize)> {
+    if bytes.get(offset) != Some(&b'#') {
+        return None;
+    }
     offset += 1;
     let digit_start = offset;
     while offset < scan_end && bytes[offset].is_ascii_digit() {
         offset += 1;
     }
+    // IDs beyond u32::MAX are rejected (matches document.definitions' u32 key type);
+    // not a realistic limit for STEP/IFC instance ids.
     let id = std::str::from_utf8(bytes.get(digit_start..offset)?)
         .ok()?
         .parse()
@@ -339,6 +344,12 @@ mod tests {
             scan_definition_entity_name(text, 0, text.len()).as_deref(),
             Some("IFCWALL")
         );
+    }
+
+    #[test]
+    fn argument_context_rejects_statement_without_leading_hash() {
+        let text = "12=IFCWALL(";
+        assert!(entity_argument_context(text, text.len()).is_none());
     }
 
     #[test]

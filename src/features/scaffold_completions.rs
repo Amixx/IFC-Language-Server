@@ -183,7 +183,7 @@ fn completion_candidates(token: &str) -> Vec<ScaffoldLevel> {
         .collect()
 }
 
-fn starts_with_ignore_ascii_case(value: &str, prefix: &str) -> bool {
+pub(crate) fn starts_with_ignore_ascii_case(value: &str, prefix: &str) -> bool {
     value
         .get(..prefix.len())
         .is_some_and(|start| start.eq_ignore_ascii_case(prefix))
