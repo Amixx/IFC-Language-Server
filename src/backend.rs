@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
-use tower_lsp::jsonrpc::Result;
+use tower_lsp::jsonrpc::{Error as JsonRpcError, Result};
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer};
 use tracing::{debug, info, instrument, warn};
@@ -15,7 +15,7 @@ use tracing::{debug, info, instrument, warn};
 use crate::config::{ServerConfig, expand_schema_candidates, parse_server_config};
 use crate::diagnostics;
 use crate::document::{DEFAULT_AST_FILE_SIZE_LIMIT_BYTES, Document};
-use crate::features::{definition, hover, references, semantic_tokens};
+use crate::features::{definition, hover, references, semantic_tokens, spatial_tree};
 use crate::schema::{
     SchemaDocCollection, inspect_local_schema_name, load_local_schema, normalize_name,
 };
@@ -352,6 +352,71 @@ impl Backend {
         );
         *self.schema_docs.write().await = schema_docs;
         *self.config.write().await = next_state;
+    }
+
+    pub async fn spatial_tree_children(
+        &self,
+        params: serde_json::Value,
+    ) -> Result<Vec<spatial_tree::SpatialTreeNode>> {
+        let uri = spatial_tree_uri_from_value(&params)?;
+        let parent_id = spatial_tree_parent_id_from_value(&params)?;
+        let mut documents = self.documents.write().await;
+        let diagnostics = match self.ensure_document_loaded(&mut documents, &uri).await {
+            Some(diagnostics) => diagnostics,
+            None => return Ok(Vec::new()),
+        };
+        let document = match documents.get(&uri) {
+            Some(document) => document,
+            None => return Ok(Vec::new()),
+        };
+
+        let result = spatial_tree::children(document, parent_id);
+        drop(documents);
+
+        self.request_time_diagnostics(diagnostics, &uri).await;
+        Ok(result)
+    }
+}
+
+fn spatial_tree_uri_from_value(value: &serde_json::Value) -> Result<Url> {
+    match value {
+        serde_json::Value::Object(object) => object
+            .get("uri")
+            .ok_or_else(|| JsonRpcError::invalid_params("missing spatial tree URI"))
+            .and_then(|uri| match uri {
+                serde_json::Value::String(uri) => Url::parse(uri)
+                    .map_err(|error| JsonRpcError::invalid_params(format!("invalid URI: {error}"))),
+                _ => Err(JsonRpcError::invalid_params(
+                    "spatial tree URI must be a string",
+                )),
+            }),
+        _ => Err(JsonRpcError::invalid_params(
+            "spatial tree params must be { uri, parentId? }",
+        )),
+    }
+}
+
+fn spatial_tree_parent_id_from_value(value: &serde_json::Value) -> Result<Option<u32>> {
+    let serde_json::Value::Object(object) = value else {
+        return Err(JsonRpcError::invalid_params(
+            "spatial tree params must be { uri, parentId? }",
+        ));
+    };
+
+    match object.get("parentId") {
+        None | Some(serde_json::Value::Null) => Ok(None),
+        Some(serde_json::Value::Number(number)) => number
+            .as_u64()
+            .and_then(|value| u32::try_from(value).ok())
+            .map(Some)
+            .ok_or_else(|| {
+                JsonRpcError::invalid_params(
+                    "spatial tree parentId must be an unsigned 32-bit integer",
+                )
+            }),
+        _ => Err(JsonRpcError::invalid_params(
+            "spatial tree parentId must be a number",
+        )),
     }
 }
 

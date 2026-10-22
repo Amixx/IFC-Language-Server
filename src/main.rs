@@ -24,7 +24,9 @@ async fn main() {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
-    let (service, socket) = LspService::new(Backend::new);
+    let (service, socket) = LspService::build(Backend::new)
+        .custom_method("ifc/spatialTreeChildren", Backend::spatial_tree_children)
+        .finish();
 
     Server::new(stdin, stdout, socket).serve(service).await;
 
