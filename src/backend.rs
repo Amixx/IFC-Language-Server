@@ -123,6 +123,27 @@ impl Backend {
         }
 
         if self.selected_schema_name(schema_name).await.is_none() {
+            if let Some(schema_name) = schema_name {
+                let load_error = self
+                    .schema_docs
+                    .read()
+                    .await
+                    .official_schema_error(schema_name)
+                    .map(str::to_string);
+                if let Some(error) = load_error {
+                    self.client
+                        .show_message(
+                            MessageType::ERROR,
+                            format!(
+                                "The bundled schema `{}` failed to load, so schema-aware diagnostics and hover information are unavailable: {error}",
+                                normalize_name(schema_name)
+                            ),
+                        )
+                        .await;
+                    return;
+                }
+            }
+
             warn!("document schema is unknown or unsupported");
             self.client
                 .show_message(
@@ -369,7 +390,7 @@ impl Backend {
 
     #[instrument(skip(self, config), fields(ast_file_size_limit_bytes = config.ast_file_size_limit_bytes))]
     async fn apply_config(&self, config: ServerConfig) {
-        let mut schema_docs = SchemaDocCollection::new();
+        let mut schema_docs = self.schema_docs.read().await.sharing_official();
         let mut next_state = {
             let current_state = self.config.read().await;
             config_state_with_client_capabilities(&config, &current_state)
@@ -570,11 +591,6 @@ impl LanguageServer for Backend {
 
     async fn initialized(&self, _: InitializedParams) {
         info!("IFC LSP server initialized");
-
-        let load_errors = self.schema_docs.read().await.load_errors().to_vec();
-        for error in load_errors {
-            warn!(error, "failed to load bundled schema documentation");
-        }
 
         let pending_init_config = {
             let mut config = self.config.write().await;
@@ -1032,6 +1048,7 @@ mod tests {
     use tower_lsp::LspService;
 
     use super::*;
+    use crate::schema::{IfcVersion, recording_official_schemas};
 
     #[tokio::test]
     async fn resolve_schema_returns_name_and_schema_from_one_lock_acquisition() {
@@ -1081,6 +1098,73 @@ mod tests {
             .await
             .expect("forced schema resolves");
         assert_eq!(name, normalize_name("Forced"));
+    }
+
+    fn empty_schema() -> SchemaDoc {
+        SchemaDoc {
+            entities: HashMap::new(),
+            types: HashMap::new(),
+        }
+    }
+
+    #[tokio::test]
+    async fn applying_config_twice_keeps_official_schemas_parsed_once() {
+        let (service, _socket) = LspService::new(Backend::new);
+        let backend = service.inner();
+        let (official, parsed) = recording_official_schemas(|_| Ok(empty_schema()));
+        *backend.schema_docs.write().await = SchemaDocCollection::with_official(official);
+
+        let (_, before_reload) = backend.resolve_schema(Some("IFC4")).await.unwrap();
+        backend.apply_config(ServerConfig::default()).await;
+        backend.apply_config(ServerConfig::default()).await;
+        let (_, after_reload) = backend.resolve_schema(Some("IFC4")).await.unwrap();
+
+        assert!(Arc::ptr_eq(&before_reload, &after_reload));
+        assert_eq!(*parsed.lock().unwrap(), [IfcVersion::Ifc4Add2Tc1]);
+    }
+
+    #[tokio::test]
+    async fn forced_local_schema_replaces_official_schema_of_same_name() {
+        let path = std::env::temp_dir().join(format!("ifc-ls-{}.exp", uuid::Uuid::new_v4()));
+        std::fs::write(
+            &path,
+            "SCHEMA IFC4;\nENTITY IfcLocalOnly;\nEND_ENTITY;\nEND_SCHEMA;\n",
+        )
+        .unwrap();
+        let (service, _socket) = LspService::new(Backend::new);
+        let backend = service.inner();
+        let (official, parsed) = recording_official_schemas(|_| Ok(empty_schema()));
+        *backend.schema_docs.write().await = SchemaDocCollection::with_official(official);
+
+        backend
+            .apply_config(ServerConfig {
+                overwrite_exp_schema_with_local: Some(path.clone()),
+                ..ServerConfig::default()
+            })
+            .await;
+        let resolved = backend.resolve_schema(Some("IFC4")).await;
+        std::fs::remove_file(&path).unwrap();
+
+        let (name, schema) = resolved.expect("local schema resolves");
+        assert_eq!(name, "IFC4");
+        assert!(schema.entity("IfcLocalOnly").is_some());
+        assert!(parsed.lock().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn failed_official_schema_is_not_retried_after_config_reload() {
+        let (service, _socket) = LspService::new(Backend::new);
+        let backend = service.inner();
+        let (official, parsed) = recording_official_schemas(|_| Err("broken".to_string()));
+        *backend.schema_docs.write().await = SchemaDocCollection::with_official(official);
+
+        assert!(backend.resolve_schema(Some("IFC4")).await.is_none());
+        backend.apply_config(ServerConfig::default()).await;
+        assert!(backend.resolve_schema(Some("IFC4")).await.is_none());
+
+        let schema_docs = backend.schema_docs.read().await;
+        assert_eq!(schema_docs.official_schema_error("IFC4"), Some("broken"));
+        assert_eq!(*parsed.lock().unwrap(), [IfcVersion::Ifc4Add2Tc1]);
     }
 
     #[test]
