@@ -43,18 +43,20 @@ impl DiagnosticSnapshot {
     }
 }
 
-pub fn collect_with_schema_name(
+/// Syntax diagnostics always run; schema-aware passes run only when a schema is available.
+pub fn collect(
     snapshot: &DiagnosticSnapshot,
-    schema: &SchemaDoc,
-    schema_name: Option<&str>,
+    schema: Option<(&str, &SchemaDoc)>,
 ) -> Vec<Diagnostic> {
     let mut diagnostics = syntax::collect(snapshot);
-    let instances = crate::document::build_entity_instances(snapshot.tree(), snapshot.text());
-    diagnostics.extend(datatype::collect_with_schema_name(
-        &instances,
-        schema,
-        schema_name,
-    ));
+    if let Some((schema_name, schema)) = schema {
+        let instances = crate::document::build_entity_instances(snapshot.tree(), snapshot.text());
+        diagnostics.extend(datatype::collect_with_schema_name(
+            &instances,
+            schema,
+            Some(schema_name),
+        ));
+    }
     diagnostics
 }
 
@@ -62,6 +64,28 @@ pub fn collect_with_schema_name(
 mod tests {
     use super::*;
     use tree_sitter::Parser;
+
+    fn snapshot_of(text: &str) -> DiagnosticSnapshot {
+        let mut parser = Parser::new();
+        parser
+            .set_language(&tree_sitter_ifc::LANGUAGE.into())
+            .expect("IFC parser language should load");
+        DiagnosticSnapshot::from_document(&Document::parse(&mut parser, text.to_string()))
+    }
+
+    #[test]
+    fn syntax_errors_are_reported_without_a_schema() {
+        let snapshot = snapshot_of("FILE_SCHEMA(('IFC4X3'));\n#10=IFCWALL((;\n");
+
+        assert!(!collect(&snapshot, None).is_empty());
+    }
+
+    #[test]
+    fn valid_file_without_a_schema_has_no_diagnostics() {
+        let snapshot = snapshot_of("#10=IFCWALL('gid');\n");
+
+        assert!(collect(&snapshot, None).is_empty());
+    }
 
     #[test]
     fn snapshot_retains_diagnostic_data_after_document_unloads() {
