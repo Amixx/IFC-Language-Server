@@ -17,14 +17,14 @@ use crate::diagnostics::DiagnosticSnapshot;
 use crate::diagnostics::scheduler::{DiagnosticScheduler, DiagnosticTicket};
 use crate::document::{DEFAULT_AST_FILE_SIZE_LIMIT_BYTES, Document};
 use crate::features::{
-    definition, document_highlight, document_symbols, hover, inlay_hints, references,
+    completions, definition, document_highlight, document_symbols, hover, inlay_hints, references,
     related_entities, scaffold_completions, semantic_tokens, signature_help,
 };
 use crate::schema::{
-    SchemaDocCollection, inspect_local_schema_name, load_local_schema, normalize_name,
+    SchemaDoc, SchemaDocCollection, inspect_local_schema_name, load_local_schema, normalize_name,
 };
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct ConfigState {
     forced_schema_name: Option<String>,
     additional_schema_paths: HashMap<String, std::path::PathBuf>,
@@ -32,6 +32,7 @@ struct ConfigState {
     ast_file_size_limit_bytes: usize,
     semantic_tokens_enabled: bool,
     completion_snippet_support: bool,
+    completion_documentation_resolve_support: bool,
 }
 
 impl Default for ConfigState {
@@ -43,6 +44,7 @@ impl Default for ConfigState {
             ast_file_size_limit_bytes: DEFAULT_AST_FILE_SIZE_LIMIT_BYTES,
             semantic_tokens_enabled: true,
             completion_snippet_support: false,
+            completion_documentation_resolve_support: false,
         }
     }
 }
@@ -244,17 +246,7 @@ impl Backend {
 
     #[instrument(skip(self, ticket, snapshot))]
     async fn schedule_diagnostics(&self, ticket: DiagnosticTicket, snapshot: DiagnosticSnapshot) {
-        let selected_schema_name = self.selected_schema_name(snapshot.schema_name()).await;
-        let schema = if let Some(schema_name) = selected_schema_name {
-            self.schema_docs
-                .read()
-                .await
-                .get_shared(&schema_name)
-                .map(|schema| (schema_name, schema))
-        } else {
-            None
-        };
-
+        let schema = self.resolve_schema(snapshot.schema_name()).await;
         self.diagnostic_scheduler
             .schedule(ticket, snapshot, schema)
             .await;
@@ -268,19 +260,25 @@ impl Backend {
         }
     }
 
+    async fn forced_schema_and_additional_path(
+        &self,
+        schema_name: Option<&str>,
+    ) -> (Option<String>, Option<std::path::PathBuf>) {
+        let config = self.config.read().await;
+        let forced_schema_name = config.forced_schema_name.clone();
+        let additional_path = schema_name.and_then(|schema_name| {
+            config
+                .additional_schema_paths
+                .get(&normalize_name(schema_name))
+                .cloned()
+        });
+        (forced_schema_name, additional_path)
+    }
+
     #[instrument(skip(self), fields(schema_name = schema_name.unwrap_or("<none>")))]
     async fn selected_schema_name(&self, schema_name: Option<&str>) -> Option<String> {
-        let (forced_schema_name, additional_path) = {
-            let config = self.config.read().await;
-            let forced_schema_name = config.forced_schema_name.clone();
-            let additional_path = schema_name.and_then(|schema_name| {
-                config
-                    .additional_schema_paths
-                    .get(&normalize_name(schema_name))
-                    .cloned()
-            });
-            (forced_schema_name, additional_path)
-        };
+        let (forced_schema_name, additional_path) =
+            self.forced_schema_and_additional_path(schema_name).await;
 
         if let Some(schema_name) = forced_schema_name {
             return Some(schema_name);
@@ -318,13 +316,63 @@ impl Backend {
         }
     }
 
+    /// Resolves a schema name to its loaded `SchemaDoc` under a single `schema_docs` lock
+    /// acquisition, so a concurrent `apply_config` reload (which fully replaces the
+    /// `schema_docs` map) can never swap the map out between "name exists" and "fetch by
+    /// name" the way it could when those were two separate lock acquisitions. Use this
+    /// instead of `selected_schema_name` wherever the schema doc itself is needed, not just
+    /// its resolved name.
+    #[instrument(skip(self), fields(schema_name = schema_name.unwrap_or("<none>")))]
+    async fn resolve_schema(&self, schema_name: Option<&str>) -> Option<(String, Arc<SchemaDoc>)> {
+        let (forced_schema_name, additional_path) =
+            self.forced_schema_and_additional_path(schema_name).await;
+
+        if let Some(forced_schema_name) = forced_schema_name {
+            let schema_docs = self.schema_docs.read().await;
+            return schema_docs
+                .get_shared(&forced_schema_name)
+                .map(|schema| (forced_schema_name, schema));
+        }
+
+        let schema_name = schema_name?;
+        let normalized = normalize_name(schema_name);
+
+        {
+            let schema_docs = self.schema_docs.read().await;
+            if let Some(schema) = schema_docs.get_shared(&normalized) {
+                return Some((normalized, schema));
+            }
+        }
+
+        let path = additional_path?;
+        match load_local_schema(&path) {
+            Ok((loaded_schema_name, schema)) => {
+                let normalized_loaded = normalize_name(&loaded_schema_name);
+                let mut schema_docs = self.schema_docs.write().await;
+                if schema_docs.get(&normalized_loaded).is_none() {
+                    schema_docs.insert(&loaded_schema_name, schema);
+                    info!(
+                        schema_name = normalized_loaded,
+                        path = %path.display(),
+                        "loaded local schema documentation"
+                    );
+                }
+                let resolved = schema_docs.get_shared(&normalized_loaded)?;
+                Some((normalized_loaded, resolved))
+            }
+            Err(error) => {
+                warn!(error = %error, path = %path.display(), "failed to load local schema");
+                None
+            }
+        }
+    }
+
     #[instrument(skip(self, config), fields(ast_file_size_limit_bytes = config.ast_file_size_limit_bytes))]
     async fn apply_config(&self, config: ServerConfig) {
         let mut schema_docs = SchemaDocCollection::new();
-        let mut next_state = ConfigState {
-            ast_file_size_limit_bytes: config.ast_file_size_limit_bytes,
-            semantic_tokens_enabled: config.semantic_tokens_enabled,
-            ..ConfigState::default()
+        let mut next_state = {
+            let current_state = self.config.read().await;
+            config_state_with_client_capabilities(&config, &current_state)
         };
 
         if let Some(path) = config.overwrite_exp_schema_with_local.as_ref() {
@@ -379,6 +427,25 @@ impl Backend {
     }
 }
 
+/// Builds the next `ConfigState` for a config reload. Only the reloadable/one-shot fields
+/// below are explicitly reset or recomputed from `config`; everything else (negotiated-at-
+/// `initialize()` client capabilities, and any field added later) is preserved by default via
+/// `..current_state.clone()`, so a forgotten new negotiated field fails safe (stays as-is)
+/// instead of silently resetting to its default on every reload.
+fn config_state_with_client_capabilities(
+    config: &ServerConfig,
+    current_state: &ConfigState,
+) -> ConfigState {
+    ConfigState {
+        forced_schema_name: None,
+        additional_schema_paths: HashMap::new(),
+        pending_init_config: None,
+        ast_file_size_limit_bytes: config.ast_file_size_limit_bytes,
+        semantic_tokens_enabled: config.semantic_tokens_enabled,
+        ..current_state.clone()
+    }
+}
+
 /// Drops AST-backed parse state from every open document except `active_uri`.
 /// The backend keeps tree-sitter state for at most one document at a time.
 fn unload_other_documents(documents: &mut HashMap<Url, Document>, active_uri: &Url) {
@@ -408,6 +475,29 @@ fn completion_snippet_support(params: &InitializeParams) -> bool {
         .unwrap_or(false)
 }
 
+fn completion_documentation_resolve_support(params: &InitializeParams) -> bool {
+    params
+        .capabilities
+        .text_document
+        .as_ref()
+        .and_then(|capabilities| capabilities.completion.as_ref())
+        .and_then(|capabilities| capabilities.completion_item.as_ref())
+        .and_then(|capabilities| capabilities.resolve_support.as_ref())
+        .is_some_and(|support| {
+            support
+                .properties
+                .iter()
+                .any(|property| property == "documentation")
+        })
+}
+
+fn completion_trigger_characters() -> Vec<String> {
+    ["!", "(", ",", "#", "."]
+        .into_iter()
+        .map(str::to_string)
+        .collect()
+}
+
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     #[instrument(skip(self, params))]
@@ -418,6 +508,8 @@ impl LanguageServer for Backend {
             .map(parse_server_config)
             .unwrap_or_default();
         let completion_snippet_support = completion_snippet_support(&params);
+        let completion_documentation_resolve_support =
+            completion_documentation_resolve_support(&params);
         let semantic_tokens_enabled = pending_init_config.semantic_tokens_enabled;
         let semantic_tokens_provider = semantic_tokens_enabled.then(|| {
             SemanticTokensServerCapabilities::SemanticTokensOptions(SemanticTokensOptions {
@@ -431,6 +523,7 @@ impl LanguageServer for Backend {
         let mut config = self.config.write().await;
         config.semantic_tokens_enabled = semantic_tokens_enabled;
         config.completion_snippet_support = completion_snippet_support;
+        config.completion_documentation_resolve_support = completion_documentation_resolve_support;
         config.pending_init_config = Some(pending_init_config);
         info!("received initialize request");
 
@@ -451,7 +544,8 @@ impl LanguageServer for Backend {
                 }),
                 inlay_hint_provider: Some(OneOf::Left(true)),
                 completion_provider: Some(CompletionOptions {
-                    trigger_characters: Some(vec!["!".to_string()]),
+                    resolve_provider: Some(true),
+                    trigger_characters: Some(completion_trigger_characters()),
                     ..CompletionOptions::default()
                 }),
                 code_action_provider: Some(CodeActionProviderCapability::Options(
@@ -542,20 +636,64 @@ impl LanguageServer for Backend {
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
         let uri = params.text_document_position.text_document.uri;
         let position = params.text_document_position.position;
-        let snippet_supported = self.config.read().await.completion_snippet_support;
+        let (snippet_supported, resolve_documentation_supported) = {
+            let config = self.config.read().await;
+            (
+                config.completion_snippet_support,
+                config.completion_documentation_resolve_support,
+            )
+        };
 
         let documents = self.documents.read().await;
         let Some(document) = documents.get(&uri) else {
             return Ok(None);
         };
+        let resolved_schema = self.resolve_schema(document.schema_name.as_deref()).await;
+        let selected_schema_name = resolved_schema.as_ref().map(|(name, _)| name.clone());
+        let schema = resolved_schema.as_ref().map(|(_, schema)| schema.as_ref());
 
-        let result = scaffold_completions::completions(document, &uri, position, snippet_supported);
+        let mut items = Vec::new();
+        let mut is_incomplete = false;
+        append_completion_items(
+            &mut items,
+            &mut is_incomplete,
+            scaffold_completions::completions(document, &uri, position, snippet_supported),
+        );
+        if let Some(schema_results) = completions::completions(
+            document,
+            &uri,
+            position,
+            selected_schema_name.as_deref(),
+            schema,
+            snippet_supported,
+            !resolve_documentation_supported,
+        ) {
+            items.extend(schema_results.items);
+            is_incomplete |= schema_results.is_incomplete;
+        }
+        let result = (!items.is_empty()).then_some(CompletionResponse::List(CompletionList {
+            is_incomplete,
+            items,
+        }));
         debug!(
             has_result = result.is_some(),
             "completion request completed"
         );
 
         Ok(result)
+    }
+
+    #[instrument(skip(self, item))]
+    async fn completion_resolve(&self, item: CompletionItem) -> Result<CompletionItem> {
+        let uri = completions::resolution_uri(&item);
+        let schema_name = completions::resolution_schema_name(&item).map(str::to_string);
+        let documents = self.documents.read().await;
+        let document = uri.as_ref().and_then(|uri| documents.get(uri));
+        let schema_docs = self.schema_docs.read().await;
+        let schema = schema_name
+            .as_deref()
+            .and_then(|schema_name| schema_docs.get(schema_name));
+        Ok(completions::resolve_completion_item(item, document, schema))
     }
 
     #[instrument(skip(self, params), fields(uri = %params.text_document.uri))]
@@ -871,5 +1009,117 @@ impl LanguageServer for Backend {
         );
 
         Ok(result)
+    }
+}
+
+fn append_completion_items(
+    items: &mut Vec<CompletionItem>,
+    is_incomplete: &mut bool,
+    response: Option<CompletionResponse>,
+) {
+    match response {
+        Some(CompletionResponse::Array(mut response_items)) => items.append(&mut response_items),
+        Some(CompletionResponse::List(mut list)) => {
+            *is_incomplete |= list.is_incomplete;
+            items.append(&mut list.items);
+        }
+        None => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tower_lsp::LspService;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn resolve_schema_returns_name_and_schema_from_one_lock_acquisition() {
+        let (service, _socket) = LspService::new(Backend::new);
+        let backend = service.inner();
+        *backend.schema_docs.write().await = SchemaDocCollection::from_docs([(
+            "IFC4".to_string(),
+            SchemaDoc {
+                entities: HashMap::new(),
+                types: HashMap::new(),
+            },
+        )]);
+
+        let (name, schema) = backend
+            .resolve_schema(Some("IFC4"))
+            .await
+            .expect("schema resolves");
+        assert_eq!(name, normalize_name("IFC4"));
+        let expected = backend.schema_docs.read().await.get_shared(&name).unwrap();
+        assert!(Arc::ptr_eq(&schema, &expected));
+    }
+
+    #[tokio::test]
+    async fn resolve_schema_returns_none_for_unknown_schema_name() {
+        let (service, _socket) = LspService::new(Backend::new);
+        let backend = service.inner();
+        *backend.schema_docs.write().await = SchemaDocCollection::empty();
+
+        assert!(backend.resolve_schema(Some("Unknown")).await.is_none());
+    }
+
+    #[tokio::test]
+    async fn resolve_schema_honors_forced_schema_name() {
+        let (service, _socket) = LspService::new(Backend::new);
+        let backend = service.inner();
+        *backend.schema_docs.write().await = SchemaDocCollection::from_docs([(
+            normalize_name("Forced"),
+            SchemaDoc {
+                entities: HashMap::new(),
+                types: HashMap::new(),
+            },
+        )]);
+        backend.config.write().await.forced_schema_name = Some(normalize_name("Forced"));
+
+        let (name, _) = backend
+            .resolve_schema(Some("SomethingElse"))
+            .await
+            .expect("forced schema resolves");
+        assert_eq!(name, normalize_name("Forced"));
+    }
+
+    #[test]
+    fn applying_server_config_resets_reloadable_fields_and_preserves_negotiated_capabilities() {
+        let current_state = ConfigState {
+            forced_schema_name: Some("stale".to_string()),
+            additional_schema_paths: HashMap::from([(
+                "stale".to_string(),
+                std::path::PathBuf::from("/stale"),
+            )]),
+            pending_init_config: Some(ServerConfig::default()),
+            ast_file_size_limit_bytes: 1,
+            semantic_tokens_enabled: false,
+            completion_snippet_support: true,
+            completion_documentation_resolve_support: true,
+        };
+        let new_config = ServerConfig {
+            ast_file_size_limit_bytes: 999,
+            semantic_tokens_enabled: true,
+            ..ServerConfig::default()
+        };
+
+        let next_state = config_state_with_client_capabilities(&new_config, &current_state);
+
+        assert_eq!(next_state.forced_schema_name, None);
+        assert!(next_state.additional_schema_paths.is_empty());
+        assert!(next_state.pending_init_config.is_none());
+        assert_eq!(next_state.ast_file_size_limit_bytes, 999);
+        assert!(next_state.semantic_tokens_enabled);
+        assert!(next_state.completion_snippet_support);
+        assert!(next_state.completion_documentation_resolve_support);
+    }
+
+    #[test]
+    fn dot_triggers_enum_completion() {
+        assert!(
+            completion_trigger_characters()
+                .iter()
+                .any(|trigger| trigger == ".")
+        );
     }
 }

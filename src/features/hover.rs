@@ -107,7 +107,7 @@ pub fn hover(
     None
 }
 
-fn render_entity_hover(entity_doc: &EntityDoc) -> String {
+pub(crate) fn render_entity_hover(entity_doc: &EntityDoc) -> String {
     let mut markdown = format!("# {}", entity_doc.name);
 
     let inherited_attributes: Vec<_> = entity_doc
@@ -155,7 +155,7 @@ fn render_attribute_table(attributes: &[&EntityAttributeDoc], start_index: usize
     markdown
 }
 
-fn render_reference_hover(document: &Document, id: u32) -> Option<String> {
+pub(crate) fn render_reference_hover(document: &Document, id: u32) -> Option<String> {
     let preview = document.entity_instance_text_at_definition(id)?;
 
     Some(format!("```ifc\n{}\n```", preview.trim()))

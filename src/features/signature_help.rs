@@ -8,7 +8,7 @@ use tower_lsp::lsp_types::{
 };
 
 use crate::document::Document;
-use crate::features::step_scan::{scan_block_comment, scan_identifier, scan_string, skip_trivia};
+use crate::features::step_scan::entity_argument_context;
 use crate::schema::{EntityAttributeDoc, EntityDoc, SchemaDocCollection};
 
 pub fn signature_help(
@@ -28,12 +28,6 @@ pub fn signature_help(
         active_signature: Some(0),
         active_parameter: Some(active_parameter as u32),
     })
-}
-
-#[derive(Debug, PartialEq, Eq)]
-struct EntityArgumentContext {
-    entity_name: String,
-    active_parameter: usize,
 }
 
 fn render_signature(entity: &EntityDoc, active_parameter: usize) -> SignatureInformation {
@@ -84,109 +78,6 @@ fn active_parameter_index(parameter_index: usize, entity: &EntityDoc) -> usize {
         .len()
         .checked_sub(1)
         .map_or(0, |last| parameter_index.min(last))
-}
-
-fn entity_argument_context(text: &str, cursor_offset: usize) -> Option<EntityArgumentContext> {
-    if cursor_offset > text.len() || !text.is_char_boundary(cursor_offset) {
-        return None;
-    }
-
-    let statement_start = statement_start_before_cursor(text, cursor_offset);
-    let bytes = text.as_bytes();
-    let mut offset = statement_start;
-
-    offset = skip_trivia(bytes, offset, bytes.len());
-    offset = parse_instance_id(bytes, offset)?;
-    offset = skip_trivia(bytes, offset, bytes.len());
-    if bytes.get(offset) != Some(&b'=') {
-        return None;
-    }
-    offset += 1;
-    offset = skip_trivia(bytes, offset, bytes.len());
-
-    let entity_start = offset;
-    offset = scan_identifier(bytes, offset, bytes.len())?;
-    let entity_name = text.get(entity_start..offset)?.to_ascii_uppercase();
-    offset = skip_trivia(bytes, offset, bytes.len());
-    if bytes.get(offset) != Some(&b'(') || cursor_offset <= offset {
-        return None;
-    }
-
-    let active_parameter = active_parameter_before_cursor(text, offset + 1, cursor_offset)?;
-    Some(EntityArgumentContext {
-        entity_name,
-        active_parameter,
-    })
-}
-
-fn statement_start_before_cursor(text: &str, cursor_offset: usize) -> usize {
-    let bytes = text.as_bytes();
-    let mut offset = 0;
-    let mut statement_start = 0;
-
-    while offset < cursor_offset {
-        match bytes[offset] {
-            b'\'' => offset = scan_string(bytes, offset, cursor_offset),
-            b'/' if bytes.get(offset + 1) == Some(&b'*') => {
-                offset = scan_block_comment(bytes, offset, cursor_offset);
-            }
-            b';' => {
-                offset += 1;
-                statement_start = offset;
-            }
-            _ => offset += 1,
-        }
-    }
-
-    statement_start
-}
-
-fn active_parameter_before_cursor(
-    text: &str,
-    parameter_start: usize,
-    cursor_offset: usize,
-) -> Option<usize> {
-    let bytes = text.as_bytes();
-    let mut offset = parameter_start;
-    let mut depth = 0usize;
-    let mut active_parameter = 0usize;
-
-    while offset < cursor_offset {
-        match bytes[offset] {
-            b'\'' => offset = scan_string(bytes, offset, cursor_offset),
-            b'/' if bytes.get(offset + 1) == Some(&b'*') => {
-                offset = scan_block_comment(bytes, offset, cursor_offset);
-            }
-            b'(' => {
-                depth += 1;
-                offset += 1;
-            }
-            b')' if depth == 0 => return None,
-            b')' => {
-                depth -= 1;
-                offset += 1;
-            }
-            b',' if depth == 0 => {
-                active_parameter += 1;
-                offset += 1;
-            }
-            _ => offset += 1,
-        }
-    }
-
-    Some(active_parameter)
-}
-
-fn parse_instance_id(bytes: &[u8], mut offset: usize) -> Option<usize> {
-    if bytes.get(offset) != Some(&b'#') {
-        return None;
-    }
-    offset += 1;
-    let digit_start = offset;
-    while bytes.get(offset).is_some_and(|byte| byte.is_ascii_digit()) {
-        offset += 1;
-    }
-    (offset > digit_start).then_some(offset)
 }
 
 #[cfg(test)]
