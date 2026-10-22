@@ -82,7 +82,10 @@ fn fetch_schema(schema: &SchemaSource) -> Result<Vec<u8>, Box<dyn Error>> {
     for url in schema.urls {
         match fetch_url(url) {
             Ok(source) => {
-                let actual_sha256 = format!("{:x}", Sha256::digest(&source));
+                let actual_sha256: String = Sha256::digest(&source)
+                    .iter()
+                    .map(|byte| format!("{byte:02x}"))
+                    .collect();
 
                 if actual_sha256 == schema.expected_sha256 {
                     return Ok(source);
