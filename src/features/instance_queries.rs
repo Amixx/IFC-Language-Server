@@ -338,6 +338,27 @@ mod tests {
     }
 
     #[test]
+    fn queries_match_decoded_names() {
+        let text = "DATA;\n#1=IFCWALL('0abc',$,'M\\X2\\00FC\\X0\\nchen',$);\nENDSEC;\n";
+        let params = FindInstancesParams {
+            uri: Url::parse("file:///a.ifc").unwrap(),
+            entity: None,
+            query: Some("MÜNCHEN".to_string()),
+            limit: 10,
+        };
+
+        let found = find_instances(
+            &Document::new_unloaded(text.to_string()),
+            Some(&schema()),
+            &params,
+        )
+        .expect("instances");
+
+        assert_eq!(found.total, 1);
+        assert_eq!(found.instances[0].name.as_deref(), Some("München"));
+    }
+
+    #[test]
     fn without_a_schema_labels_are_unknown_and_queries_match_nothing() {
         let params = FindInstancesParams {
             uri: Url::parse("file:///a.ifc").unwrap(),

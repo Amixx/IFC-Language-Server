@@ -4,6 +4,8 @@
 //! related-entity navigation, call hierarchy and the `ifc/*` instance requests), which only need argument
 //! boundaries, enclosing entity names, string values, and referenced ids within a bounded region.
 
+use crate::step::string_literal::decode_string;
+
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct ScannedInstance {
     pub(crate) entity_name: String,
@@ -286,7 +288,7 @@ pub(crate) fn string_literal(text: &str, offset: usize) -> Option<String> {
     }
     let end = scan_string(bytes, offset, bytes.len());
     let content = text.get(offset + 1..end.checked_sub(1)?)?;
-    Some(content.replace("''", "'"))
+    Some(decode_string(content))
 }
 
 /// The offset just past an instance's terminating `;`, given the offset just past its argument
@@ -465,6 +467,10 @@ mod tests {
         assert_eq!(string_literal("'it''s'", 0).as_deref(), Some("it's"));
         assert_eq!(string_literal("''", 0).as_deref(), Some(""));
         assert_eq!(string_literal("$", 0), None);
+        assert_eq!(
+            string_literal(r"'D\S\|sseldorf \\ M\X\FCnchen'", 0).as_deref(),
+            Some(r"Düsseldorf \ München")
+        );
     }
 
     #[test]
