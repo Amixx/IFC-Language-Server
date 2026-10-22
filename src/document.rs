@@ -361,6 +361,39 @@ impl Document {
         Some((id, start))
     }
 
+    /// Definition offsets and their ids, in document order.
+    pub fn definitions_in_order(&self) -> Vec<(usize, u32)> {
+        let mut definitions: Vec<(usize, u32)> = self
+            .definitions
+            .iter()
+            .map(|(&id, &offset)| (offset, id))
+            .collect();
+        definitions.sort_unstable();
+        definitions
+    }
+
+    /// The last `#id=` definition at or before `offset`, as its offset and id. Walks back from
+    /// `offset` and accepts only the `#` tokens the text index records as definitions, so ids in
+    /// strings and comments are passed over; the cost is the distance to that definition.
+    pub fn enclosing_definition(&self, offset: usize) -> Option<(usize, u32)> {
+        let bytes = self.text.as_bytes();
+        let mut end = offset.min(bytes.len().checked_sub(1)?);
+        loop {
+            let start = bytes[..=end].iter().rposition(|&byte| byte == b'#')?;
+            let digits = bytes[start + 1..]
+                .iter()
+                .take_while(|byte| byte.is_ascii_digit())
+                .count();
+            let id = self.text[start + 1..start + 1 + digits].parse::<u32>().ok();
+            if let Some(id) = id
+                && self.definitions.get(&id) == Some(&start)
+            {
+                return Some((start, id));
+            }
+            end = start.checked_sub(1)?;
+        }
+    }
+
     pub fn entity_name_at_position(&self, position: Position) -> Option<(String, Range)> {
         let offset = self.position_to_offset(position)?;
         let (start, end) = self.identifier_at_offset(offset)?;
@@ -791,6 +824,21 @@ mod tests {
         assert_eq!(document.schema_name, None);
         assert_eq!(document.definitions.get(&1), Some(&0));
         assert_eq!(document.references.get(&1), Some(&vec![0]));
+    }
+
+    #[test]
+    fn enclosing_definition_skips_ids_that_are_not_definitions() {
+        let text = "DATA;\n#1=IFCWALL('#7=',$);\n#12=IFCX(#1,'#1=');\nENDSEC;";
+        let document = Document::new_unloaded(text.to_string());
+        let offset = |needle: &str| text.find(needle).expect("needle should exist");
+
+        let first = Some((offset("#1="), 1));
+        let second = Some((offset("#12="), 12));
+        assert_eq!(document.enclosing_definition(offset("$);")), first);
+        assert_eq!(document.enclosing_definition(offset("'#1=')")), second);
+        assert_eq!(document.enclosing_definition(offset("12=")), second);
+        assert_eq!(document.enclosing_definition(offset("ENDSEC")), second);
+        assert_eq!(document.enclosing_definition(offset("DATA")), None);
     }
 
     #[test]

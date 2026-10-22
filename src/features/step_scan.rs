@@ -1,7 +1,8 @@
 //! Shared lightweight STEP entity-instance argument scanner.
 //! Given a known `#id=` definition offset, this walks the positional argument list without a
-//! full tree-sitter parse. Shared by inlay hints and related-entity navigation, which both only
-//! need argument boundaries, enclosing entity names, and referenced ids within a bounded region.
+//! full tree-sitter parse. Shared by the text-index features (inlay hints, completions,
+//! related-entity navigation, call hierarchy and the `ifc/*` instance requests), which only need argument
+//! boundaries, enclosing entity names, string values, and referenced ids within a bounded region.
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct ScannedInstance {
@@ -168,6 +169,14 @@ pub(crate) fn scan_definition_entity_name(
 /// Collects every local instance id (`#N`) referenced within `[start, end)`, skipping strings
 /// and block comments. Intended for reading the ids inside a single already-located argument.
 pub(crate) fn ids_in_span(text: &str, start: usize, end: usize) -> Vec<u32> {
+    id_tokens_in_span(text, start, end)
+        .into_iter()
+        .map(|(_, id)| id)
+        .collect()
+}
+
+/// Like `ids_in_span`, with the offset of each id's `#`.
+pub(crate) fn id_tokens_in_span(text: &str, start: usize, end: usize) -> Vec<(usize, u32)> {
     let bytes = text.as_bytes();
     let end = end.min(bytes.len());
     let mut offset = start.min(end);
@@ -177,7 +186,7 @@ pub(crate) fn ids_in_span(text: &str, start: usize, end: usize) -> Vec<u32> {
         match bytes[offset] {
             b'#' => {
                 if let Some((id, next)) = scan_instance_id(bytes, offset, end) {
-                    ids.push(id);
+                    ids.push((offset, id));
                     offset = next;
                 } else {
                     offset += 1;
@@ -194,32 +203,32 @@ pub(crate) fn ids_in_span(text: &str, start: usize, end: usize) -> Vec<u32> {
     ids
 }
 
-pub(crate) fn scan_arguments(
+/// Collects the start of every non-empty top-level argument, from just past an argument list's
+/// `(`, and returns them with the offset just past the closing `)`.
+pub(crate) fn scan_arguments(bytes: &[u8], offset: usize, scan_end: usize) -> (Vec<usize>, usize) {
+    let (spans, end) = scan_argument_spans(bytes, offset, scan_end);
+    let argument_starts = spans
+        .into_iter()
+        .filter(|(start, end)| start < end)
+        .map(|(start, _)| start)
+        .collect();
+    (argument_starts, end)
+}
+
+/// Collects the span of every top-level argument, from just past an argument list's `(`, and
+/// returns them with the offset just past the closing `)`. Spans exclude surrounding whitespace
+/// and leading comments; an empty argument between two commas has an empty span, while an empty
+/// list `()` has no arguments.
+pub(crate) fn scan_argument_spans(
     bytes: &[u8],
     mut offset: usize,
     scan_end: usize,
-) -> (Vec<usize>, usize) {
-    let mut argument_starts = Vec::new();
-    let mut expecting_argument = true;
+) -> (Vec<(usize, usize)>, usize) {
+    let mut spans = Vec::new();
+    let mut argument_start = offset;
     let mut depth = 0usize;
 
     while offset < scan_end {
-        if expecting_argument {
-            offset = skip_trivia(bytes, offset, scan_end);
-            match bytes.get(offset) {
-                Some(b')') if depth == 0 => return (argument_starts, offset + 1),
-                Some(b',') if depth == 0 => {
-                    offset += 1;
-                    continue;
-                }
-                None => break,
-                _ => {
-                    argument_starts.push(offset);
-                    expecting_argument = false;
-                }
-            }
-        }
-
         match bytes[offset] {
             b'\'' => offset = scan_string(bytes, offset, scan_end),
             b'/' if bytes.get(offset + 1) == Some(&b'*') => {
@@ -229,20 +238,65 @@ pub(crate) fn scan_arguments(
                 depth += 1;
                 offset += 1;
             }
-            b')' if depth == 0 => return (argument_starts, offset + 1),
-            b')' => {
+            b')' if depth > 0 => {
                 depth -= 1;
                 offset += 1;
             }
+            b')' => {
+                spans.push(trim_argument(bytes, argument_start, offset));
+                if let [(start, end)] = spans[..]
+                    && start == end
+                {
+                    spans.clear();
+                }
+                return (spans, offset + 1);
+            }
             b',' if depth == 0 => {
-                expecting_argument = true;
+                spans.push(trim_argument(bytes, argument_start, offset));
                 offset += 1;
+                argument_start = offset;
             }
             _ => offset += 1,
         }
     }
 
-    (argument_starts, scan_end)
+    let (start, end) = trim_argument(bytes, argument_start, scan_end);
+    if start < end {
+        spans.push((start, end));
+    }
+    (spans, scan_end)
+}
+
+fn trim_argument(bytes: &[u8], start: usize, end: usize) -> (usize, usize) {
+    let start = skip_trivia(bytes, start, end);
+    let mut trimmed_end = end;
+    while trimmed_end > start && bytes[trimmed_end - 1].is_ascii_whitespace() {
+        trimmed_end -= 1;
+    }
+    (start, trimmed_end)
+}
+
+/// The unquoted, unescaped content of the STEP string literal starting at `offset`, or None when
+/// no string starts there.
+pub(crate) fn string_literal(text: &str, offset: usize) -> Option<String> {
+    let bytes = text.as_bytes();
+    if bytes.get(offset) != Some(&b'\'') {
+        return None;
+    }
+    let end = scan_string(bytes, offset, bytes.len());
+    let content = text.get(offset + 1..end.checked_sub(1)?)?;
+    Some(content.replace("''", "'"))
+}
+
+/// The offset just past an instance's terminating `;`, given the offset just past its argument
+/// list, or that offset itself when no `;` follows.
+pub(crate) fn statement_end(bytes: &[u8], arguments_end: usize) -> usize {
+    let terminator = skip_trivia(bytes, arguments_end, bytes.len());
+    if bytes.get(terminator) == Some(&b';') {
+        terminator + 1
+    } else {
+        arguments_end
+    }
 }
 
 pub(crate) fn skip_trivia(bytes: &[u8], mut offset: usize, scan_end: usize) -> usize {
@@ -368,6 +422,47 @@ mod tests {
         let ids = ids_in_span(text, 0, text.len());
 
         assert_eq!(ids, vec![2, 3]);
+    }
+
+    #[test]
+    fn argument_spans_trim_whitespace_and_keep_empty_arguments() {
+        let text = "( 'a,(b' , (#2,#3) ,, /* c */ X )";
+
+        let (spans, end) = scan_argument_spans(text.as_bytes(), 1, text.len());
+
+        let arguments: Vec<&str> = spans
+            .iter()
+            .map(|&(start, end)| &text[start..end])
+            .collect();
+        assert_eq!(arguments, ["'a,(b'", "(#2,#3)", "", "X"]);
+        assert_eq!(end, text.len());
+    }
+
+    #[test]
+    fn an_empty_argument_list_has_no_argument_spans() {
+        let text = "( )";
+
+        assert!(
+            scan_argument_spans(text.as_bytes(), 1, text.len())
+                .0
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn argument_starts_skip_empty_arguments() {
+        let text = "#1=IFCX(a,,b)";
+
+        let (instance, _) = scan_instance(text, 0, text.len()).expect("should scan instance");
+
+        assert_eq!(instance.argument_starts, vec![8, 11]);
+    }
+
+    #[test]
+    fn reads_string_literals() {
+        assert_eq!(string_literal("'it''s'", 0).as_deref(), Some("it's"));
+        assert_eq!(string_literal("''", 0).as_deref(), Some(""));
+        assert_eq!(string_literal("$", 0), None);
     }
 
     #[test]
