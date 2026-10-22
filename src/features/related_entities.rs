@@ -217,9 +217,9 @@ fn argument_span(
         .attributes
         .iter()
         .position(|attribute| attribute.name == attribute_name)?;
-    let start = *instance.argument_starts.get(index)?;
-    let end = instance
-        .argument_starts
+    let argument_starts = instance.argument_starts();
+    let start = *argument_starts.get(index)?;
+    let end = argument_starts
         .get(index + 1)
         .copied()
         .unwrap_or(statement_end.saturating_sub(1));

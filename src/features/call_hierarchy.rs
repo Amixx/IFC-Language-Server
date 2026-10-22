@@ -220,8 +220,8 @@ impl<'a> ItemBuilder<'a> {
             .iter()
             .filter_map(|offset| {
                 instance
-                    .argument_starts
-                    .partition_point(|start| start <= offset)
+                    .arguments
+                    .partition_point(|&(start, _)| start <= *offset)
                     .checked_sub(1)
             })
             .collect();
@@ -414,6 +414,31 @@ mod tests {
             data(&calls[0].from)["attributes"],
             json!([{ "position": 6, "name": null }])
         );
+    }
+
+    #[test]
+    fn referring_attributes_count_empty_arguments() {
+        let text = "DATA;\n#1=IFCBUILDINGSTOREY($,$,$,$);\n#2=IFCWALL($,$,$,$);\n\
+            #3=IFCRELCONTAINEDINSPATIALSTRUCTURE('id',,$,$,(#2),#1);\nENDSEC;\n";
+        let document = Document::new_unloaded(text.to_string());
+
+        let calls = incoming_calls(&document, &uri(), Some(&schema()), 2);
+
+        assert_eq!(
+            data(&calls[0].from)["attributes"],
+            json!([{ "position": 5, "name": "RelatedElements" }])
+        );
+    }
+
+    #[test]
+    fn labels_count_empty_arguments() {
+        let document = Document::new_unloaded(
+            "DATA;\n#1=IFCWALL('g',,'North wall',$);\nENDSEC;\n".to_string(),
+        );
+
+        let items = prepare(&document, &uri(), Some(&schema()), Position::new(1, 1)).unwrap();
+
+        assert_eq!(items[0].detail.as_deref(), Some("North wall"));
     }
 
     #[test]

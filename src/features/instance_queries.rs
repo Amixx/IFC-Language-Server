@@ -193,7 +193,7 @@ impl<'a> LabelReader<'a> {
         let (global_id_index, name_index) = self.attribute_indexes(&instance.entity_name);
         let text = self.document.text.as_str();
         let string_at =
-            |index: Option<usize>| string_literal(text, *instance.argument_starts.get(index?)?);
+            |index: Option<usize>| string_literal(text, instance.arguments.get(index?)?.0);
         Label {
             global_id: string_at(global_id_index),
             name: string_at(name_index),

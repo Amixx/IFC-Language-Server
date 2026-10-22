@@ -7,7 +7,20 @@
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct ScannedInstance {
     pub(crate) entity_name: String,
-    pub(crate) argument_starts: Vec<usize>,
+    /// One span per positional argument, as `scan_argument_spans` reports them, so an empty
+    /// argument still occupies its position.
+    pub(crate) arguments: Vec<(usize, usize)>,
+}
+
+impl ScannedInstance {
+    /// The start of every non-empty argument.
+    pub(crate) fn argument_starts(&self) -> Vec<usize> {
+        self.arguments
+            .iter()
+            .filter(|(start, end)| start < end)
+            .map(|&(start, _)| start)
+            .collect()
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -137,11 +150,11 @@ pub(crate) fn scan_instance(
         return None;
     }
 
-    let (argument_starts, end) = scan_arguments(bytes, offset + 1, scan_end);
+    let (arguments, end) = scan_argument_spans(bytes, offset + 1, scan_end);
     Some((
         ScannedInstance {
             entity_name,
-            argument_starts,
+            arguments,
         },
         end,
     ))
@@ -201,18 +214,6 @@ pub(crate) fn id_tokens_in_span(text: &str, start: usize, end: usize) -> Vec<(us
     }
 
     ids
-}
-
-/// Collects the start of every non-empty top-level argument, from just past an argument list's
-/// `(`, and returns them with the offset just past the closing `)`.
-pub(crate) fn scan_arguments(bytes: &[u8], offset: usize, scan_end: usize) -> (Vec<usize>, usize) {
-    let (spans, end) = scan_argument_spans(bytes, offset, scan_end);
-    let argument_starts = spans
-        .into_iter()
-        .filter(|(start, end)| start < end)
-        .map(|(start, _)| start)
-        .collect();
-    (argument_starts, end)
 }
 
 /// Collects the span of every top-level argument, from just past an argument list's `(`, and
@@ -386,7 +387,7 @@ mod tests {
         let (instance, end) = scan_instance(text, 0, text.len()).expect("should scan instance");
 
         assert_eq!(instance.entity_name, "IFCWALL");
-        assert_eq!(instance.argument_starts, vec![11, 17, 21]);
+        assert_eq!(instance.argument_starts(), vec![11, 17, 21]);
         assert_eq!(end, text.len());
     }
 
@@ -450,12 +451,13 @@ mod tests {
     }
 
     #[test]
-    fn argument_starts_skip_empty_arguments() {
+    fn argument_starts_skip_empty_arguments_but_spans_keep_them() {
         let text = "#1=IFCX(a,,b)";
 
         let (instance, _) = scan_instance(text, 0, text.len()).expect("should scan instance");
 
-        assert_eq!(instance.argument_starts, vec![8, 11]);
+        assert_eq!(instance.argument_starts(), vec![8, 11]);
+        assert_eq!(instance.arguments, vec![(8, 9), (10, 10), (11, 12)]);
     }
 
     #[test]
