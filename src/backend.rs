@@ -55,6 +55,7 @@ pub struct Backend {
     schema_docs: Arc<RwLock<SchemaDocCollection>>,
     config: Arc<RwLock<ConfigState>>,
     ast_skip_warning_shown: Arc<RwLock<HashSet<Url>>>,
+    unknown_schema_warned: Arc<RwLock<HashMap<Url, Option<String>>>>,
     diagnostic_scheduler: DiagnosticScheduler,
 }
 
@@ -67,6 +68,7 @@ impl Backend {
             schema_docs: Arc::new(RwLock::new(SchemaDocCollection::new())),
             config: Arc::new(RwLock::new(ConfigState::default())),
             ast_skip_warning_shown: Arc::new(RwLock::new(HashSet::new())),
+            unknown_schema_warned: Arc::new(RwLock::new(HashMap::new())),
             diagnostic_scheduler,
         }
     }
@@ -100,8 +102,8 @@ impl Backend {
         false
     }
 
-    #[instrument(skip(self), fields(schema_name = schema_name.unwrap_or("<none>")))]
-    async fn check_schema_support(&self, schema_name: Option<&str>) {
+    #[instrument(skip(self), fields(uri = %uri, schema_name = schema_name.unwrap_or("<none>")))]
+    async fn check_schema_support(&self, uri: &Url, schema_name: Option<&str>) {
         let forced_schema_name = self.config.read().await.forced_schema_name.clone();
 
         if let Some(forced_schema_name) = forced_schema_name.as_deref()
@@ -122,7 +124,10 @@ impl Backend {
             }
         }
 
-        if self.selected_schema_name(schema_name).await.is_none() {
+        let schema_known = self.selected_schema_name(schema_name).await.is_some();
+        let mut warned = self.unknown_schema_warned.write().await;
+        if should_warn_unknown_schema(&mut warned, uri, schema_name, schema_known) {
+            drop(warned);
             warn!("document schema is unknown or unsupported");
             self.client
                 .show_message(
@@ -168,7 +173,7 @@ impl Backend {
         let snapshot = DiagnosticSnapshot::from_document(document);
         drop(documents);
 
-        self.check_schema_support(snapshot.schema_name()).await;
+        self.check_schema_support(uri, snapshot.schema_name()).await;
         snapshot
     }
 
@@ -205,7 +210,7 @@ impl Backend {
 
         self.check_ast_support(uri, text_len, ast_file_size_limit_bytes)
             .await;
-        self.check_schema_support(snapshot.schema_name()).await;
+        self.check_schema_support(uri, snapshot.schema_name()).await;
         Some(snapshot)
     }
 
@@ -627,6 +632,7 @@ impl LanguageServer for Backend {
         drop(documents);
 
         self.ast_skip_warning_shown.write().await.remove(&uri);
+        self.unknown_schema_warned.write().await.remove(&uri);
         self.diagnostic_scheduler.invalidate(&uri).await;
         self.client.publish_diagnostics(uri, Vec::new(), None).await;
         info!("document closed");
@@ -1027,11 +1033,79 @@ fn append_completion_items(
     }
 }
 
+/// Records the schema name a document was last warned about and returns whether a new
+/// warning is due: once per document, and again only when its declared schema name changes.
+fn should_warn_unknown_schema(
+    warned: &mut HashMap<Url, Option<String>>,
+    uri: &Url,
+    schema_name: Option<&str>,
+    schema_known: bool,
+) -> bool {
+    if schema_known {
+        warned.remove(uri);
+        return false;
+    }
+
+    let current = schema_name.map(str::to_owned);
+    if warned.get(uri) == Some(&current) {
+        return false;
+    }
+    warned.insert(uri.clone(), current);
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use tower_lsp::LspService;
 
     use super::*;
+
+    fn warn_for(
+        warned: &mut HashMap<Url, Option<String>>,
+        uri: &Url,
+        schema_name: Option<&str>,
+    ) -> bool {
+        should_warn_unknown_schema(warned, uri, schema_name, false)
+    }
+
+    #[test]
+    fn unknown_schema_warning_is_sent_once_per_document() {
+        let mut warned = HashMap::new();
+        let uri = Url::parse("file:///tmp/a.ifc").unwrap();
+
+        assert!(warn_for(&mut warned, &uri, Some("IFC4X3")));
+        assert!(!warn_for(&mut warned, &uri, Some("IFC4X3")));
+        assert!(!warn_for(&mut warned, &uri, Some("IFC4X3")));
+
+        let other = Url::parse("file:///tmp/b.ifc").unwrap();
+        assert!(warn_for(&mut warned, &other, Some("IFC4X3")));
+    }
+
+    #[test]
+    fn unknown_schema_warning_repeats_when_the_schema_name_changes() {
+        let mut warned = HashMap::new();
+        let uri = Url::parse("file:///tmp/a.ifc").unwrap();
+
+        assert!(warn_for(&mut warned, &uri, Some("IFC4X3")));
+        assert!(warn_for(&mut warned, &uri, Some("IFC9")));
+        assert!(warn_for(&mut warned, &uri, None));
+        assert!(!warn_for(&mut warned, &uri, None));
+    }
+
+    #[test]
+    fn known_schema_resets_the_unknown_schema_warning() {
+        let mut warned = HashMap::new();
+        let uri = Url::parse("file:///tmp/a.ifc").unwrap();
+
+        assert!(warn_for(&mut warned, &uri, Some("IFC4X3")));
+        assert!(!should_warn_unknown_schema(
+            &mut warned,
+            &uri,
+            Some("IFC4"),
+            true
+        ));
+        assert!(warn_for(&mut warned, &uri, Some("IFC4X3")));
+    }
 
     #[tokio::test]
     async fn resolve_schema_returns_name_and_schema_from_one_lock_acquisition() {
