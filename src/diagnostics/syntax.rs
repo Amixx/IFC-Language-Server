@@ -27,7 +27,9 @@ fn collect_error_nodes(
             diagnostics.push(diagnostic);
         }
 
-        if cursor.goto_first_child() {
+        // An ERROR node's range covers everything nested in it, including the leaf ERROR
+        // that tree-sitter creates for a token the lexer cannot recognize.
+        if !node.is_error() && cursor.goto_first_child() {
             collect_error_nodes(cursor, diagnostics);
             cursor.goto_parent();
         }
@@ -86,6 +88,15 @@ mod tests {
             .set_language(&tree_sitter_ifc::LANGUAGE.into())
             .expect("Error loading IFC parser");
         Document::parse(&mut parser, text.to_string())
+    }
+
+    #[test]
+    fn reports_unrecognized_token_once() {
+        let doc = parse_document("DATA;\n#1=IFCWALL($);\nstray\nENDSEC;\n");
+        let diagnostics = collect(&DiagnosticSnapshot::from_document(&doc));
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
+        assert_eq!(diagnostics[0].range.start, Position::new(2, 0));
+        assert_eq!(diagnostics[0].range.end, Position::new(2, 5));
     }
 
     #[test]
