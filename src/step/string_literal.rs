@@ -1,36 +1,14 @@
 //! Decoding of the content of STEP string literals (ISO 10303-21 §6.4.3).
 
-/// The upper halves (0xA0–0xFF) of ISO 8859-2 to 8859-9, which `\PB\` to `\PI\` select;
-/// unassigned codes are U+FFFD.
-const PAGES: [&str; 8] = [
-    // B: ISO 8859-2
-    "\u{a0}Ą˘Ł¤ĽŚ§¨ŠŞŤŹ\u{ad}ŽŻ°ą˛ł´ľśˇ¸šşťź˝žżŔÁÂĂÄĹĆÇČÉĘËĚÍÎĎĐŃŇÓÔŐÖ×ŘŮÚŰÜÝŢßŕáâăäĺćçčéęëěíîďđńňóôőö÷řůúűüýţ˙",
-    // C: ISO 8859-3
-    "\u{a0}Ħ˘£¤\u{fffd}Ĥ§¨İŞĞĴ\u{ad}\u{fffd}Ż°ħ²³´µĥ·¸ışğĵ½\u{fffd}żÀÁÂ\u{fffd}ÄĊĈÇÈÉÊËÌÍÎÏ\u{fffd}ÑÒÓÔĠÖ×ĜÙÚÛÜŬŜßàáâ\u{fffd}äċĉçèéêëìíîï\u{fffd}ñòóôġö÷ĝùúûüŭŝ˙",
-    // D: ISO 8859-4
-    "\u{a0}ĄĸŖ¤ĨĻ§¨ŠĒĢŦ\u{ad}Ž¯°ą˛ŗ´ĩļˇ¸šēģŧŊžŋĀÁÂÃÄÅÆĮČÉĘËĖÍÎĪĐŅŌĶÔÕÖ×ØŲÚÛÜŨŪßāáâãäåæįčéęëėíîīđņōķôõö÷øųúûüũū˙",
-    // E: ISO 8859-5
-    "\u{a0}ЁЂЃЄЅІЇЈЉЊЋЌ\u{ad}ЎЏАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя№ёђѓєѕіїјљњћќ§ўџ",
-    // F: ISO 8859-6
-    "\u{a0}\u{fffd}\u{fffd}\u{fffd}¤\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}،\u{ad}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}؛\u{fffd}\u{fffd}\u{fffd}؟\u{fffd}ءآأؤإئابةتثجحخدذرزسشصضطظعغ\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}ـفقكلمنهوىي\u{64b}\u{64c}\u{64d}\u{64e}\u{64f}\u{650}\u{651}\u{652}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}",
-    // G: ISO 8859-7
-    "\u{a0}‘’£€₯¦§¨©ͺ«¬\u{ad}\u{fffd}―°±²³΄΅Ά·ΈΉΊ»Ό½ΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡ\u{fffd}ΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώ\u{fffd}",
-    // H: ISO 8859-8
-    "\u{a0}\u{fffd}¢£¤¥¦§¨©×«¬\u{ad}®¯°±²³´µ¶·¸¹÷»¼½¾\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}‗אבגדהוזחטיךכלםמןנסעףפץצקרשת\u{fffd}\u{fffd}\u{200e}\u{200f}\u{fffd}",
-    // I: ISO 8859-9
-    "\u{a0}¡¢£¤¥¦§¨©ª«¬\u{ad}®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏĞÑÒÓÔÕÖ×ØÙÚÛÜİŞßàáâãäåæçèéêëìíîïğñòóôõö÷øùúûüışÿ",
-];
-
-/// Decodes the content between a string literal's quotes: `''`, `\\`, `\S\`, `\P?\`, `\X\hh`,
+/// Decodes the content between a string literal's quotes: `''`, `\\`, `\S\` (Latin-1), `\X\hh`,
 /// `\X2\…\X0\` and `\X4\…\X0\`. Malformed directives are kept as written.
 pub fn decode_string(content: &str) -> String {
     let mut decoded = String::with_capacity(content.len());
-    let mut page = b'A';
     let mut rest = content;
     while let Some(index) = rest.find(['\\', '\'']) {
         decoded.push_str(&rest[..index]);
         rest = &rest[index..];
-        let consumed = decode_escape(rest, &mut page, &mut decoded).unwrap_or_else(|| {
+        let consumed = decode_escape(rest, &mut decoded).unwrap_or_else(|| {
             decoded.push_str(&rest[..1]);
             1
         });
@@ -41,8 +19,7 @@ pub fn decode_string(content: &str) -> String {
 }
 
 /// Decodes the escape at the start of `text` into `decoded`, returning its length in bytes.
-fn decode_escape(text: &str, page: &mut u8, decoded: &mut String) -> Option<usize> {
-    let bytes = text.as_bytes();
+fn decode_escape(text: &str, decoded: &mut String) -> Option<usize> {
     if text.starts_with("''") {
         decoded.push('\'');
         Some(2)
@@ -51,14 +28,10 @@ fn decode_escape(text: &str, page: &mut u8, decoded: &mut String) -> Option<usiz
         Some(2)
     } else if let Some(rest) = text.strip_prefix(r"\S\") {
         let code = *rest.as_bytes().first()?;
-        decoded.push(page_char(*page, code)?);
-        Some(4)
-    } else if text.starts_with(r"\P") && bytes.get(3) == Some(&b'\\') {
-        let selected = bytes[2];
-        if !(b'A'..=b'I').contains(&selected) {
+        if !(0x20..0x80).contains(&code) {
             return None;
         }
-        *page = selected;
+        decoded.push(char::from(code + 0x80));
         Some(4)
     } else if let Some(rest) = text.strip_prefix(r"\X2\") {
         let (units, length) = hex_groups(rest, 4)?;
@@ -76,18 +49,6 @@ fn decode_escape(text: &str, page: &mut u8, decoded: &mut String) -> Option<usiz
         Some(5)
     } else {
         None
-    }
-}
-
-/// The character `\S\` followed by `code` stands for in the ISO 8859 part `page` selects.
-fn page_char(page: u8, code: u8) -> Option<char> {
-    let index = usize::from(code.checked_sub(0x20)?);
-    if index >= 96 {
-        return None;
-    }
-    match page {
-        b'A' => Some(char::from(code + 0x80)),
-        _ => PAGES[usize::from(page - b'B')].chars().nth(index),
     }
 }
 
@@ -120,16 +81,14 @@ mod tests {
     }
 
     #[test]
-    fn decodes_latin_1_by_default() {
+    fn decodes_latin_1_escapes() {
         assert_eq!(decode_string(r"D\S\|sseldorf \S\\"), "Düsseldorf Ü");
         assert_eq!(decode_string(r"M\X\FCnchen"), "München");
     }
 
     #[test]
-    fn page_directives_select_the_iso_8859_part() {
-        assert_eq!(decode_string(r"\PE\\S\?\S\`\PA\\S\D"), "ПрÄ");
-        assert_eq!(decode_string(r"\PB\\S\9"), "š");
-        assert_eq!(decode_string(r"\PG\\S\a"), "α");
+    fn keeps_page_directives_as_written() {
+        assert_eq!(decode_string(r"\PB\x"), r"\PB\x");
     }
 
     #[test]
@@ -147,7 +106,6 @@ mod tests {
             r"\X2\00F\X0\",
             r"\X2\00FC",
             r"\X\G1",
-            r"\PZ\",
             r"\S\",
             r"\X4\FFFFFFFF\X0\",
         ] {
