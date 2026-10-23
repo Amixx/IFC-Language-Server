@@ -198,11 +198,12 @@ async fn run_worker(
 }
 
 fn collect(job: DiagnosticJob) -> Vec<tower_lsp::lsp_types::Diagnostic> {
-    let Some((schema_name, schema)) = job.schema else {
-        return Vec::new();
-    };
+    let schema = job
+        .schema
+        .as_ref()
+        .map(|(schema_name, schema)| (schema_name.as_str(), schema.as_ref()));
 
-    diagnostics::collect_with_schema_name(&job.snapshot, &schema, Some(&schema_name))
+    diagnostics::collect(&job.snapshot, schema)
 }
 
 #[cfg(test)]
