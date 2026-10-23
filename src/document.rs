@@ -350,6 +350,43 @@ impl Document {
         self.range_for_offsets(start, end)
     }
 
+    /// The ranges of the id tokens at `offsets`. Offsets in ascending order are converted from the
+    /// previous one, so many tokens on one line cost no more than the line's length.
+    pub fn id_ranges_at_offsets(&self, offsets: &[usize]) -> Vec<Range> {
+        let mut cursor: Option<(usize, Position)> = None;
+        let mut position_at = |offset: usize| {
+            let position = match cursor {
+                Some((from, at))
+                    if from <= offset
+                        && self.text.is_char_boundary(offset)
+                        && self
+                            .line_offsets
+                            .get(at.line as usize + 1)
+                            .is_none_or(|&next| offset < next) =>
+                {
+                    let units: u32 = self.text[from..offset]
+                        .chars()
+                        .map(|character| character.len_utf16() as u32)
+                        .sum();
+                    Position::new(at.line, at.character + units)
+                }
+                _ => self.offset_to_position(offset)?,
+            };
+            cursor = Some((offset, position));
+            Some(position)
+        };
+        offsets
+            .iter()
+            .filter_map(|&offset| {
+                let (start, end, _) = self.id_token_at_offset(offset)?;
+                Some(Range {
+                    start: position_at(start)?,
+                    end: position_at(end)?,
+                })
+            })
+            .collect()
+    }
+
     pub fn definition_range(&self, id: u32) -> Option<Range> {
         self.id_range_at_offset(*self.definitions.get(&id)?)
     }

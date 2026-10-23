@@ -8,8 +8,8 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use tower_lsp::lsp_types::{
-    CallHierarchyIncomingCall, CallHierarchyItem, CallHierarchyOutgoingCall, Position, Range,
-    SymbolKind, Url,
+    CallHierarchyIncomingCall, CallHierarchyItem, CallHierarchyOutgoingCall, Position, SymbolKind,
+    Url,
 };
 
 use crate::document::Document;
@@ -67,19 +67,29 @@ pub fn incoming_calls(
 ) -> Vec<CallHierarchyIncomingCall> {
     let target_definition = document.definitions.get(&id).copied();
 
-    // Reference offsets are sorted, so the references one instance holds are adjacent.
+    // Reference offsets are sorted, so the references one instance holds are adjacent; those inside
+    // the current referrer's statement need no lookup.
+    let text = document.text.as_str();
     let mut referrers: Vec<(usize, u32, Vec<usize>)> = Vec::new();
+    let mut referrer_end = 0;
     for &offset in document.references.get(&id).into_iter().flatten() {
         if Some(offset) == target_definition {
+            continue;
+        }
+        if let Some((_, _, offsets)) = referrers.last_mut()
+            && offset < referrer_end
+        {
+            offsets.push(offset);
             continue;
         }
         let Some((start, referrer)) = document.enclosing_definition(offset) else {
             continue;
         };
-        match referrers.last_mut() {
-            Some((_, last, offsets)) if *last == referrer => offsets.push(offset),
-            _ => referrers.push((start, referrer, vec![offset])),
-        }
+        referrer_end = scan_instance(text, start, text.len())
+            .map_or(offset + 1, |(_, arguments_end)| {
+                statement_end(text.as_bytes(), arguments_end)
+            });
+        referrers.push((start, referrer, vec![offset]));
     }
 
     let mut items = ItemBuilder::new(document, uri, schema);
@@ -90,7 +100,7 @@ pub fn incoming_calls(
             let attributes = items.referring_attributes(&instance, &offsets);
             Some(CallHierarchyIncomingCall {
                 from: items.item(start, referrer, attributes)?,
-                from_ranges: id_ranges(document, &offsets),
+                from_ranges: document.id_ranges_at_offsets(&offsets),
             })
         })
         .collect()
@@ -129,7 +139,7 @@ pub fn outgoing_calls(
             let attributes = items.referring_attributes(&instance, &offsets);
             Some(CallHierarchyOutgoingCall {
                 to: items.item(callee_start, callee, attributes)?,
-                from_ranges: id_ranges(document, &offsets),
+                from_ranges: document.id_ranges_at_offsets(&offsets),
             })
         })
         .collect();
@@ -149,13 +159,6 @@ fn instance_at_offset(document: &Document, offset: usize) -> Option<u32> {
     let text = document.text.as_str();
     let (_, arguments_end) = scan_instance(text, start, text.len())?;
     (offset <= statement_end(text.as_bytes(), arguments_end)).then_some(id)
-}
-
-fn id_ranges(document: &Document, offsets: &[usize]) -> Vec<Range> {
-    offsets
-        .iter()
-        .filter_map(|&offset| document.id_range_at_offset(offset))
-        .collect()
 }
 
 /// Builds items, reading each entity's attribute names and label positions once.
@@ -243,6 +246,7 @@ mod tests {
     use std::collections::HashSet;
 
     use serde_json::json;
+    use tower_lsp::lsp_types::Range;
 
     use super::*;
     use crate::schema::{EntityAttributeDoc, EntityDoc, TypeRef};
@@ -454,6 +458,40 @@ mod tests {
             data(&calls[0].from)["attributes"],
             json!([{ "position": 1, "name": null }, { "position": 2, "name": null }])
         );
+    }
+
+    #[test]
+    fn many_references_from_one_instance_form_one_call() {
+        let repeats = 20_000;
+        let points = vec!["#1"; repeats].join(",");
+        let text = format!(
+            "DATA;\n#1=IFCCARTESIANPOINT((0.,0.));\n#2=IFCPOLYLINE(({points}));\n\
+             #3=IFCX(#1,'#1',#2);\nENDSEC;\n"
+        );
+        let document = Document::new_unloaded(text.clone());
+
+        let calls = incoming_calls(&document, &uri(), None, 1);
+
+        let ids: Vec<_> = calls
+            .iter()
+            .map(|call| item_id(&call.from).unwrap())
+            .collect();
+        assert_eq!(ids, [2, 3]);
+        let ranges = &calls[0].from_ranges;
+        assert_eq!(ranges.len(), repeats);
+        let polyline = text.find("((#1").unwrap() + 2;
+        for index in [0, repeats - 1] {
+            let start = polyline + index * "#1,".len();
+            assert_eq!(
+                Some(ranges[index]),
+                document.range_for_offsets(start, start + 2)
+            );
+        }
+        assert_eq!(
+            data(&calls[0].from)["attributes"],
+            json!([{ "position": 1, "name": null }])
+        );
+        assert_eq!(calls[1].from_ranges.len(), 1);
     }
 
     #[test]
